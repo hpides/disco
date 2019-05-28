@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+}
+
+group 'com.github.lawben'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 11
+
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.zeromq', name: 'jeromq', version: '0.5.1'
+
+    def scottyVersion = 'master-SNAPSHOT'
+    compile group: 'com.github.lawben.scotty-window-processor', name: 'core', version: scottyVersion
+    compile group: 'com.github.lawben.scotty-window-processor', name: 'state', version: scottyVersion
+    compile group: 'com.github.lawben.scotty-window-processor', name: 'slicing', version: scottyVersion
+}
