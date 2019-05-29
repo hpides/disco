@@ -15,7 +15,8 @@ cd distributed-scotty
 
 CLASSPATH="\
 $HOME_DIR/distributed-scotty:\
-$HOME_DIR/distributed-scotty/out/production/classes:\
+$HOME_DIR/distributed-scotty/build/classes:\
+$HOME_DIR/distributed-scotty/build/classes/java/main:\
 $HOME_DIR/.gradle/caches/modules-2/files-2.1/org.zeromq/jeromq/0.5.1/7ef8199a62e6bc91b549fcb49f85ccdf6ffc5078/jeromq-0.5.1.jar:\
 $HOME_DIR/.gradle/caches/modules-2/files-2.1/com.github.lawben.scotty-window-processor/slicing/master-SNAPSHOT/72ff5f95901282921f469403e862c61c2bc47b95/slicing-master-SNAPSHOT.jar:\
 $HOME_DIR/.gradle/caches/modules-2/files-2.1/com.github.lawben.scotty-window-processor/core/master-SNAPSHOT/8542a5c4eb28ce25ac1e4316ca00a59f04cf58c4/core-master-SNAPSHOT.jar:\

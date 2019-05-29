@@ -7,7 +7,7 @@ KNOWN_HOSTS_FILE=/tmp/known_hosts
 
 THIS_FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 BASE_DIR=$(cd "$THIS_FILE_DIR/.." && pwd)
-RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%d-%m_%Hh%Mm%Ss")_$NUM_EXPECTED_DROPLETS-nodes"
+RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%d-%m-%H%M")-$NUM_EXPECTED_DROPLETS-nodes"
 
 function get_droplet_list {
     local FORMAT=${1}
@@ -45,8 +45,14 @@ function check_ready {
 # ACTUAL CODE THAT IS RUN
 #########################
 
+if [[ -z "$NUM_EXPECTED_DROPLETS" ]] || ! [[ ${NUM_EXPECTED_DROPLETS} =~ ^[0-9]+$ ]]; then
+    echo "Need to specify expected number of nodes. Got: '$NUM_EXPECTED_DROPLETS'"
+    exit 1
+fi
+
 mkdir -p ${RUN_FILES_DIR}
 echo "Writing logs to $RUN_FILES_DIR"
+echo
 
 echo "Getting IPs..."
 ALL_IPS=($(get_all_ips))
@@ -101,8 +107,8 @@ ALL_NAMES=($(get_all_names))
 for i in ${!ALL_IPS[@]}; do
     run_droplet ${ALL_IPS[$i]} ${ALL_NAMES[$i]} &
 done
-
 echo
+
 echo "To view root logs:"
 echo "tail -F $RUN_FILES_DIR/root.log"
 
