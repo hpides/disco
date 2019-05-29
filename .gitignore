@@ -25,5 +25,6 @@ hs_err_pid*
 .gradle/
 build/
 gradlew.bat
+!gradle/wrapper/gradle-wrapper.jar
 
 benchmark-runs/
