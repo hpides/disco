@@ -25,4 +25,5 @@ $HOME_DIR/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.16/3a6274f6
 $HOME_DIR/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/17.0.0/8ceead41f4e71821919dbdb7a9847608f1a938cb/annotations-17.0.0.jar\
 "
 
+export CLASSPATH=${CLASSPATH}
 echo "export CLASSPATH=$CLASSPATH" >> ${HOME_DIR}/.bashrc
