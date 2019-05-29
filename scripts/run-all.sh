@@ -6,8 +6,8 @@ DELETE_AFTER=${2:-""}
 KNOWN_HOSTS_FILE=/tmp/known_hosts
 
 THIS_FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-BASE_DIR=$(cd "$THIS_FILE_DIR/../.." && pwd)
-RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%d-%m_%Hh%Mm%Ss")"
+BASE_DIR=$(cd "$THIS_FILE_DIR/.." && pwd)
+RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%d-%m_%Hh%Mm%Ss")_$NUM_EXPECTED_DROPLETS-nodes"
 
 function get_droplet_list {
     local FORMAT=${1}
@@ -61,6 +61,7 @@ echo "All IPs (${#ALL_IPS[@]}): ${ALL_IPS[@]}"
 echo
 
 echo "Adding IPs to $KNOWN_HOSTS_FILE"
+echo "This may take a while if the nodes were just created."
 > ${KNOWN_HOSTS_FILE}
 for ip in ${ALL_IPS[@]}; do
     SCAN_OUTPUT=""

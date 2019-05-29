@@ -24,5 +24,6 @@ hs_err_pid*
 
 .gradle/
 build/
+gradlew.bat
 
 benchmark-runs/

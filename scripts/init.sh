@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Use this by calling:
-# bash -c "$(curl -sL https://raw.githubusercontent.com/lawben/scotty-window-processor/master/distributed/scripts/init.sh)"
+# bash -c "$(curl -sL https://raw.githubusercontent.com/lawben/distributed-scotty/master/scripts/init.sh)"
 
 sudo apt update
 sudo apt install -y git openjdk-11-jdk
