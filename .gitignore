@@ -26,5 +26,8 @@ hs_err_pid*
 build/
 gradlew.bat
 !gradle/wrapper/gradle-wrapper.jar
+venv/
+.ipynb_checkpoints
+__pycache__/
 
 benchmark-runs/
