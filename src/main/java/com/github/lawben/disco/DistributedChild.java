@@ -140,10 +140,10 @@ public class DistributedChild implements Runnable {
                 continue;
             }
 
-            String[] eventParts = streamIdOrStreamEnd.split(",");
-            int streamId = Integer.parseInt(eventParts[0]);
-            long eventTimestamp = Long.valueOf(eventParts[1]);
-            int eventValue = Integer.valueOf(eventParts[2]);
+            final String[] eventParts = streamIdOrStreamEnd.split(",");
+            final int streamId = Integer.parseInt(eventParts[0]);
+            final long eventTimestamp = Long.valueOf(eventParts[1]);
+            final int eventValue = Integer.valueOf(eventParts[2]);
 
             DistributedChildSlicer<Integer> perStreamSlicer = this.slicerPerStream.get(streamId);
             perStreamSlicer.processElement(perStreamSlicer.castFromObject(eventValue), eventTimestamp);

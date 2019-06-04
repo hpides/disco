@@ -85,7 +85,7 @@ public class DistributedRoot implements Runnable {
             Integer partialAggregate = (Integer) partialAggregateObject;
 
             Optional<AggregateWindow> maybeFinalWindow = processPreAggregateWindow(windowId, partialAggregate);
-            if (!maybeFinalWindow.isPresent()) {
+            if (maybeFinalWindow.isEmpty()) {
                 continue;
             }
 

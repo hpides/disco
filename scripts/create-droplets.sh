@@ -55,6 +55,8 @@ function get_ips {
     doctl compute droplet list --format="PublicIPv4" --no-header --tag-name="$TAG_NAME"
 }
 
+[[ ${NUM_STREAMS} -ge ${NUM_CHILDREN} ]] || >&2 echo "Need at least as many streams as children!" && exit 1
+
 echo -e "Creating root node\n=================="
 ROOT_SETUP_SCRIPT=$(create_init_script DistributedRootMain ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} /tmp/scotty-res ${NUM_CHILDREN})
 creat_droplet "$ROOT_TAG" "$ROOT_SETUP_SCRIPT" "root"
