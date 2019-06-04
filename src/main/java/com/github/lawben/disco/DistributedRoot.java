@@ -3,8 +3,10 @@ package com.github.lawben.disco;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
+import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +26,7 @@ public class DistributedRoot implements Runnable {
     private ZMQ.Socket windowPuller;
     private ZMQ.Socket resultPusher;
     private final int numChildren;
-    Set<Integer> childStreamEnds;
+    private Set<Integer> childStreamEnds;
 
     // Slicing related
     private DistributedWindowMerger<Integer> windowMerger;
@@ -101,9 +103,9 @@ public class DistributedRoot implements Runnable {
     }
 
     public Optional<AggregateWindow> processPreAggregateWindow(WindowAggregateId windowId, Integer partialAggregate) {
-        boolean triggerFinal = this.windowMerger.processPreAggregate(partialAggregate, windowId);
-        if (triggerFinal) {
-            AggregateWindow finalWindow = this.windowMerger.triggerFinalWindow(windowId);
+        Optional<WindowAggregateId> triggerId = this.windowMerger.processPreAggregate(partialAggregate, windowId);
+        if (triggerId.isPresent()) {
+            AggregateWindow finalWindow = this.windowMerger.triggerFinalWindow(triggerId.get());
             return Optional.of(finalWindow);
         }
 
@@ -138,7 +140,7 @@ public class DistributedRoot implements Runnable {
     }
 
     public void setupWindowMerger(List<Window> windows, ReduceAggregateFunction<Integer> aggFn) {
-        this.windowMerger = new DistributedWindowMerger<>(new MemoryStateFactory(), this.numChildren, windows, aggFn);
+        this.windowMerger = new DistributedWindowMerger<>(this.numChildren, windows, aggFn);
     }
 
     private String rootString(String msg) {

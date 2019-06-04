@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -93,7 +94,7 @@ public class DistributedChild implements Runnable {
             if (streams.poll(timeout) == 0) {
                 // Timed out --> all streams registered
                 System.out.println(this.childIdString("Registered all streams."));
-                this.streamWindowMerger = new DistributedWindowMerger<>(stateFactory, this.numStreams, windows, aggFn);
+                this.streamWindowMerger = new DistributedWindowMerger<>(this.numStreams, windows, aggFn);
                 return;
             }
 
@@ -177,10 +178,10 @@ public class DistributedChild implements Runnable {
             List<Integer> aggValues = typedPreAggregateWindow.getAggValues();
             Integer partialAggregate = aggValues.isEmpty() ? null : aggValues.get(0);
             WindowAggregateId windowId = preAggWindow.getWindowAggregateId();
-            boolean finalTrigger = this.streamWindowMerger.processPreAggregate(partialAggregate, windowId);
+            Optional<WindowAggregateId> triggerId = this.streamWindowMerger.processPreAggregate(partialAggregate, windowId);
 
-            if (finalTrigger) {
-                AggregateWindow<Integer> finalPreAggregateWindow = this.streamWindowMerger.triggerFinalWindow(windowId);
+            if (triggerId.isPresent()) {
+                AggregateWindow<Integer> finalPreAggregateWindow = this.streamWindowMerger.triggerFinalWindow(triggerId.get());
                 finalPreAggregateWindows.add(finalPreAggregateWindow);
             }
         }
