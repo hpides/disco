@@ -1,7 +1,9 @@
 package com.github.lawben.disco.executables;
 
 import com.github.lawben.disco.EventGenerator;
+import com.github.lawben.disco.FakeTimeEventGenerator;
 import com.github.lawben.disco.InputStream;
+import com.github.lawben.disco.SleepEventGenerator;
 import com.github.lawben.disco.single.SingleInputStream;
 import com.github.lawben.disco.DistributedChild;
 import com.github.lawben.disco.InputStreamConfig;
@@ -34,9 +36,10 @@ public class InputStreamMain {
 
         long startTime = System.currentTimeMillis() + DistributedChild.STREAM_REGISTER_TIMEOUT_MS * 2;
         InputStreamConfig<Integer> config =
-                new InputStreamConfig<>(numEvents, 1, 5, startTime, valueGenerator, randomSeed);
+                new InputStreamConfig<>(numEvents, 0, 2000, startTime, valueGenerator, randomSeed);
 
-        EventGenerator<Integer> eventGenerator = new ThroughputEventGenerator<>(streamId, config);
+//        EventGenerator<Integer> eventGenerator = new ThroughputEventGenerator<>(streamId, config);
+        EventGenerator<Integer> eventGenerator = new FakeTimeEventGenerator<>(streamId, config);
 
         InputStream<Integer> stream = new InputStream<>(streamId, config, nodeIp, nodePort, eventGenerator);
         if (!isDistributed) {

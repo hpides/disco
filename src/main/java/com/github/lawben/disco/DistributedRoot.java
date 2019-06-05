@@ -117,8 +117,10 @@ public class DistributedRoot implements Runnable {
         childReceiver.bind(DistributedUtils.buildBindingTcpUrl(this.controllerPort));
 
 //        String[] windowStrings = {"SLIDING,100,50,2"};
-        String[] windowStrings = {"TUMBLING,1000,1"};
+//        String[] windowStrings = {"TUMBLING,1000,1"};
 //        String[] windowStrings = {"TUMBLING,10000,1", "SLIDING,10000,5000,2"};
+//        String[] windowStrings = {"SESSION,1990,1"};
+        String[] windowStrings = {"SESSION,1990,1", "TUMBLING,100000,2"};
         final long WATERMARK_MS = 1000;
 
         final ReduceAggregateFunction<Integer> aggFn = DistributedUtils.aggregateFunctionSum();

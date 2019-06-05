@@ -19,7 +19,6 @@ import org.jetbrains.annotations.Nullable;
 public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<InputType> {
 
     private int numRemainingChildren;
-    private final Map<Long, Long> sessionWindowGaps;
     private final Map<Long, WindowAggregateId> currentSessionWindowIds;
     private final Map<WindowAggregateId, LongAdder> receivedWindowPreAggregates = new HashMap<>();
     private final Map<WindowAggregateId, AggregateState<InputType>> windowAggregates = new HashMap<>();
@@ -30,13 +29,11 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         this.addWindowFunction(aggFn);
 
         this.currentSessionWindowIds = new HashMap<>();
-        this.sessionWindowGaps = new HashMap<>();
         for (Window window : windows) {
             this.addWindowAssigner(window);
             if (window instanceof SessionWindow) {
                 SessionWindow sw = (SessionWindow) window;
                 long windowId = sw.getWindowId();
-                this.sessionWindowGaps.put(windowId, sw.getGap());
                 this.currentSessionWindowIds.put(windowId, new WindowAggregateId(windowId, -1L, -1L));
             }
         }
@@ -46,7 +43,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         final long windowId = windowAggregateId.getWindowId();
 
         // Process session windows differently
-        if (sessionWindowGaps.containsKey(windowId)) {
+        if (currentSessionWindowIds.containsKey(windowId)) {
             return processSessionWindow(preAggregate, windowAggregateId);
         }
 
@@ -81,14 +78,14 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         } else {
             // There is a current session for this window
             AggregateState<InputType> aggWindow = windowAggregates.get(windowPlaceholderId);
-            final long gap = sessionWindowGaps.get(windowId);
 
             final long endTimestamp = windowAggregateId.getWindowEndTimestamp();
-            if (lastTimestamp + gap > endTimestamp) {
+            final long startTimestamp = windowAggregateId.getWindowStartTimestamp();
+            if (startTimestamp < lastTimestamp) {
                 // This aggregate belongs to the current session
                 aggWindow.addElement(preAggregate);
 
-                final long newStartTime = Math.min(currentWindowId.getWindowStartTimestamp(), windowAggregateId.getWindowStartTimestamp());
+                final long newStartTime = Math.min(currentWindowId.getWindowStartTimestamp(), startTimestamp);
                 final long newEndTime = Math.max(endTimestamp, windowAggregateId.getWindowStartTimestamp());
                 WindowAggregateId newCurrentWindowId = new WindowAggregateId(windowId, newStartTime, newEndTime);
                 currentSessionWindowIds.put(windowId, newCurrentWindowId);
@@ -98,6 +95,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
                 AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.windowManager.getAggregations());
                 newAggWindow.addElement(preAggregate);
                 windowAggregates.put(windowPlaceholderId, newAggWindow);
+                currentSessionWindowIds.put(windowId, windowAggregateId);
 
                 // Trigger window that just finished
                 windowAggregates.put(currentWindowId, aggWindow);

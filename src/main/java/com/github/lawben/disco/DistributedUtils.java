@@ -3,6 +3,7 @@ package com.github.lawben.disco;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
+import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
@@ -88,6 +89,12 @@ public class DistributedUtils {
                 final long slide = Integer.parseInt(windowDetails[2]);
                 final long windowId = windowDetails.length == 4 ? Integer.parseInt(windowDetails[3]) : -1;
                 return new SlidingWindow(WindowMeasure.Time, size, slide, windowId);
+            }
+            case "SESSION": {
+                assert windowDetails.length >= 2;
+                final long gap = Integer.parseInt(windowDetails[1]);
+                final long windowId = windowDetails.length == 3 ? Integer.parseInt(windowDetails[2]) : -1;
+                return new SessionWindow(WindowMeasure.Time, gap, windowId);
             }
             default: {
                 System.err.println("No window type known for: '" + windowDetails[0] + "'");
