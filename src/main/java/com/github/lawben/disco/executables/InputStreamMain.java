@@ -38,8 +38,8 @@ public class InputStreamMain {
         InputStreamConfig<Integer> config =
                 new InputStreamConfig<>(numEvents, 0, 2000, startTime, valueGenerator, randomSeed);
 
-//        EventGenerator<Integer> eventGenerator = new ThroughputEventGenerator<>(streamId, config);
-        EventGenerator<Integer> eventGenerator = new FakeTimeEventGenerator<>(streamId, config);
+        EventGenerator<Integer> eventGenerator = new ThroughputEventGenerator<>(streamId, config);
+//        EventGenerator<Integer> eventGenerator = new FakeTimeEventGenerator<>(streamId, config);
 
         InputStream<Integer> stream = new InputStream<>(streamId, config, nodeIp, nodePort, eventGenerator);
         if (!isDistributed) {

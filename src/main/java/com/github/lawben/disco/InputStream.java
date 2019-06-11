@@ -51,7 +51,7 @@ public class InputStream<T> implements Runnable {
                     " (total sending duration: " + duration + "ms)"));
 
             // Allow stream end to be processed before killing the context
-            Thread.sleep(2000);
+            Thread.sleep(5000);
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);

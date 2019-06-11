@@ -152,9 +152,11 @@ public class DistributedChild implements Runnable {
             numEvents++;
 
 
-            // If we haven't processed a watermark in watermarkMs milliseconds, process it.
+            // If we haven't processed a watermark in watermarkMs milliseconds and waited for the maximum lateness of a
+            // tuple, process it.
+            final long maxLateness = this.watermarkMs;
             final long watermarkTimestamp = lastWatermark + this.watermarkMs;
-            if (currentEventTime >= watermarkTimestamp) {
+            if (currentEventTime >= watermarkTimestamp + maxLateness) {
                 // System.out.println(this.childIdString("Processing watermark " + watermarkTimestamp));
                 this.processWatermarkedWindows(watermarkTimestamp);
                 lastWatermark = watermarkTimestamp;
