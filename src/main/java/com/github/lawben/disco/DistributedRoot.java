@@ -2,6 +2,7 @@ package com.github.lawben.disco;
 
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
+import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.Window;
@@ -78,13 +79,10 @@ public class DistributedRoot implements Runnable {
 
             // System.out.println(this.rootString("Received from " + childId));
             String rawAggregateWindowId = this.windowPuller.recvStr(ZMQ.DONTWAIT);
-            byte[] rawPreAggregatedResult = this.windowPuller.recv(ZMQ.DONTWAIT);
+            String rawPreAggregatedResult = this.windowPuller.recvStr(ZMQ.DONTWAIT);
 
             WindowAggregateId windowId = DistributedUtils.stringToWindowId(rawAggregateWindowId);
-
-            // Partial Aggregate
-            Object partialAggregateObject = DistributedUtils.bytesToObject(rawPreAggregatedResult);
-            Integer partialAggregate = (Integer) partialAggregateObject;
+            Integer partialAggregate = Integer.valueOf(rawPreAggregatedResult);
 
             Optional<AggregateWindow> maybeFinalWindow = processPreAggregateWindow(windowId, partialAggregate);
             if (maybeFinalWindow.isEmpty()) {
@@ -123,26 +121,31 @@ public class DistributedRoot implements Runnable {
         String[] windowStrings = {"SESSION,1990,1", "TUMBLING,1000,2"};
         final long WATERMARK_MS = 1000;
 
-        final ReduceAggregateFunction<Integer> aggFn = DistributedUtils.aggregateFunctionSum();
+//        String[] aggFnStrings = {"SUM"};
+        String[] aggFnStrings = {"SUM", "AVG"};
+
         List<Window> windows = Arrays.stream(windowStrings).map(DistributedUtils::buildWindowFromString).collect(Collectors.toList());
+        List<AggregateFunction> aggFns = Arrays.stream(aggFnStrings).map(DistributedUtils::buildAggregateFunctionFromString).collect(Collectors.toList());
 
         // Set up root the same way as the children will be set up.
-        setupWindowMerger(windows, aggFn);
+        setupWindowMerger(windows, aggFns);
 
         String completeWindowString = String.join("\n", windowStrings);
+        String completeAggFnString = String.join("\n", aggFnStrings);
         int numChildrenRegistered = 0;
         while (numChildrenRegistered < numChildren) {
                 String message = childReceiver.recvStr();
                 System.out.println(this.rootString("Received from child: " + message));
 
                 childReceiver.sendMore(String.valueOf(WATERMARK_MS));
-                childReceiver.send(completeWindowString);
+                childReceiver.sendMore(completeWindowString);
+                childReceiver.send(completeAggFnString);
                 numChildrenRegistered++;
         }
     }
 
-    public void setupWindowMerger(List<Window> windows, ReduceAggregateFunction<Integer> aggFn) {
-        this.windowMerger = new DistributedWindowMerger<>(this.numChildren, windows, aggFn);
+    public void setupWindowMerger(List<Window> windows, List<AggregateFunction> aggFns) {
+        this.windowMerger = new DistributedWindowMerger<>(this.numChildren, windows, aggFns);
     }
 
     private String rootString(String msg) {

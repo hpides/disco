@@ -5,8 +5,8 @@ import com.github.lawben.disco.DistributedChild;
 public class DistributedChildMain {
 
     public static void main(String[] args) {
-        if (args.length < 5) {
-            System.out.println("Not enough arguments!\nUsage: java ... rootIp rootControllerPort rootWindowPort streamPort childId");
+        if (args.length < 6) {
+            System.out.println("Not enough arguments!\nUsage: java ... rootIp rootControllerPort rootWindowPort streamPort childId numStreams");
             System.exit(1);
         }
 
@@ -15,12 +15,13 @@ public class DistributedChildMain {
         final int rootWindowPort = Integer.parseInt(args[2]);
         final int streamPort = Integer.parseInt(args[3]);
         final int childId = Integer.parseInt(args[4]);
+        final int numStreams = Integer.parseInt(args[5]);
 
-        runChild(rootIp, rootControllerPort, rootWindowPort, streamPort, childId);
+        runChild(rootIp, rootControllerPort, rootWindowPort, streamPort, childId, numStreams);
     }
 
-    public static Thread runChild(String rootIp, int rootControllerPort, int rootWindowPort, int streamPort, int childId) {
-        DistributedChild worker = new DistributedChild(rootIp, rootControllerPort, rootWindowPort, streamPort, childId);
+    public static Thread runChild(String rootIp, int rootControllerPort, int rootWindowPort, int streamPort, int childId, int numStreams) {
+        DistributedChild worker = new DistributedChild(rootIp, rootControllerPort, rootWindowPort, streamPort, childId, numStreams);
         Thread thread = new Thread(worker);
         thread.start();
         return thread;

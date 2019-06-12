@@ -1,5 +1,7 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.AverageAggregateFunction;
+import com.github.lawben.disco.aggregation.MedianAggregateFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
@@ -19,6 +21,7 @@ import java.util.Random;
 public class DistributedUtils {
 
     public final static String STREAM_END = "STREAM_END";
+    public final static int DEFAULT_SOCKET_TIMEOUT_MS = 500;
 
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
@@ -97,11 +100,28 @@ public class DistributedUtils {
                 return new SessionWindow(WindowMeasure.Time, gap, windowId);
             }
             default: {
-                System.err.println("No window type known for: '" + windowDetails[0] + "'");
-                return null;
+                throw new IllegalArgumentException("No window type known for: '" + windowDetails[0] + "'");
             }
         }
     }
+
+    public static AggregateFunction buildAggregateFunctionFromString(String aggFnString) {
+        switch (aggFnString) {
+            case "SUM": {
+                return aggregateFunctionSum();
+            }
+            case "AVG": {
+                return aggregateFunctionAverage();
+            }
+            case "MEDIAN": {
+                return aggregateFunctionMedian();
+            }
+            default: {
+                throw new IllegalArgumentException("No aggFn known for: '" + aggFnString + "'");
+            }
+        }
+    }
+
 
     public static String windowIdToString(WindowAggregateId windowId) {
         return windowId.getWindowId() + "," +
@@ -145,5 +165,13 @@ public class DistributedUtils {
 
     public static ReduceAggregateFunction<Integer> aggregateFunctionSum() {
         return (a, b) -> b == null ? a : a + b;
+    }
+
+    public static AggregateFunction aggregateFunctionAverage() {
+        return new AverageAggregateFunction();
+    }
+
+    private static AggregateFunction aggregateFunctionMedian() {
+        return new MedianAggregateFunction();
     }
 }

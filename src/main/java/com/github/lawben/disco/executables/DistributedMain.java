@@ -48,8 +48,12 @@ public class DistributedMain {
 
         Thread rootThread = DistributedRootMain.runRoot(rootControllerPort, rootWindowPort, resultPath, numChildren);
 
+        final int numBaseStreamsPerChild = numStreams / numChildren;
+        final int numExtraStreams = numStreams % numChildren;
         for (int childId = 0; childId < numChildren; childId++) {
-            DistributedChildMain.runChild("localhost", rootControllerPort, rootWindowPort, streamPort + childId, childId);
+            final int extraChild = childId < numExtraStreams ? 1 : 0;
+            final int numStreamsForChild = numBaseStreamsPerChild + extraChild;
+            DistributedChildMain.runChild("localhost", rootControllerPort, rootWindowPort, streamPort + childId, childId, numStreamsForChild);
         }
 
         for (int streamId = 0; streamId < numStreams; streamId++) {

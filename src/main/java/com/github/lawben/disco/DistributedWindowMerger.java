@@ -23,10 +23,13 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
     private final Map<WindowAggregateId, LongAdder> receivedWindowPreAggregates = new HashMap<>();
     private final Map<WindowAggregateId, AggregateState<InputType>> windowAggregates = new HashMap<>();
 
-    public DistributedWindowMerger(int numChildren, List<Window> windows, AggregateFunction aggFn) {
+    public DistributedWindowMerger(int numChildren, List<Window> windows, List<AggregateFunction> aggFunctions) {
         super(new MemoryStateFactory());
         this.numRemainingChildren = numChildren;
-        this.addWindowFunction(aggFn);
+
+        for (AggregateFunction aggFn : aggFunctions) {
+            this.addWindowFunction(aggFn);
+        }
 
         this.currentSessionWindowIds = new HashMap<>();
         for (Window window : windows) {
@@ -105,7 +108,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
     }
 
     public AggregateWindow<InputType> triggerFinalWindow(WindowAggregateId windowId) {
-        AggregateWindow finalWindow = new DistributedAggregateWindowState<>(windowId, windowAggregates.get(windowId));
+        AggregateWindow<InputType> finalWindow = new DistributedAggregateWindowState<>(windowId, windowAggregates.get(windowId));
 
         receivedWindowPreAggregates.remove(windowId);
         windowAggregates.remove(windowId);
