@@ -2,6 +2,7 @@ package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.MedianAggregateFunction;
+import com.github.lawben.disco.aggregation.SumAggregationFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
@@ -164,7 +165,7 @@ public class DistributedUtils {
     }
 
     public static ReduceAggregateFunction<Integer> aggregateFunctionSum() {
-        return (a, b) -> b == null ? a : a + b;
+        return new SumAggregationFunction();
     }
 
     public static AggregateFunction aggregateFunctionAverage() {

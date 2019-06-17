@@ -6,11 +6,13 @@ import java.util.List;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Error;
 
 public class ZMQPullMock extends ZMQMock {
     public ZMQPullMock(int port) {
         super(null);
         this.socket = context.createSocket(SocketType.PULL);
+        this.socket.setReceiveTimeOut(ZMQMock.RECEIVE_TIMEOUT_MS);
         this.socket.bind(DistributedUtils.buildBindingTcpUrl(port));
     }
 
@@ -21,7 +23,13 @@ public class ZMQPullMock extends ZMQMock {
     public List<String> receiveNext(int numMessageParts) {
         List<String> result = new ArrayList<>(numMessageParts);
         for (int i = 0; i < numMessageParts; i++) {
-            result.add(this.socket.recvStr());
+            String receivedString = this.socket.recvStr();
+            if (receivedString == null && this.socket.errno() == Error.EINTR.getCode()) {
+                // Timed out
+                System.out.println("Receiving timed out");
+                break;
+            }
+            result.add(receivedString);
         }
         return result;
     }

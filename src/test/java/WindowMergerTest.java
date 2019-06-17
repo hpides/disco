@@ -16,15 +16,14 @@ import org.junit.jupiter.api.Test;
 
 public class WindowMergerTest {
 
-    private List<AggregateFunction> aggFns;
+    private AggregateFunction aggregateFunction;
     private List<Window> windows;
     private DistributedWindowMerger<Integer> windowMerger;
     private Window tumblingWindow;
 
     @BeforeEach
     public void setup() {
-        this.aggFns = new ArrayList<>();
-        this.aggFns.add(DistributedUtils.aggregateFunctionSum());
+        this.aggregateFunction = DistributedUtils.aggregateFunctionSum();
         this.windows = new ArrayList<>();
         this.tumblingWindow = new TumblingWindow(WindowMeasure.Time, 1000, 1);
     }
@@ -33,7 +32,7 @@ public class WindowMergerTest {
     public void testTriggerOneChild() {
         windows.add(tumblingWindow);
         int numChildren = 1;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -56,7 +55,7 @@ public class WindowMergerTest {
     public void testTriggerTwoChildren() {
         windows.add(tumblingWindow);
         int numChildren = 2;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -88,7 +87,7 @@ public class WindowMergerTest {
     public void testTriggerFiveChildren() {
         windows.add(tumblingWindow);
         int numChildren = 5;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -138,7 +137,7 @@ public class WindowMergerTest {
     public void testFinalOneChild() {
         windows.add(tumblingWindow);
         int numChildren = 1;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -164,7 +163,7 @@ public class WindowMergerTest {
     public void testFinalTwoChildren() {
         windows.add(tumblingWindow);
         int numChildren = 2;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -193,7 +192,7 @@ public class WindowMergerTest {
     public void testFinalFiveChildren() {
         windows.add(tumblingWindow);
         int numChildren = 5;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -232,7 +231,7 @@ public class WindowMergerTest {
         SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
         windows.add(sessionWindow);
         int numChildren = 1;
-        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggFns);
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunction);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,  10, 110);
         WindowAggregateId windowId2 = new WindowAggregateId(1,  20, 120);

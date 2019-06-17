@@ -11,6 +11,8 @@ public abstract class ZMQMock implements AutoCloseable {
     protected int msgCounter;
     protected ZMQ.Socket socket;
 
+    final static int RECEIVE_TIMEOUT_MS = 3000;
+
     public ZMQMock(List<List<String>> messages) {
         this.messages = messages;
         this.context = new ZContext();

@@ -67,10 +67,6 @@ public class DistributedChild implements Runnable {
             throw new RuntimeException(this.childIdString("Did not receive any windows from root!"));
         }
 
-        if (config.getAggregateFunctions().isEmpty()) {
-            throw new RuntimeException(this.childIdString("Did not receive any aggregate functions from root!"));
-        }
-
         // 2. register streams
         boolean registerSuccess = this.registerStreams(STREAM_REGISTER_TIMEOUT_MS, config);
         if (!registerSuccess) {
@@ -105,9 +101,7 @@ public class DistributedChild implements Runnable {
                 childSlicer.addWindowAssigner(window);
             }
 
-            for (AggregateFunction aggFn : windowingConfig.getAggregateFunctions()) {
-                childSlicer.addWindowFunction(aggFn);
-            }
+            childSlicer.addWindowFunction(windowingConfig.getAggregateFunction());
 
             this.slicerPerStream.put(streamId, childSlicer);
             streamReceiver.send(ackResponse);
@@ -116,7 +110,7 @@ public class DistributedChild implements Runnable {
                 // All streams registered
                 System.out.println(this.childIdString("Registered all streams (" + this.numStreams + " in total)"));
                 this.streamWindowMerger = new DistributedWindowMerger<>(this.numStreams, windowingConfig.getWindows(),
-                        windowingConfig.getAggregateFunctions());
+                        windowingConfig.getAggregateFunction());
                 return true;
             }
         }
@@ -255,21 +249,9 @@ public class DistributedChild implements Runnable {
         this.windowPusher.connect(DistributedUtils.buildTcpUrl(this.rootIp, this.rootWindowPort));
 
         List<Window> windows = this.createWindowsFromString(windowString);
-        List<AggregateFunction> aggregateFunctions = this.createAggregateFunctionFromString(aggString);
-        return new WindowingConfig(windows, aggregateFunctions);
-    }
-
-    private List<AggregateFunction> createAggregateFunctionFromString(String aggString) {
-        List<AggregateFunction> aggFunctions = new ArrayList<>();
-
-        String[] aggFnRows = aggString.split("\n");
-        for (String aggFnRow : aggFnRows) {
-            AggregateFunction aggFn = DistributedUtils.buildAggregateFunctionFromString(aggFnRow);
-            aggFunctions.add(aggFn);
-            System.out.println(this.childIdString("Adding aggFn: " + aggFnRow));
-        }
-
-        return aggFunctions;
+        AggregateFunction aggregateFunction = DistributedUtils.buildAggregateFunctionFromString(aggString);
+        System.out.println(this.childIdString("Adding aggFn: " + aggString));
+        return new WindowingConfig(windows, aggregateFunction);
     }
 
     private List<Window> createWindowsFromString(String windowString) {
@@ -290,21 +272,20 @@ public class DistributedChild implements Runnable {
     }
 
     private class WindowingConfig {
-
         private final List<Window> windows;
-        private final List<AggregateFunction> aggregateFunctions;
-        public WindowingConfig(List<Window> windows,
-                List<AggregateFunction> aggregateFunctions) {
+        private final AggregateFunction aggregateFunction;
+
+        public WindowingConfig(List<Window> windows, AggregateFunction aggregateFunction) {
             this.windows = windows;
-            this.aggregateFunctions = aggregateFunctions;
+            this.aggregateFunction = aggregateFunction;
         }
 
         public List<Window> getWindows() {
             return windows;
         }
 
-        public List<AggregateFunction> getAggregateFunctions() {
-            return aggregateFunctions;
+        public AggregateFunction getAggregateFunction() {
+            return aggregateFunction;
         }
 
     }

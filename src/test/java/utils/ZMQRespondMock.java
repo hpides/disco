@@ -13,8 +13,9 @@ public class ZMQRespondMock extends ZMQMock {
     }
 
     public ZMQRespondMock(List<List<String>> messages, int port) {
-        super(new ArrayList<>());
+        super(messages);
         this.socket =  context.createSocket(SocketType.REP);
+        this.socket.setReceiveTimeOut(ZMQMock.RECEIVE_TIMEOUT_MS);
         this.socket.bind(DistributedUtils.buildBindingTcpUrl(port));
     }
 

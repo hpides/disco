@@ -121,17 +121,15 @@ public class DistributedRoot implements Runnable {
         String[] windowStrings = {"SESSION,1990,1", "TUMBLING,1000,2"};
         final long WATERMARK_MS = 1000;
 
-//        String[] aggFnStrings = {"SUM"};
-        String[] aggFnStrings = {"SUM", "AVG"};
+        String aggFnString = "SUM";
 
         List<Window> windows = Arrays.stream(windowStrings).map(DistributedUtils::buildWindowFromString).collect(Collectors.toList());
-        List<AggregateFunction> aggFns = Arrays.stream(aggFnStrings).map(DistributedUtils::buildAggregateFunctionFromString).collect(Collectors.toList());
+        AggregateFunction aggFn = DistributedUtils.buildAggregateFunctionFromString(aggFnString);
 
         // Set up root the same way as the children will be set up.
-        setupWindowMerger(windows, aggFns);
+        setupWindowMerger(windows, aggFn);
 
         String completeWindowString = String.join("\n", windowStrings);
-        String completeAggFnString = String.join("\n", aggFnStrings);
         int numChildrenRegistered = 0;
         while (numChildrenRegistered < numChildren) {
                 String message = childReceiver.recvStr();
@@ -139,12 +137,12 @@ public class DistributedRoot implements Runnable {
 
                 childReceiver.sendMore(String.valueOf(WATERMARK_MS));
                 childReceiver.sendMore(completeWindowString);
-                childReceiver.send(completeAggFnString);
+                childReceiver.send(aggFnString);
                 numChildrenRegistered++;
         }
     }
 
-    public void setupWindowMerger(List<Window> windows, List<AggregateFunction> aggFns) {
+    public void setupWindowMerger(List<Window> windows, AggregateFunction aggFns) {
         this.windowMerger = new DistributedWindowMerger<>(this.numChildren, windows, aggFns);
     }
 
