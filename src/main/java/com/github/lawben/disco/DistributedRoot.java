@@ -1,5 +1,6 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -84,7 +85,10 @@ public class DistributedRoot implements Runnable {
             WindowAggregateId windowId = DistributedUtils.stringToWindowId(rawAggregateWindowId);
             Integer partialAggregate = Integer.valueOf(rawPreAggregatedResult);
 
-            Optional<AggregateWindow> maybeFinalWindow = processPreAggregateWindow(windowId, partialAggregate);
+            // TODO: fix!
+            FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0);
+
+            Optional<AggregateWindow> maybeFinalWindow = processPreAggregateWindow(functionWindowAggId, partialAggregate);
             if (maybeFinalWindow.isEmpty()) {
                 continue;
             }
@@ -100,8 +104,8 @@ public class DistributedRoot implements Runnable {
         }
     }
 
-    public Optional<AggregateWindow> processPreAggregateWindow(WindowAggregateId windowId, Integer partialAggregate) {
-        Optional<WindowAggregateId> triggerId = this.windowMerger.processPreAggregate(partialAggregate, windowId);
+    public Optional<AggregateWindow> processPreAggregateWindow(FunctionWindowAggregateId windowId, Integer partialAggregate) {
+        Optional<FunctionWindowAggregateId> triggerId = this.windowMerger.processPreAggregate(partialAggregate, windowId);
         if (triggerId.isPresent()) {
             AggregateWindow finalWindow = this.windowMerger.triggerFinalWindow(triggerId.get());
             return Optional.of(finalWindow);
@@ -121,15 +125,16 @@ public class DistributedRoot implements Runnable {
         String[] windowStrings = {"SESSION,1990,1", "TUMBLING,1000,2"};
         final long WATERMARK_MS = 1000;
 
-        String aggFnString = "SUM";
+        String[] aggFnStrings = {"SUM"};
 
         List<Window> windows = Arrays.stream(windowStrings).map(DistributedUtils::buildWindowFromString).collect(Collectors.toList());
-        AggregateFunction aggFn = DistributedUtils.buildAggregateFunctionFromString(aggFnString);
+        List<AggregateFunction> aggFn = Arrays.stream(aggFnStrings).map(DistributedUtils::buildAggregateFunctionFromString).collect(Collectors.toList());
 
         // Set up root the same way as the children will be set up.
         setupWindowMerger(windows, aggFn);
 
         String completeWindowString = String.join("\n", windowStrings);
+        String completeAggFnString = String.join("\n", aggFnStrings);
         int numChildrenRegistered = 0;
         while (numChildrenRegistered < numChildren) {
                 String message = childReceiver.recvStr();
@@ -137,12 +142,12 @@ public class DistributedRoot implements Runnable {
 
                 childReceiver.sendMore(String.valueOf(WATERMARK_MS));
                 childReceiver.sendMore(completeWindowString);
-                childReceiver.send(aggFnString);
+                childReceiver.send(completeAggFnString);
                 numChildrenRegistered++;
         }
     }
 
-    public void setupWindowMerger(List<Window> windows, AggregateFunction aggFns) {
+    public void setupWindowMerger(List<Window> windows, List<AggregateFunction> aggFns) {
         this.windowMerger = new DistributedWindowMerger<>(this.numChildren, windows, aggFns);
     }
 

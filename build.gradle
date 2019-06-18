@@ -19,7 +19,7 @@ dependencies {
 
     implementation group: 'org.zeromq', name: 'jeromq', version: '0.5.0'
 
-    def scottyVersion = 'master-SNAPSHOT'
+    def scottyVersion = '0d9a4e98070157048b2ccd9b97cd96eb37e4e000'
     implementation group: 'com.github.lawben.scotty-window-processor', name: 'core', version: scottyVersion
     implementation group: 'com.github.lawben.scotty-window-processor', name: 'state', version: scottyVersion
     implementation group: 'com.github.lawben.scotty-window-processor', name: 'slicing', version: scottyVersion

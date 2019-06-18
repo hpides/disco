@@ -1,18 +1,8 @@
 package com.github.lawben.disco.aggregation;
 
-import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
-
-class PartialAverage {
+class PartialAverage implements AlgebraicPartial<PartialAverage> {
     private final Integer sum;
     private final int count;
-
-    @Override
-    public String toString() {
-        return "PartialAverage{" +
-                "sum=" + sum +
-                ", count=" + count +
-                '}';
-    }
 
     public PartialAverage(Integer sum, int count) {
         this.sum = sum;
@@ -27,6 +17,7 @@ class PartialAverage {
         return sum;
     }
 
+    @Override
     public PartialAverage merge(PartialAverage other) {
         if (other.getSum() == null) {
             return new PartialAverage(sum, count);
@@ -37,9 +28,25 @@ class PartialAverage {
 
         return new PartialAverage(sum + other.getSum(), count + other.getCount());
     }
+
+    @Override
+    public Integer lower() {
+        if (sum == null) {
+            return null;
+        }
+        return sum / count;
+    }
+
+    @Override
+    public String toString() {
+        return "PartialAverage{" +
+                "sum=" + sum +
+                ", count=" + count +
+                '}';
+    }
 }
 
-public class AverageAggregateFunction implements AggregateFunction<Integer, PartialAverage, Integer> {
+public class AverageAggregateFunction implements AlgebraicAggregateFunction<Integer, PartialAverage> {
     @Override
     public PartialAverage lift(Integer inputTuple) {
         return new PartialAverage(inputTuple, 1);
@@ -51,10 +58,7 @@ public class AverageAggregateFunction implements AggregateFunction<Integer, Part
     }
 
     @Override
-    public Integer lower(PartialAverage aggregate) {
-        if (aggregate.getSum() == null) {
-            return null;
-        }
-        return aggregate.getSum() / aggregate.getCount();
+    public PartialAverage lower(PartialAverage aggregate) {
+        return aggregate;
     }
 }
