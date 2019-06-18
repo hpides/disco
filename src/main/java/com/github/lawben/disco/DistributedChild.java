@@ -308,7 +308,7 @@ public class DistributedChild implements Runnable {
         for (String aggFnRow : aggFnRows) {
             AggregateFunction aggFn = DistributedUtils.buildAggregateFunctionFromString(aggFnRow);
             aggFns.add(aggFn);
-            System.out.println(this.childIdString("Adding aggFn: " + aggFn));
+            System.out.println(this.childIdString("Adding aggFn: " + aggFnRow));
         }
 
         return aggFns;

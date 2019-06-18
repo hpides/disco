@@ -105,7 +105,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
 
                 final WindowAggregateId currentWindowAggId = currentFunctionWindowId.getWindowId();
                 final long newStartTime = Math.min(currentWindowAggId.getWindowStartTimestamp(), startTimestamp);
-                final long newEndTime = Math.max(endTimestamp, windowAggId.getWindowStartTimestamp());
+                final long newEndTime = Math.max(endTimestamp, currentWindowAggId.getWindowEndTimestamp());
                 WindowAggregateId newCurrentWindowId = new WindowAggregateId(windowId, newStartTime, newEndTime);
                 FunctionWindowAggregateId newCurrentFunctionWindowId = new FunctionWindowAggregateId(newCurrentWindowId, functionId);
                 currentSessionWindowIds.put(functionWindowId, newCurrentFunctionWindowId);

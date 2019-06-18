@@ -385,7 +385,7 @@ public class DistributedChildTest {
 
         String[] events1 = {
                 "1,20,1", "1,40,1", "1,60,1", "1,80,1", "1,85,1",  // window 1
-                "1,175,10", "1,180,20", "1,185,30", "1,190,40", "1,195,50",  // window 2
+                "1,185,10", "1,186,20", "1,187,30", "1,190,40", "1,195,50",  // window 2
         };
 
         List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
@@ -412,11 +412,10 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 0, 100), 10, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 0, 100), 10, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(2, 10, 180), 65, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(2, 20, 145), 5, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 50, 150), 66, childId)),
+            equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  10, childId)),
+            equalsWindow(new ExpectedWindow(new WindowAggregateId(1,   0, 100),  10, childId)),
+            equalsWindow(new ExpectedWindow(new WindowAggregateId(2,  10, 180),  70, childId)),
+            equalsWindow(new ExpectedWindow(new WindowAggregateId(1,  50, 150),  66, childId)),
             equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 300, childId)),
             equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 100, 200), 300, childId)),
             equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 150, 250), 240, childId))
@@ -490,8 +489,8 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 0, 100), 1, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 50, 150), 7, childId)),
+            equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  1, childId)),
+            equalsWindow(new ExpectedWindow(new WindowAggregateId(0,  50, 150),  7, childId)),
             equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 30, childId)),
             equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 150, 250), 34, childId))
         );
