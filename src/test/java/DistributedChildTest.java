@@ -51,7 +51,9 @@ public class DistributedChildTest {
 
     @BeforeEach
     public void setup() throws IOException {
-        this.childPort = Utils.findOpenPort();
+        while ((this.childPort = Utils.findOpenPort()) > 65536 - 100) {
+            this.childPort = Utils.findOpenPort();
+        }
         this.childId = 0;
         this.rootIp = "localhost";
         this.threadException = null;

@@ -1,6 +1,9 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
+import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
+import com.github.lawben.disco.aggregation.NonDecomposableAggregateFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -10,17 +13,18 @@ import de.tub.dima.scotty.slicing.SlicingWindowOperator;
 import de.tub.dima.scotty.slicing.state.AggregateState;
 import de.tub.dima.scotty.slicing.state.DistributedAggregateWindowState;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
-import org.jetbrains.annotations.Nullable;
 
 public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<InputType> {
 
     private int numRemainingChildren;
+    private final List<AggregateFunction> stateAggregateFunctions;
     private final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
     private final Map<FunctionWindowAggregateId, LongAdder> receivedWindowPreAggregates = new HashMap<>();
     private final Map<FunctionWindowAggregateId, AggregateState<InputType>> windowAggregates = new HashMap<>();
@@ -29,8 +33,18 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         super(new MemoryStateFactory());
         this.numRemainingChildren = numChildren;
 
+        this.stateAggregateFunctions = new ArrayList<>();
         for (AggregateFunction aggFn : aggFunctions) {
-            this.addWindowFunction(aggFn);
+            final AggregateFunction stateAggFn;
+            if (aggFn instanceof AlgebraicAggregateFunction) {
+                stateAggFn = new AlgebraicMergeFunction();
+            } else if (aggFn instanceof NonDecomposableAggregateFunction) {
+                throw new RuntimeException("NonDecomposable not supported");
+            } else {
+              stateAggFn = aggFn;
+            }
+
+            this.stateAggregateFunctions.add(stateAggFn);
         }
 
         this.currentSessionWindowIds = new HashMap<>();
@@ -61,7 +75,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
 
         Optional<AggregateState<InputType>> presentAggWindow =
                 Optional.ofNullable(windowAggregates.putIfAbsent(functionWindowAggId,
-                        new AggregateState<>(this.stateFactory, this.windowManager.getAggregations())));
+                        new AggregateState<>(this.stateFactory, this.stateAggregateFunctions)));
 
         AggregateState<InputType> aggWindow = presentAggWindow.orElseGet(() -> windowAggregates.get(functionWindowAggId));
         aggWindow.addElement(preAggregate);
@@ -88,7 +102,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
 
         if (lastTimestamp == -1L) {
             // There is no session for this window
-            AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.windowManager.getAggregations());
+            AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.stateAggregateFunctions);
             newAggWindow.addElement(preAggregate);
             windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
             currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
@@ -112,7 +126,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
                 return Optional.empty();
             } else {
                 // This aggregate starts a new session
-                AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.windowManager.getAggregations());
+                AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.stateAggregateFunctions);
                 newAggWindow.addElement(preAggregate);
                 windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
                 currentSessionWindowIds.put(functionWindowId, functionWindowAggId);

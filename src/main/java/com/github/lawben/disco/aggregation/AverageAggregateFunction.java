@@ -1,6 +1,6 @@
 package com.github.lawben.disco.aggregation;
 
-class PartialAverage implements AlgebraicPartial<PartialAverage> {
+class PartialAverage implements AlgebraicPartial<PartialAverage, Integer> {
     private final Integer sum;
     private final int count;
 

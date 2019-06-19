@@ -209,9 +209,9 @@ public class DistributedChild implements Runnable {
             List<AggregateFunction> aggregateFunctions = preAggWindow.getAggregateFunctions();
 
             final List aggValues = preAggWindow.getAggValues();
-            for (int i = 0; i < aggValues.size(); i++) {
-                final AggregateFunction aggregateFunction = aggregateFunctions.get(i);
-                final FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, i);
+            for (int functionId = 0; functionId < aggValues.size(); functionId++) {
+                final AggregateFunction aggregateFunction = aggregateFunctions.get(functionId);
+                final FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId);
 
                 final Optional<FunctionWindowAggregateId> triggerId;
                 final DistributedWindowMerger currentMerger;
@@ -219,7 +219,7 @@ public class DistributedChild implements Runnable {
                 // Get aggregate function and check type to select correct processing semantics
                 // sum stays same, avg needs partial agg, median needs slice?
                 if (aggregateFunction instanceof AlgebraicAggregateFunction) {
-                    AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(i);
+                    AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
                     triggerId = this.algebraicStreamWindowMerger.processPreAggregate(partial, functionWindowId);
                     currentMerger = this.algebraicStreamWindowMerger;
                 } else if (aggregateFunction instanceof NonDecomposableAggregateFunction) {
@@ -227,7 +227,7 @@ public class DistributedChild implements Runnable {
                     throw new RuntimeException("NonDecomposable not supported.");
                 } else {
                     // Simple aggregation with result merging
-                    Integer partialAggregate = (Integer) aggValues.get(i);
+                    Integer partialAggregate = (Integer) aggValues.get(functionId);
                     triggerId = this.simpleStreamWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
                     currentMerger = this.simpleStreamWindowMerger;
                 }
