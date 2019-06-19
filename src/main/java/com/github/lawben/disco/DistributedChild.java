@@ -10,6 +10,7 @@ import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
+import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -205,37 +206,47 @@ public class DistributedChild implements Runnable {
         List<AggregateWindow> finalPreAggregateWindows = new ArrayList<>(preAggregatedWindows.size());
 
         for (AggregateWindow preAggWindow : preAggregatedWindows) {
-            WindowAggregateId windowId = preAggWindow.getWindowAggregateId();
-            List<AggregateFunction> aggregateFunctions = preAggWindow.getAggregateFunctions();
+            finalPreAggregateWindows.addAll(mergePreAggWindow(preAggWindow));
+        }
 
-            final List aggValues = preAggWindow.getAggValues();
-            for (int functionId = 0; functionId < aggValues.size(); functionId++) {
-                final AggregateFunction aggregateFunction = aggregateFunctions.get(functionId);
-                final FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId);
+        return finalPreAggregateWindows;
+    }
 
-                final Optional<FunctionWindowAggregateId> triggerId;
-                final DistributedWindowMerger currentMerger;
+    private List<AggregateWindow> mergePreAggWindow(AggregateWindow preAggWindow) {
+        List<AggregateWindow> finalPreAggregateWindows = new ArrayList<>();
+        WindowAggregateId windowId = preAggWindow.getWindowAggregateId();
+        List<AggregateFunction> aggregateFunctions = preAggWindow.getAggregateFunctions();
 
-                // Get aggregate function and check type to select correct processing semantics
-                // sum stays same, avg needs partial agg, median needs slice?
-                if (aggregateFunction instanceof AlgebraicAggregateFunction) {
-                    AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
-                    triggerId = this.algebraicStreamWindowMerger.processPreAggregate(partial, functionWindowId);
-                    currentMerger = this.algebraicStreamWindowMerger;
-                } else if (aggregateFunction instanceof NonDecomposableAggregateFunction) {
-                    // TODO: implement
-                    throw new RuntimeException("NonDecomposable not supported.");
-                } else {
-                    // Simple aggregation with result merging
-                    Integer partialAggregate = (Integer) aggValues.get(functionId);
-                    triggerId = this.simpleStreamWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
-                    currentMerger = this.simpleStreamWindowMerger;
-                }
+        final List aggValues = preAggWindow.getAggValues();
+        for (int functionId = 0; functionId < aggValues.size(); functionId++) {
+            final AggregateFunction aggregateFunction = aggregateFunctions.get(functionId);
+            final FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId);
 
-                if (triggerId.isPresent()) {
-                    AggregateWindow finalPreAggregateWindow = currentMerger.triggerFinalWindow(triggerId.get());
-                    finalPreAggregateWindows.add(finalPreAggregateWindow);
-                }
+            final Optional<FunctionWindowAggregateId> triggerId;
+            final DistributedWindowMerger currentMerger;
+
+            // Get aggregate function and check type to select correct processing semantics
+            // sum stays same, avg needs partial agg, median needs slice?
+            if (aggregateFunction instanceof AlgebraicAggregateFunction) {
+                AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
+                triggerId = this.algebraicStreamWindowMerger.processPreAggregate(partial, functionWindowId);
+                currentMerger = this.algebraicStreamWindowMerger;
+            } else if (aggregateFunction instanceof NonDecomposableAggregateFunction) {
+                // TODO: implement
+                throw new RuntimeException("NonDecomposable not supported.");
+            } else if (preAggWindow.getMeasure() == WindowMeasure.Count) {
+                // TODO: implement
+                throw new RuntimeException("count-based not supported.");
+            } else {
+                // Simple aggregation with result merging
+                Integer partialAggregate = (Integer) aggValues.get(functionId);
+                triggerId = this.simpleStreamWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
+                currentMerger = this.simpleStreamWindowMerger;
+            }
+
+            if (triggerId.isPresent()) {
+                AggregateWindow finalPreAggregateWindow = currentMerger.triggerFinalWindow(triggerId.get());
+                finalPreAggregateWindows.add(finalPreAggregateWindow);
             }
         }
 
