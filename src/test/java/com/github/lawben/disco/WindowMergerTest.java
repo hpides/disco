@@ -160,6 +160,207 @@ public class WindowMergerTest {
     }
 
     @Test
+    public void testFinalTwoChildrenTwoWindows() {
+        windows.add(tumblingWindow);
+        windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
+        aggregateFunctions.add(sumFunction);
+        int numChildren = 1;
+        windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        FunctionWindowAggregateId windowId1a = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
+        FunctionWindowAggregateId windowId2a = defaultFnWindowAggId(new WindowAggregateId(1, 1000, 2000));
+        FunctionWindowAggregateId windowId3a = defaultFnWindowAggId(new WindowAggregateId(1, 2000, 3000));
+
+        FunctionWindowAggregateId windowId1b = defaultFnWindowAggId(new WindowAggregateId(2,    0, 1000));
+        FunctionWindowAggregateId windowId2b = defaultFnWindowAggId(new WindowAggregateId(2,  500, 1500));
+        FunctionWindowAggregateId windowId3b = defaultFnWindowAggId(new WindowAggregateId(2, 1000, 2000));
+        FunctionWindowAggregateId windowId4b = defaultFnWindowAggId(new WindowAggregateId(2, 1500, 2500));
+        FunctionWindowAggregateId windowId5b = defaultFnWindowAggId(new WindowAggregateId(2, 2000, 3000));
+
+        windowMerger.processPreAggregate(1, windowId1a);
+        windowMerger.processPreAggregate(2, windowId1a);
+        AggregateWindow final1a = windowMerger.triggerFinalWindow(windowId1a);
+        Assertions.assertTrue(final1a.hasValue());
+        Assertions.assertEquals(3, final1a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(4, windowId1b);
+        windowMerger.processPreAggregate(5, windowId1b);
+        AggregateWindow final1b = windowMerger.triggerFinalWindow(windowId1b);
+        Assertions.assertTrue(final1b.hasValue());
+        Assertions.assertEquals(9, final1b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(5, windowId2b);
+        windowMerger.processPreAggregate(6, windowId2b);
+        AggregateWindow final2b = windowMerger.triggerFinalWindow(windowId2b);
+        Assertions.assertTrue(final2b.hasValue());
+        Assertions.assertEquals(11, final2b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(2, windowId2a);
+        windowMerger.processPreAggregate(3, windowId2a);
+        AggregateWindow final2a = windowMerger.triggerFinalWindow(windowId2a);
+        Assertions.assertTrue(final2a.hasValue());
+        Assertions.assertEquals(5, final2a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(6, windowId3b);
+        windowMerger.processPreAggregate(7, windowId3b);
+        AggregateWindow final3b = windowMerger.triggerFinalWindow(windowId3b);
+        Assertions.assertTrue(final3b.hasValue());
+        Assertions.assertEquals(13, final3b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(7, windowId4b);
+        windowMerger.processPreAggregate(8, windowId4b);
+        AggregateWindow final4b = windowMerger.triggerFinalWindow(windowId4b);
+        Assertions.assertTrue(final4b.hasValue());
+        Assertions.assertEquals(15, final4b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(3, windowId3a);
+        windowMerger.processPreAggregate(4, windowId3a);
+        AggregateWindow final3a = windowMerger.triggerFinalWindow(windowId3a);
+        Assertions.assertTrue(final3a.hasValue());
+        Assertions.assertEquals(7, final3a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(8, windowId5b);
+        windowMerger.processPreAggregate(9, windowId5b);
+        AggregateWindow final5b = windowMerger.triggerFinalWindow(windowId5b);
+        Assertions.assertTrue(final5b.hasValue());
+        Assertions.assertEquals(17, final5b.getAggValues().get(0));
+    }
+
+    @Test
+    public void testFinalTwoChildrenTwoWindowsAvg() {
+        windows.add(tumblingWindow);
+        windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
+        aggregateFunctions.add(DistributedUtils.aggregateFunctionAverage());
+        int numChildren = 1;
+        DistributedWindowMerger<AlgebraicPartial> windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        FunctionWindowAggregateId windowId1a = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
+        FunctionWindowAggregateId windowId2a = defaultFnWindowAggId(new WindowAggregateId(1, 1000, 2000));
+        FunctionWindowAggregateId windowId3a = defaultFnWindowAggId(new WindowAggregateId(1, 2000, 3000));
+
+        FunctionWindowAggregateId windowId1b = defaultFnWindowAggId(new WindowAggregateId(2,    0, 1000));
+        FunctionWindowAggregateId windowId2b = defaultFnWindowAggId(new WindowAggregateId(2,  500, 1500));
+        FunctionWindowAggregateId windowId3b = defaultFnWindowAggId(new WindowAggregateId(2, 1000, 2000));
+        FunctionWindowAggregateId windowId4b = defaultFnWindowAggId(new WindowAggregateId(2, 1500, 2500));
+        FunctionWindowAggregateId windowId5b = defaultFnWindowAggId(new WindowAggregateId(2, 2000, 3000));
+
+        windowMerger.processPreAggregate(new PartialAverage(1, 1), windowId1a);
+        windowMerger.processPreAggregate(new PartialAverage(3, 1), windowId1a);
+        AggregateWindow final1a = windowMerger.triggerFinalWindow(windowId1a);
+        Assertions.assertTrue(final1a.hasValue());
+        Assertions.assertEquals(2, final1a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(4, 1), windowId1b);
+        windowMerger.processPreAggregate(new PartialAverage(6, 1), windowId1b);
+        AggregateWindow final1b = windowMerger.triggerFinalWindow(windowId1b);
+        Assertions.assertTrue(final1b.hasValue());
+        Assertions.assertEquals(5, final1b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(5, 1), windowId2b);
+        windowMerger.processPreAggregate(new PartialAverage(7, 1), windowId2b);
+        AggregateWindow final2b = windowMerger.triggerFinalWindow(windowId2b);
+        Assertions.assertTrue(final2b.hasValue());
+        Assertions.assertEquals(6, final2b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(2, 1), windowId2a);
+        windowMerger.processPreAggregate(new PartialAverage(6, 1), windowId2a);
+        AggregateWindow final2a = windowMerger.triggerFinalWindow(windowId2a);
+        Assertions.assertTrue(final2a.hasValue());
+        Assertions.assertEquals(4, final2a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(6, 1), windowId3b);
+        windowMerger.processPreAggregate(new PartialAverage(6, 1), windowId3b);
+        AggregateWindow final3b = windowMerger.triggerFinalWindow(windowId3b);
+        Assertions.assertTrue(final3b.hasValue());
+        Assertions.assertEquals(6, final3b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(7, 1), windowId4b);
+        windowMerger.processPreAggregate(new PartialAverage(1, 1), windowId4b);
+        AggregateWindow final4b = windowMerger.triggerFinalWindow(windowId4b);
+        Assertions.assertTrue(final4b.hasValue());
+        Assertions.assertEquals(4, final4b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(  3, 1), windowId3a);
+        windowMerger.processPreAggregate(new PartialAverage(101, 1), windowId3a);
+        AggregateWindow final3a = windowMerger.triggerFinalWindow(windowId3a);
+        Assertions.assertTrue(final3a.hasValue());
+        Assertions.assertEquals(52, final3a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialAverage(8, 1), windowId5b);
+        windowMerger.processPreAggregate(new PartialAverage(0, 1), windowId5b);
+        AggregateWindow final5b = windowMerger.triggerFinalWindow(windowId5b);
+        Assertions.assertTrue(final5b.hasValue());
+        Assertions.assertEquals(4, final5b.getAggValues().get(0));
+    }
+
+    @Test
+    public void testFinalTwoChildrenTwoWindowsMedian() {
+        windows.add(tumblingWindow);
+        windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
+        aggregateFunctions.add(DistributedUtils.aggregateFunctionMedian());
+        int numChildren = 1;
+        DistributedWindowMerger<HolisticPartial> windowMerger = new DistributedWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        FunctionWindowAggregateId windowId1a = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
+        FunctionWindowAggregateId windowId2a = defaultFnWindowAggId(new WindowAggregateId(1, 1000, 2000));
+        FunctionWindowAggregateId windowId3a = defaultFnWindowAggId(new WindowAggregateId(1, 2000, 3000));
+
+        FunctionWindowAggregateId windowId1b = defaultFnWindowAggId(new WindowAggregateId(2,    0, 1000));
+        FunctionWindowAggregateId windowId2b = defaultFnWindowAggId(new WindowAggregateId(2,  500, 1500));
+        FunctionWindowAggregateId windowId3b = defaultFnWindowAggId(new WindowAggregateId(2, 1000, 2000));
+        FunctionWindowAggregateId windowId4b = defaultFnWindowAggId(new WindowAggregateId(2, 1500, 2500));
+        FunctionWindowAggregateId windowId5b = defaultFnWindowAggId(new WindowAggregateId(2, 2000, 3000));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(1, 1))), windowId1a);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(1, 1))), windowId1a);
+        AggregateWindow final1a = windowMerger.triggerFinalWindow(windowId1a);
+        Assertions.assertTrue(final1a.hasValue());
+        Assertions.assertEquals(1, final1a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(4, 5))), windowId1b);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(6, 7))), windowId1b);
+        AggregateWindow final1b = windowMerger.triggerFinalWindow(windowId1b);
+        Assertions.assertTrue(final1b.hasValue());
+        Assertions.assertEquals(6, final1b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(5, 1))), windowId2b);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(7, 2))), windowId2b);
+        AggregateWindow final2b = windowMerger.triggerFinalWindow(windowId2b);
+        Assertions.assertTrue(final2b.hasValue());
+        Assertions.assertEquals(5, final2b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(2, 1))), windowId2a);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(6, 7, 5))), windowId2a);
+        AggregateWindow final2a = windowMerger.triggerFinalWindow(windowId2a);
+        Assertions.assertTrue(final2a.hasValue());
+        Assertions.assertEquals(5, final2a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(6, 2))), windowId3b);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(6, 2))), windowId3b);
+        AggregateWindow final3b = windowMerger.triggerFinalWindow(windowId3b);
+        Assertions.assertTrue(final3b.hasValue());
+        Assertions.assertEquals(6, final3b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(7, 1))), windowId4b);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(1, 1))), windowId4b);
+        AggregateWindow final4b = windowMerger.triggerFinalWindow(windowId4b);
+        Assertions.assertTrue(final4b.hasValue());
+        Assertions.assertEquals(1, final4b.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(100, 2))), windowId3a);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(101, 1))), windowId3a);
+        AggregateWindow final3a = windowMerger.triggerFinalWindow(windowId3a);
+        Assertions.assertTrue(final3a.hasValue());
+        Assertions.assertEquals(100, final3a.getAggValues().get(0));
+
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(8, 1))), windowId5b);
+        windowMerger.processPreAggregate(new PartialMedian(new ArrayList<> (Arrays.asList(0, 1))), windowId5b);
+        AggregateWindow final5b = windowMerger.triggerFinalWindow(windowId5b);
+        Assertions.assertTrue(final5b.hasValue());
+        Assertions.assertEquals(1, final5b.getAggValues().get(0));
+    }
+
+    @Test
     public void testTriggerTwoChildren() {
         windows.add(tumblingWindow);
         aggregateFunctions.add(sumFunction);
