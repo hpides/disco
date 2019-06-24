@@ -5,7 +5,8 @@ import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.NonDecomposableAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticPartial;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -44,6 +45,7 @@ public class DistributedChild implements Runnable {
     private final int numStreams;
     private DistributedWindowMerger<Integer> simpleStreamWindowMerger;
     private DistributedWindowMerger<AlgebraicPartial> algebraicStreamWindowMerger;
+    private DistributedWindowMerger<HolisticPartial> holisticStreamWindowMerger;
     private long watermarkMs;
     private Set<Integer> streamEnds;
 
@@ -231,9 +233,10 @@ public class DistributedChild implements Runnable {
                 AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
                 triggerId = this.algebraicStreamWindowMerger.processPreAggregate(partial, functionWindowId);
                 currentMerger = this.algebraicStreamWindowMerger;
-            } else if (aggregateFunction instanceof NonDecomposableAggregateFunction) {
-                // TODO: implement
-                throw new RuntimeException("NonDecomposable not supported.");
+            } else if (aggregateFunction instanceof HolisticAggregateFunction) {
+                HolisticPartial partial = (HolisticPartial) aggValues.get(functionId);
+                triggerId = this.holisticStreamWindowMerger.processPreAggregate(partial, functionWindowId);
+                currentMerger = this.holisticStreamWindowMerger;
             } else if (preAggWindow.getMeasure() == WindowMeasure.Count) {
                 // TODO: implement
                 throw new RuntimeException("count-based not supported.");

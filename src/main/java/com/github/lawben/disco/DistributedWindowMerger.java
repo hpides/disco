@@ -3,7 +3,8 @@ package com.github.lawben.disco;
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.NonDecomposableAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticMergeFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -38,10 +39,10 @@ public class DistributedWindowMerger<PartialType> extends SlicingWindowOperator<
             final AggregateFunction stateAggFn;
             if (aggFn instanceof AlgebraicAggregateFunction) {
                 stateAggFn = new AlgebraicMergeFunction();
-            } else if (aggFn instanceof NonDecomposableAggregateFunction) {
-                throw new RuntimeException("NonDecomposable not supported");
+            } else if (aggFn instanceof HolisticAggregateFunction) {
+                stateAggFn = new HolisticMergeFunction();
             } else {
-              stateAggFn = aggFn;
+                stateAggFn = aggFn;
             }
 
             this.stateAggregateFunctions.add(stateAggFn);
