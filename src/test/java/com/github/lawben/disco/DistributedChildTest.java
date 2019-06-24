@@ -1,7 +1,8 @@
+package com.github.lawben.disco;
+
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
@@ -10,10 +11,14 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static utils.WindowMatcher.equalsWindow;
 
-import com.github.lawben.disco.DistributedChild;
-import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.utils.ExpectedWindow;
+import com.github.lawben.disco.utils.WindowMatcher;
+import com.github.lawben.disco.utils.ZMQMock;
+import com.github.lawben.disco.utils.ZMQPullMock;
+import com.github.lawben.disco.utils.ZMQPushMock;
+import com.github.lawben.disco.utils.ZMQRequestMock;
+import com.github.lawben.disco.utils.ZMQRespondMock;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,13 +33,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.zeromq.Utils;
-import utils.ExpectedWindow;
-import utils.WindowMatcher;
-import utils.ZMQMock;
-import utils.ZMQPullMock;
-import utils.ZMQPushMock;
-import utils.ZMQRequestMock;
-import utils.ZMQRespondMock;
 
 public class DistributedChildTest {
     private int childPort;
@@ -414,13 +412,13 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  10, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(1,   0, 100),  10, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(2,  10, 180),  70, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(1,  50, 150),  66, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 300, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 100, 200), 300, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 150, 250), 240, childId))
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  10, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1,   0, 100),  10, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(2,  10, 180),  70, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1,  50, 150),  66, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 300, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 100, 200), 300, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 150, 250), 240, childId))
         );
 
         List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
@@ -491,10 +489,10 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  1, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0,  50, 150),  7, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 30, childId)),
-            equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 150, 250), 34, childId))
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  1, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0,  50, 150),  7, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 30, childId)),
+            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 150, 250), 34, childId))
         );
 
         List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());

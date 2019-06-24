@@ -1,4 +1,4 @@
-package utils;
+package com.github.lawben.disco.utils;
 
 import de.tub.dima.scotty.core.WindowAggregateId;
 

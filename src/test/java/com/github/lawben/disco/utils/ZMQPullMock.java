@@ -1,11 +1,9 @@
-package utils;
+package com.github.lawben.disco.utils;
 
 import com.github.lawben.disco.DistributedUtils;
 import java.util.ArrayList;
 import java.util.List;
 import org.zeromq.SocketType;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Error;
 
 public class ZMQPullMock extends ZMQMock {

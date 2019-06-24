@@ -1,4 +1,4 @@
-package utils;
+package com.github.lawben.disco.utils;
 
 import com.github.lawben.disco.DistributedUtils;
 import java.util.ArrayList;

@@ -172,7 +172,7 @@ public class DistributedUtils {
         return new AverageAggregateFunction();
     }
 
-    private static AggregateFunction aggregateFunctionMedian() {
+    public static AggregateFunction aggregateFunctionMedian() {
         return new MedianAggregateFunction();
     }
 }

@@ -21,13 +21,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 
-public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<InputType> {
+public class DistributedWindowMerger<PartialType> extends SlicingWindowOperator<PartialType> {
 
     private int numRemainingChildren;
     private final List<AggregateFunction> stateAggregateFunctions;
     private final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
     private final Map<FunctionWindowAggregateId, LongAdder> receivedWindowPreAggregates = new HashMap<>();
-    private final Map<FunctionWindowAggregateId, AggregateState<InputType>> windowAggregates = new HashMap<>();
+    private final Map<FunctionWindowAggregateId, AggregateState<PartialType>> windowAggregates = new HashMap<>();
 
     public DistributedWindowMerger(int numChildren, List<Window> windows, List<AggregateFunction> aggFunctions) {
         super(new MemoryStateFactory());
@@ -63,7 +63,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         }
     }
 
-    public Optional<FunctionWindowAggregateId> processPreAggregate(InputType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
+    public Optional<FunctionWindowAggregateId> processPreAggregate(PartialType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
         final long windowId = functionWindowAggId.getWindowId().getWindowId();
         final int functionId = functionWindowAggId.getFunctionId();
         final FunctionWindowId functionWindowId = new FunctionWindowId(windowId, functionId);
@@ -73,11 +73,11 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
             return processSessionWindow(preAggregate, functionWindowAggId);
         }
 
-        Optional<AggregateState<InputType>> presentAggWindow =
+        Optional<AggregateState<PartialType>> presentAggWindow =
                 Optional.ofNullable(windowAggregates.putIfAbsent(functionWindowAggId,
                         new AggregateState<>(this.stateFactory, this.stateAggregateFunctions)));
 
-        AggregateState<InputType> aggWindow = presentAggWindow.orElseGet(() -> windowAggregates.get(functionWindowAggId));
+        AggregateState<PartialType> aggWindow = presentAggWindow.orElseGet(() -> windowAggregates.get(functionWindowAggId));
         aggWindow.addElement(preAggregate);
 
         LongAdder receivedCounter = receivedWindowPreAggregates.computeIfAbsent(functionWindowAggId, k -> new LongAdder());
@@ -88,7 +88,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         return receivedCounter.longValue() == 0 ? Optional.of(functionWindowAggId) : Optional.empty();
     }
 
-    private Optional<FunctionWindowAggregateId> processSessionWindow(InputType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
+    private Optional<FunctionWindowAggregateId> processSessionWindow(PartialType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
         final WindowAggregateId windowAggId = functionWindowAggId.getWindowId();
         final long windowId = windowAggId.getWindowId();
         final int functionId = functionWindowAggId.getFunctionId();
@@ -102,14 +102,14 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
 
         if (lastTimestamp == -1L) {
             // There is no session for this window
-            AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.stateAggregateFunctions);
+            AggregateState<PartialType> newAggWindow = new AggregateState<>(this.stateFactory, this.stateAggregateFunctions);
             newAggWindow.addElement(preAggregate);
             windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
             currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
             return Optional.empty();
         } else {
             // There is a current session for this window
-            AggregateState<InputType> aggWindow = windowAggregates.get(functionWindowPlaceholderId);
+            AggregateState<PartialType> aggWindow = windowAggregates.get(functionWindowPlaceholderId);
 
             final long endTimestamp = windowAggId.getWindowEndTimestamp();
             final long startTimestamp = windowAggId.getWindowStartTimestamp();
@@ -126,7 +126,7 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
                 return Optional.empty();
             } else {
                 // This aggregate starts a new session
-                AggregateState<InputType> newAggWindow = new AggregateState<>(this.stateFactory, this.stateAggregateFunctions);
+                AggregateState<PartialType> newAggWindow = new AggregateState<>(this.stateFactory, this.stateAggregateFunctions);
                 newAggWindow.addElement(preAggregate);
                 windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
                 currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
@@ -138,8 +138,8 @@ public class DistributedWindowMerger<InputType> extends SlicingWindowOperator<In
         }
     }
 
-    public AggregateWindow<InputType> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
-        AggregateWindow<InputType> finalWindow = new DistributedAggregateWindowState<>(
+    public AggregateWindow<PartialType> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+        AggregateWindow<PartialType> finalWindow = new DistributedAggregateWindowState<>(
                 functionWindowId.getWindowId(), windowAggregates.get(functionWindowId));
 
         receivedWindowPreAggregates.remove(functionWindowId);
