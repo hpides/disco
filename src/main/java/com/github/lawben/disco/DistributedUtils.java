@@ -164,7 +164,7 @@ public class DistributedUtils {
         return randomSeeds;
     }
 
-    public static ReduceAggregateFunction<Integer> aggregateFunctionSum() {
+    public static AggregateFunction aggregateFunctionSum() {
         return new SumAggregationFunction();
     }
 

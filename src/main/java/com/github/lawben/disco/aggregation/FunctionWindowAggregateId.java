@@ -2,14 +2,23 @@ package com.github.lawben.disco.aggregation;
 
 import de.tub.dima.scotty.core.WindowAggregateId;
 import java.util.Objects;
+import java.util.Optional;
 
 public class FunctionWindowAggregateId {
+    public final static int NO_CHILD_ID = -1;
+
     private final WindowAggregateId windowId;
     private final int functionId;
+    private final int childId;
 
     public FunctionWindowAggregateId(WindowAggregateId windowId, int functionId) {
+        this(windowId, functionId, NO_CHILD_ID);
+    }
+
+    public FunctionWindowAggregateId(WindowAggregateId windowId, int functionId, int childId) {
         this.windowId = windowId;
         this.functionId = functionId;
+        this.childId = childId;
     }
 
     public WindowAggregateId getWindowId() {
@@ -20,11 +29,16 @@ public class FunctionWindowAggregateId {
         return functionId;
     }
 
+    public int getChildId() {
+        return childId;
+    }
+
     @Override
     public String toString() {
         return "FunctionWindowAggregateId{" +
                 "windowId=" + windowId +
                 ", functionId=" + functionId +
+                ", childId=" + childId +
                 '}';
     }
 
@@ -36,17 +50,14 @@ public class FunctionWindowAggregateId {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
         FunctionWindowAggregateId that = (FunctionWindowAggregateId) o;
-
-        if (functionId != that.functionId) {
-            return false;
-        }
-        return windowId.equals(that.windowId);
+        return functionId == that.functionId &&
+                childId == that.childId &&
+                Objects.equals(windowId, that.windowId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(windowId, functionId);
+        return Objects.hash(windowId, functionId, childId);
     }
 }

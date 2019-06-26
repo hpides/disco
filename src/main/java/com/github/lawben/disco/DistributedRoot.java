@@ -27,7 +27,7 @@ public class DistributedRoot implements Runnable {
     private Set<Integer> childStreamEnds;
 
     // Slicing related
-    private DistributedWindowMerger<Integer> windowMerger;
+    private DistributiveWindowMerger<Integer> windowMerger;
 
     public DistributedRoot(int controllerPort, int windowPort, String resultPath, int numChildren) {
         this.controllerPort = controllerPort;
@@ -64,7 +64,10 @@ public class DistributedRoot implements Runnable {
                 int childId = Integer.valueOf(this.windowPuller.recvStr(ZMQ.DONTWAIT));
                 System.out.println(this.rootString("Stream end from CHILD-" + childId));
                 this.childStreamEnds.add(childId);
-                this.windowMerger.removeChild();
+
+                // TODO: fix!
+                //this.windowMerger.removeChild();
+
                 if (this.childStreamEnds.size() == this.numChildren) {
                     System.out.println(this.rootString("Received all stream ends. Shutting down root..."));
                     this.resultPusher.send(DistributedUtils.STREAM_END);
@@ -144,7 +147,7 @@ public class DistributedRoot implements Runnable {
     }
 
     public void setupWindowMerger(List<Window> windows, List<AggregateFunction> aggFns) {
-        this.windowMerger = new DistributedWindowMerger<>(this.numChildren, windows, aggFns);
+        this.windowMerger = new DistributiveWindowMerger<>(this.numChildren, windows, aggFns);
     }
 
     private String rootString(String msg) {

@@ -1,4 +1,4 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.integration;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
@@ -12,6 +12,8 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import com.github.lawben.disco.DistributedChild;
+import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.utils.ExpectedWindow;
 import com.github.lawben.disco.utils.WindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.zeromq.Utils;
@@ -107,7 +110,7 @@ public class DistributedChildTest {
     void assertChildEnd() {
         List<String> childEnd = rootWindowReceiver.receiveNext(2);
         assertThat(childEnd, hasSize(2));
-        assertEquals(DistributedUtils.STREAM_END, childEnd.get(0));
+        Assertions.assertEquals(DistributedUtils.STREAM_END, childEnd.get(0));
         assertEquals(String.valueOf(childId), childEnd.get(1));
     }
 
