@@ -244,23 +244,23 @@ public class DistributedChild implements Runnable {
         final List aggValues = preAggWindow.getAggValues();
         for (int functionId = 0; functionId < aggValues.size(); functionId++) {
             final AggregateFunction aggregateFunction = aggregateFunctions.get(functionId);
+            FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId, streamId);
 
             final Optional<FunctionWindowAggregateId> triggerId;
             final WindowMerger currentMerger;
 
             if (aggregateFunction instanceof AlgebraicAggregateFunction) {
-                var functionWindowId = new FunctionWindowAggregateId(windowId, numAlgebraicFns++, streamId);
+                functionWindowId = new FunctionWindowAggregateId(windowId, numAlgebraicFns++, streamId);
                 AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
                 triggerId = this.algebraicStreamWindowMerger.processPreAggregate(partial, functionWindowId);
                 currentMerger = this.algebraicStreamWindowMerger;
             } else if (aggregateFunction instanceof HolisticAggregateFunction) {
-                final FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId, streamId);
                 List<Slice> slices = preAggWindow.getSlices();
                 triggerId = this.holisticStreamWindowMerger.processPreAggregate(slices, functionWindowId);
                 currentMerger = this.holisticStreamWindowMerger;
             } else {
                 // Simple aggregation with result merging
-                var functionWindowId = new FunctionWindowAggregateId(windowId, numDistributiveFns++, streamId);
+                functionWindowId = new FunctionWindowAggregateId(windowId, numDistributiveFns++, streamId);
                 Integer partialAggregate = (Integer) aggValues.get(functionId);
                 triggerId = this.simpleStreamWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
                 currentMerger = this.simpleStreamWindowMerger;

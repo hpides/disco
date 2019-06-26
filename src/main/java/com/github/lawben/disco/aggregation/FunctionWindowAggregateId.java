@@ -38,8 +38,8 @@ public class FunctionWindowAggregateId {
         return "FunctionWindowAggregateId{" +
                 "windowId=" + windowId +
                 ", functionId=" + functionId +
-                ", childId=" + childId +
-                '}';
+                ", (childId=" + childId +
+                ")}";
     }
 
     @Override
@@ -52,12 +52,11 @@ public class FunctionWindowAggregateId {
         }
         FunctionWindowAggregateId that = (FunctionWindowAggregateId) o;
         return functionId == that.functionId &&
-                childId == that.childId &&
                 Objects.equals(windowId, that.windowId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(windowId, functionId, childId);
+        return Objects.hash(windowId, functionId);
     }
 }

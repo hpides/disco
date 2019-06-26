@@ -326,18 +326,25 @@ public class DistributedChildTest {
                 "0,10,1", "0,20,1", "0,30,1", "0,40,1", "0,50,1",  // window 1
                 "0,110,10", "0,120,20", "0,130,30", "0,140,40", "0,150,50",  // window 2
         };
-        for (String event : events0) {
-            streamSender0.addMessage(event);
-            streamSender0.sendNext();
-        }
 
         String[] events1 = {
                 "1,10,1", "1,20,1", "1,30,1", "1,40,1", "1,50,1",  // window 1
                 "1,110,10", "1,120,20", "1,130,30", "1,140,40", "1,150,50",  // window 2
         };
-        for (String event : events1) {
-            streamSender1.addMessage(event);
-            streamSender1.sendNext();
+
+        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
+                .flatMap(Collection::stream)
+                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
+                .collect(Collectors.toList());
+
+        for (String event : sortedEvents) {
+            if (event.startsWith("0")) {
+                streamSender0.addMessage(event);
+                streamSender0.sendNext();
+            } else {
+                streamSender1.addMessage(event);
+                streamSender1.sendNext();
+            }
         }
 
         streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
