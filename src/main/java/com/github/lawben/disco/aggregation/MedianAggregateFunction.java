@@ -1,7 +1,6 @@
 package com.github.lawben.disco.aggregation;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,7 +13,8 @@ public class MedianAggregateFunction implements HolisticAggregateFunction<Intege
 
     @Override
     public List<Integer> combine(List<Integer> partialAggregate1, List<Integer> partialAggregate2) {
-        return null;
+        partialAggregate1.addAll(partialAggregate2);
+        return partialAggregate1;
     }
 
     @Override

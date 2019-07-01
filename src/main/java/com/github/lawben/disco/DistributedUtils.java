@@ -1,6 +1,7 @@
 package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
+import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.MedianAggregateFunction;
 import com.github.lawben.disco.aggregation.SumAggregationFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
@@ -11,18 +12,26 @@ import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
+import de.tub.dima.scotty.slicing.slice.LazySlice;
+import de.tub.dima.scotty.slicing.slice.Slice;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class DistributedUtils {
 
     public final static String STREAM_END = "STREAM_END";
     public final static int DEFAULT_SOCKET_TIMEOUT_MS = 500;
+
+    public static final String DISTRIBUTIVE_STRING = "DIS";
+    public static final String ALGEBRAIC_STRING = "ALG";
+    public static final String HOLISTIC_STRING = "HOL";
 
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
@@ -143,6 +152,44 @@ public class DistributedUtils {
             longs.add(Long.valueOf(string));
         }
         return longs;
+    }
+
+    public static String slicesToString(List<Slice> slices) {
+        List<String> allSlices = new ArrayList<>(slices.size());
+
+        for (Slice slice : slices) {
+            List<List<Integer>> aggValues = slice.getAggState().getValues();
+            if (aggValues.isEmpty()) {
+                continue;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(slice.getTStart());
+            sb.append(',');
+            sb.append(slice.getTLast());
+            sb.append(';');
+
+            List<Integer> values = aggValues.get(0);
+            List<String> valueStrings = values.stream().map(String::valueOf).collect(Collectors.toList());
+            sb.append(String.join(",", valueStrings));
+            allSlices.add(sb.toString());
+        }
+
+        return String.join("|", allSlices);
+    }
+
+    public static DistributedSlice sliceFromString(String s) {
+        String[] parts = s.split(",");
+        if (parts.length < 2) {
+            throw new IllegalArgumentException("Slice needs to have at least 2 args, got: " + parts.length);
+        }
+
+        long start = Long.valueOf(parts[0]);
+        long end = Long.valueOf(parts[1]);
+        List<String> valueStrings = Arrays.asList(Arrays.copyOfRange(parts, 2, parts.length));
+        List<Integer> values = valueStrings.stream().map(Integer::valueOf).collect(Collectors.toList());
+
+        return new DistributedSlice(start, end, values);
     }
 
     public static List<Long> getRandomSeeds(String[] args, int numStreams, int position) {

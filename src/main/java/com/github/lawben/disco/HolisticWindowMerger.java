@@ -3,7 +3,6 @@ package com.github.lawben.disco;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticDummyFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
-import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import de.tub.dima.scotty.slicing.state.AggregateState;
@@ -51,9 +50,8 @@ public class HolisticWindowMerger implements WindowMerger<List<Slice>> {
         AggregateState<List<Slice>> windowAgg = new AggregateState<>(this.stateFactory, dummyFn);
         windowAgg.addElement(newSlices);
 
-        FunctionWindowAggregateId dummyId = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 0), 0, childId);
-        aggregates.put(dummyId, windowAgg);
-        return Optional.of(dummyId);
+        aggregates.put(functionWindowAggId, windowAgg);
+        return Optional.of(functionWindowAggId);
     }
 
     @Override

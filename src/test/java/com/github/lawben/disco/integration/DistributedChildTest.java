@@ -14,8 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.github.lawben.disco.DistributedChild;
 import com.github.lawben.disco.DistributedUtils;
-import com.github.lawben.disco.utils.ExpectedWindow;
-import com.github.lawben.disco.utils.WindowMatcher;
+import com.github.lawben.disco.aggregation.DistributedSlice;
+import com.github.lawben.disco.aggregation.PartialAverage;
+import com.github.lawben.disco.utils.AlgebraicWindowMatcher;
+import com.github.lawben.disco.utils.ExpectedAlgebraicWindow;
+import com.github.lawben.disco.utils.ExpectedDistributiveWindow;
+import com.github.lawben.disco.utils.DistributiveWindowMatcher;
+import com.github.lawben.disco.utils.ExpectedHolisticWindow;
+import com.github.lawben.disco.utils.HolisticWindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
 import com.github.lawben.disco.utils.ZMQPullMock;
 import com.github.lawben.disco.utils.ZMQPushMock;
@@ -26,6 +32,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -121,14 +128,20 @@ public class DistributedChildTest {
         assertNull(threadException);
     }
 
-    void assertWindowEquals(List<String> rawWindowString, WindowAggregateId windowId, Integer value) {
-        assertThat(rawWindowString, hasSize(3));
+    void assertDistributiveWindowEquals(List<String> rawWindowString, WindowAggregateId windowId, Integer value) {
+        assertThat(rawWindowString, hasSize(4));
         assertEquals(String.valueOf(this.childId), rawWindowString.get(0));
         String expectedWindowString = windowId.getWindowId() + "," + windowId.getWindowStartTimestamp() +
                 "," + windowId.getWindowEndTimestamp();
         assertEquals(expectedWindowString, rawWindowString.get(1));
-        assertEquals(String.valueOf(value), rawWindowString.get(2));
+        assertEquals(DistributedUtils.DISTRIBUTIVE_STRING, rawWindowString.get(2));
+        assertEquals(String.valueOf(value), rawWindowString.get(3));
     }
+
+    List<String> receiveWindow(ZMQPullMock receiver) {
+        return receiver.receiveNext(4);
+    }
+
 
     DistributedChild defaultInit() throws Exception {
         return defaultInit(1);
@@ -257,8 +270,8 @@ public class DistributedChildTest {
 
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
-        List<String> windowString = rootWindowReceiver.receiveNext(3);
-        assertWindowEquals(windowString, new WindowAggregateId(0, 0, 100), 1);
+        List<String> windowString = receiveWindow(rootWindowReceiver);
+        assertDistributiveWindowEquals(windowString, new WindowAggregateId(0, 0, 100), 1);
 
         assertChildEnd();
         assertNoFinalThreadException(child);
@@ -280,8 +293,8 @@ public class DistributedChildTest {
 
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
-        List<String> windowString = rootWindowReceiver.receiveNext(3);
-        assertWindowEquals(windowString, new WindowAggregateId(0, 0, 100), 5);
+        List<String> windowString = receiveWindow(rootWindowReceiver);
+        assertDistributiveWindowEquals(windowString, new WindowAggregateId(0, 0, 100), 5);
 
         assertChildEnd();
         assertNoFinalThreadException(child);
@@ -306,11 +319,11 @@ public class DistributedChildTest {
 
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
-        List<String> window1String = rootWindowReceiver.receiveNext(3);
-        assertWindowEquals(window1String, new WindowAggregateId(0, 0, 100), 5);
+        List<String> window1String = receiveWindow(rootWindowReceiver);
+        assertDistributiveWindowEquals(window1String, new WindowAggregateId(0, 0, 100), 5);
 
-        List<String> window2String = rootWindowReceiver.receiveNext(3);
-        assertWindowEquals(window2String, new WindowAggregateId(0, 100, 200), 150);
+        List<String> window2String = receiveWindow(rootWindowReceiver);
+        assertDistributiveWindowEquals(window2String, new WindowAggregateId(0, 100, 200), 150);
 
         assertChildEnd();
         assertNoFinalThreadException(child);
@@ -355,11 +368,11 @@ public class DistributedChildTest {
 
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
-        List<String> window1String = rootWindowReceiver.receiveNext(3);
-        assertWindowEquals(window1String, new WindowAggregateId(0, 0, 100), 10);
+        List<String> window1String = receiveWindow(rootWindowReceiver);
+        assertDistributiveWindowEquals(window1String, new WindowAggregateId(0, 0, 100), 10);
 
-        List<String> window2String = rootWindowReceiver.receiveNext(3);
-        assertWindowEquals(window2String, new WindowAggregateId(0, 100, 200), 300);
+        List<String> window2String = receiveWindow(rootWindowReceiver);
+        assertDistributiveWindowEquals(window2String, new WindowAggregateId(0, 100, 200), 300);
 
         assertChildEnd();
         assertNoFinalThreadException(child);
@@ -422,18 +435,18 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  10, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1,   0, 100),  10, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(2,  10, 180),  70, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1,  50, 150),  66, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 300, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 100, 200), 300, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(1, 150, 250), 240, childId))
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(0,   0, 100),  10, childId)),
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(1,   0, 100),  10, childId)),
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(2,  10, 180),  70, childId)),
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(1,  50, 150),  66, childId)),
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(0, 100, 200), 300, childId)),
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(1, 100, 200), 300, childId)),
+            DistributiveWindowMatcher.equalsWindow(new ExpectedDistributiveWindow(new WindowAggregateId(1, 150, 250), 240, childId))
         );
 
         List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
         for (int i = 0; i < windowMatchers.size(); i++) {
-            windowStrings.add(rootWindowReceiver.receiveNext(3));
+            windowStrings.add(receiveWindow(rootWindowReceiver));
         }
 
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
@@ -498,16 +511,116 @@ public class DistributedChildTest {
 
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
-        List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0,   0, 100),  1, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0,  50, 150),  7, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 100, 200), 30, childId)),
-            WindowMatcher.equalsWindow(new ExpectedWindow(new WindowAggregateId(0, 150, 250), 34, childId))
+        List<ExpectedAlgebraicWindow> expectedWindows = Arrays.asList(
+            new ExpectedAlgebraicWindow(new WindowAggregateId(0,   0, 100), new PartialAverage( 10, 10), childId),
+            new ExpectedAlgebraicWindow(new WindowAggregateId(0,  50, 150), new PartialAverage( 66,  9), childId),
+            new ExpectedAlgebraicWindow(new WindowAggregateId(0, 100, 200), new PartialAverage(300, 10), childId),
+            new ExpectedAlgebraicWindow(new WindowAggregateId(0, 150, 250), new PartialAverage(240,  7), childId)
         );
+
+        List<Matcher<? super List<String>>> windowMatchers = expectedWindows.stream()
+                .map(AlgebraicWindowMatcher::equalsWindow).collect(Collectors.toList());
 
         List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
         for (int i = 0; i < windowMatchers.size(); i++) {
-            windowStrings.add(rootWindowReceiver.receiveNext(3));
+            windowStrings.add(receiveWindow(rootWindowReceiver));
+        }
+
+        assertThat(windowStrings, containsInAnyOrder(windowMatchers));
+
+        assertChildEnd();
+        assertNoFinalThreadException(child);
+    }
+
+    @Test
+    void testMedianTwoStreams() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("100", "SLIDING,100,50,0", "MEDIAN");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        DistributedChild child = runDefaultChild(rootInitPort, rootWindowPort, 2);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        registerStream(0);
+        registerStream(1);
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        ZMQPushMock streamSender0 = streamSenders.get(0);
+        ZMQPushMock streamSender1 = streamSenders.get(1);
+
+        String[] events0 = {
+                "0,10,1", "0,30,1", "0,50,1", "0,70,1", "0,90,1",  // window 1
+                "0,110,10", "0,115,20", "0,120,30", "0,190,40", "0,195,50",  // window 2
+        };
+
+        String[] events1 = {
+                "1,20,1", "1,40,1", "1,60,1", "1,80,1", "1,85,1",  // window 1
+                "1,175,10", "1,180,20", "1,185,30", "1,190,40", "1,195,50",  // window 2
+        };
+
+        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
+                .flatMap(Collection::stream)
+                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
+                .collect(Collectors.toList());
+
+        for (String event : sortedEvents) {
+            if (event.startsWith("0")) {
+                streamSender0.addMessage(event);
+                streamSender0.sendNext();
+            } else {
+                streamSender1.addMessage(event);
+                streamSender1.sendNext();
+            }
+        }
+
+        streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
+        streamSender0.sendNext();
+
+        streamSender1.addMessage(DistributedUtils.STREAM_END, "1");
+        streamSender1.sendNext();
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        List<DistributedSlice> stream0Slices = Arrays.asList(
+                new DistributedSlice(  0,  30, Arrays.asList(1, 1)),
+                new DistributedSlice( 50,  90, Arrays.asList(1, 1, 1)),
+                new DistributedSlice(100, 120, Arrays.asList(10, 20, 30)),
+                new DistributedSlice(150, 195, Arrays.asList(40, 50))
+        );
+
+        List<DistributedSlice> stream1Slices = Arrays.asList(
+                new DistributedSlice(  0,  40, Arrays.asList(1, 1)),
+                new DistributedSlice( 50,  85, Arrays.asList(1, 1, 1)),
+                new DistributedSlice(150, 195, Arrays.asList(10, 20, 30, 40, 50))
+        );
+
+        List<ExpectedHolisticWindow> expectedWindows = Arrays.asList(
+                new ExpectedHolisticWindow(new WindowAggregateId(0,   0, 100), Arrays.asList(stream0Slices.get(0), stream0Slices.get(1)), childId),
+                new ExpectedHolisticWindow(new WindowAggregateId(0,   0, 100), Arrays.asList(stream1Slices.get(0), stream1Slices.get(1)), childId),
+
+                new ExpectedHolisticWindow(new WindowAggregateId(0,  50, 150), Arrays.asList(stream0Slices.get(2)) , childId),
+                new ExpectedHolisticWindow(new WindowAggregateId(0,  50, 150), Collections.emptyList(), childId),
+
+                new ExpectedHolisticWindow(new WindowAggregateId(0, 100, 200), Arrays.asList(stream0Slices.get(3)) , childId),
+                new ExpectedHolisticWindow(new WindowAggregateId(0, 100, 200), Arrays.asList(stream1Slices.get(2)) , childId),
+
+                new ExpectedHolisticWindow(new WindowAggregateId(0, 150, 250), Collections.emptyList(), childId),
+                new ExpectedHolisticWindow(new WindowAggregateId(0, 150, 250), Collections.emptyList(), childId)
+        );
+
+        List<Matcher<? super List<String>>> windowMatchers = expectedWindows.stream()
+                .map(HolisticWindowMatcher::equalsWindow).collect(Collectors.toList());
+
+        List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
+        for (int i = 0; i < windowMatchers.size(); i++) {
+            windowStrings.add(receiveWindow(rootWindowReceiver));
         }
 
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
