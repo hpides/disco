@@ -32,7 +32,7 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Integer>
     }
 
     @Override
-    public AlgebraicPartial<PartialAverage, Integer> fromString(String s) {
+    public PartialAverage fromString(String s) {
         String[] parts = s.split(",");
         if (parts.length != 2) {
             throw new IllegalArgumentException("PartialAverage needs exactly 2 values. Got " + parts.length + " values.");

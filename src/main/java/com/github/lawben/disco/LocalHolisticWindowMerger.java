@@ -18,12 +18,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class HolisticWindowMerger implements WindowMerger<List<Slice>> {
+public class LocalHolisticWindowMerger implements WindowMerger<List<Slice>> {
     private final StateFactory stateFactory;
     private final Map<Integer, Set<Long>> seenSlices;
     private final Map<FunctionWindowAggregateId, AggregateState<List<Slice>>> aggregates;
 
-    public HolisticWindowMerger() {
+    public LocalHolisticWindowMerger() {
         this.stateFactory = new MemoryStateFactory();
         this.seenSlices = new HashMap<>();
         this.aggregates = new HashMap<>();
@@ -61,5 +61,15 @@ public class HolisticWindowMerger implements WindowMerger<List<Slice>> {
 
         aggregates.remove(functionWindowId);
         return finalWindow;
+    }
+
+    @Override
+    public Integer lowerFinalValue(AggregateWindow finalWindow) {
+        throw new RuntimeException(this.getClass().getSimpleName() + " does not support lowerFinalValue()");
+    }
+
+    @Override
+    public List<AggregateFunction> getAggregateFunctions() {
+        return new ArrayList<>(Collections.singletonList(new HolisticDummyFunction()));
     }
 }

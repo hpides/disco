@@ -49,12 +49,11 @@ public class DistributedChildTest {
     private int childId;
     private String rootIp;
 
-    private Throwable threadException;
-
     private ZMQRespondMock rootRegisterResponder;
     private ZMQPullMock rootWindowReceiver;
     private List<ZMQPushMock> streamSenders;
 
+    private Throwable threadException;
     private Thread.UncaughtExceptionHandler threadExceptionHandler = (th, ex) -> threadException = ex;
 
     @BeforeEach

@@ -4,8 +4,7 @@ import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 
-import com.github.lawben.disco.DistributedUtils;
-import com.github.lawben.disco.HolisticWindowMerger;
+import com.github.lawben.disco.LocalHolisticWindowMerger;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
@@ -21,12 +20,12 @@ import java.util.List;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class HolisticWindowMergerTest extends WindowMergerTestBase {
+public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
     @Test
     public void testFinalOneChildMedian() {
         windows.add(tumblingWindow);
         aggregateFunctions.add(new HolisticAggregateWrapper());
-        HolisticWindowMerger windowMerger = new HolisticWindowMerger();
+        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
 
         FunctionWindowAggregateId windowId1 = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
         FunctionWindowAggregateId windowId2 = defaultFnWindowAggId(new WindowAggregateId(1, 1000, 2000));
@@ -61,7 +60,7 @@ public class HolisticWindowMergerTest extends WindowMergerTestBase {
     public void testFinalTwoChildrenMedian() {
         windows.add(tumblingWindow);
         aggregateFunctions.add(new HolisticAggregateWrapper());
-        HolisticWindowMerger windowMerger = new HolisticWindowMerger();
+        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
@@ -129,7 +128,7 @@ public class HolisticWindowMergerTest extends WindowMergerTestBase {
         windows.add(tumblingWindow);
         windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
         aggregateFunctions.add(new HolisticAggregateWrapper());
-        HolisticWindowMerger windowMerger = new HolisticWindowMerger();
+        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
 
         WindowAggregateId windowId1a = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId1b = new WindowAggregateId(1, 1000, 2000);

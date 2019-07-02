@@ -51,7 +51,7 @@ public class DistributedChild implements Runnable {
     private final int numStreams;
     private DistributiveWindowMerger<Integer> distributiveWindowMerger;
     private AlgebraicWindowMerger<AlgebraicPartial> algebraicWindowMerger;
-    private HolisticWindowMerger holisticWindowMerger;
+    private LocalHolisticWindowMerger localHolisticWindowMerger;
     private long watermarkMs;
     private Set<Integer> streamEnds;
 
@@ -150,15 +150,12 @@ public class DistributedChild implements Runnable {
                 .filter((fn) -> fn instanceof DistributiveAggregateFunction)
                 .collect(Collectors.toList());
 
-        List<AggregateFunction> algebraicFunctions = functions.stream()
-                .filter((fn) -> fn instanceof AlgebraicAggregateFunction)
-                .map(x -> new AlgebraicMergeFunction())
-                .collect(Collectors.toList());
+        List<AggregateFunction> algebraicFunctions = DistributedUtils.convertAlgebraicFunctions(functions);
 
         List<Window> windows = windowingConfig.getWindows();
         this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numStreams, windows, distributiveFunctions);
         this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numStreams, windows, algebraicFunctions);
-        this.holisticWindowMerger = new HolisticWindowMerger();
+        this.localHolisticWindowMerger = new LocalHolisticWindowMerger();
     }
 
     private void processStreams() {
@@ -257,20 +254,20 @@ public class DistributedChild implements Runnable {
             final Optional<FunctionWindowAggregateId> triggerId;
             final WindowMerger currentMerger;
 
-            if (aggregateFunction instanceof AlgebraicAggregateFunction) {
+            if (aggregateFunction instanceof DistributiveAggregateFunction) {
+                functionWindowId = new FunctionWindowAggregateId(windowId, numDistributiveFns++, streamId);
+                Integer partialAggregate = (Integer) aggValues.get(functionId);
+                triggerId = this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
+                currentMerger = this.distributiveWindowMerger;
+            } else if (aggregateFunction instanceof AlgebraicAggregateFunction) {
                 functionWindowId = new FunctionWindowAggregateId(windowId, numAlgebraicFns++, streamId);
                 AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
                 triggerId = this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
                 currentMerger = this.algebraicWindowMerger;
             } else if (aggregateFunction instanceof HolisticAggregateWrapper) {
                 List<Slice> slices = preAggWindow.getSlices();
-                triggerId = this.holisticWindowMerger.processPreAggregate(slices, functionWindowId);
-                currentMerger = this.holisticWindowMerger;
-            } else if (aggregateFunction instanceof DistributiveAggregateFunction) {
-                functionWindowId = new FunctionWindowAggregateId(windowId, numDistributiveFns++, streamId);
-                Integer partialAggregate = (Integer) aggValues.get(functionId);
-                triggerId = this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
-                currentMerger = this.distributiveWindowMerger;
+                triggerId = this.localHolisticWindowMerger.processPreAggregate(slices, functionWindowId);
+                currentMerger = this.localHolisticWindowMerger;
             } else {
                 throw new RuntimeException("Unsupported aggregate function: " + aggregateFunction);
             }

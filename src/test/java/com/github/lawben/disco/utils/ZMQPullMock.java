@@ -14,6 +14,13 @@ public class ZMQPullMock extends ZMQMock {
         this.socket.bind(DistributedUtils.buildBindingTcpUrl(port));
     }
 
+    public ZMQPullMock(String path) {
+        super(null);
+        this.socket = context.createSocket(SocketType.PULL);
+        this.socket.setReceiveTimeOut(ZMQMock.RECEIVE_TIMEOUT_MS);
+        this.socket.bind(DistributedUtils.buildIpcUrl(path));
+    }
+
     public List<String> receiveNext() {
         return receiveNext(1);
     }

@@ -134,4 +134,15 @@ public class DistributiveWindowMerger<AggType> implements WindowMerger<AggType> 
 
         return finalWindow;
     }
+
+    @Override
+    public Integer lowerFinalValue(AggregateWindow finalWindow) {
+        List aggValues = finalWindow.getAggValues();
+        return aggValues.isEmpty() ? null : (Integer) aggValues.get(0);
+    }
+
+    @Override
+    public List<AggregateFunction> getAggregateFunctions() {
+        return this.aggFunctions;
+    }
 }

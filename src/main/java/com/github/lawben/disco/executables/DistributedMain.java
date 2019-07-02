@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 public class DistributedMain {
     public static void main(String[] args) throws Exception {
-        if (args.length < 7) {
+        if (args.length < 9) {
             System.err.println("Not enough arguments!\nUsage: java ... "
                     + "controllerPort "
                     + "windowPort "
@@ -15,6 +15,8 @@ public class DistributedMain {
                     + "numChildren "
                     + "numStreams "
                     + "numEvents "
+                    + "windowsString "
+                    + "aggFnsString "
                     + "[seedList]");
             System.exit(1);
         }
@@ -26,6 +28,8 @@ public class DistributedMain {
         final int numChildren = Integer.parseInt(args[4]);
         final int numStreams = Integer.parseInt(args[5]);
         final int numEvents = Integer.parseInt(args[6]);
+        final String windowsString = args[7];
+        final String aggFnsString = args[8];
 
 //        Process tshark = TsharkRunner.startTshark(rootControllerPort, rootWindowPort, streamPort,
 //                numChildren, numStreams, numEvents, "dist", "en0");
@@ -34,7 +38,7 @@ public class DistributedMain {
 //        Thread.sleep(2000);
 
         System.out.println("Running with " + numChildren + " children, " + numStreams + " streams, and " +
-                numEvents + " events per stream.");
+                numEvents + " events per stream. Windows: " + windowsString + "; aggFns: " + aggFnsString);
 
         final List<Long> randomSeeds = DistributedUtils.getRandomSeeds(args, numStreams, 7);
         List<String> seedStrings = randomSeeds.stream().map(String::valueOf).collect(Collectors.toList());
@@ -46,7 +50,8 @@ public class DistributedMain {
             System.exit(1);
         }
 
-        Thread rootThread = DistributedRootMain.runRoot(rootControllerPort, rootWindowPort, resultPath, numChildren);
+        Thread rootThread = DistributedRootMain.runRoot(rootControllerPort, rootWindowPort, resultPath, numChildren,
+                windowsString, aggFnsString);
 
         final int numBaseStreamsPerChild = numStreams / numChildren;
         final int numExtraStreams = numStreams % numChildren;

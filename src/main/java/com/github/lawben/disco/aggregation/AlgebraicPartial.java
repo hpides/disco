@@ -4,6 +4,6 @@ public interface AlgebraicPartial<PartialType, ResultType> {
     ResultType lower();
     PartialType merge(PartialType other);
 
-    AlgebraicPartial<PartialType, ResultType> fromString(String s);
+    PartialType fromString(String s);
     String asString();
 }

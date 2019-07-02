@@ -1,5 +1,7 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
+import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.MedianAggregateFunction;
@@ -221,5 +223,12 @@ public class DistributedUtils {
 
     public static AggregateFunction aggregateFunctionMedian() {
         return new MedianAggregateFunction();
+    }
+
+    public static List<AggregateFunction> convertAlgebraicFunctions(List<AggregateFunction> aggFns) {
+        return aggFns.stream()
+                .filter((fn) -> fn instanceof AlgebraicAggregateFunction)
+                .map(algebraicFn -> new AlgebraicMergeFunction((AlgebraicAggregateFunction) algebraicFn))
+                .collect(Collectors.toList());
     }
 }

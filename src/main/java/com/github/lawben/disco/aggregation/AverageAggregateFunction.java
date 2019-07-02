@@ -15,4 +15,9 @@ public class AverageAggregateFunction implements AlgebraicAggregateFunction<Inte
     public PartialAverage lower(PartialAverage aggregate) {
         return aggregate;
     }
+
+    @Override
+    public PartialAverage partialFromString(String partialString) {
+        return new PartialAverage(0, 0).fromString(partialString);
+    }
 }
