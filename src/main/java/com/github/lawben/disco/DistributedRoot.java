@@ -3,8 +3,12 @@ package com.github.lawben.disco;
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
+import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
+import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
+import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -44,7 +48,7 @@ public class DistributedRoot implements Runnable {
     // Slicing related
     private DistributiveWindowMerger<Integer> distributiveWindowMerger;
     private AlgebraicWindowMerger<AlgebraicPartial> algebraicWindowMerger;
-    private LocalHolisticWindowMerger holisticWindowMerger;
+    private GlobalHolisticWindowMerger holisticWindowMerger;
 
     public DistributedRoot(int controllerPort, int windowPort, String resultPath, int numChildren, String windowsString, String aggregateFunctionsString) {
         this.controllerPort = controllerPort;
@@ -115,7 +119,7 @@ public class DistributedRoot implements Runnable {
             WindowAggregateId windowId = DistributedUtils.stringToWindowId(rawAggregateWindowId);
 
             // TODO: fix!
-            FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0);
+            FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0, childId);
 
             this.processPreAggregateWindow(functionWindowAggId, aggregateType, rawPreAggregate);
         }
@@ -140,7 +144,10 @@ public class DistributedRoot implements Runnable {
                 currentMerger = this.algebraicWindowMerger;
                 break;
             case DistributedUtils.HOLISTIC_STRING:
-                throw new RuntimeException("holistic not supported");
+                List<DistributedSlice> slices = DistributedUtils.slicesFromString(rawPreAggregate);
+                triggerId = this.holisticWindowMerger.processPreAggregate(slices, functionWindowId);
+                currentMerger = this.holisticWindowMerger;
+                break;
             default:
                 throw new IllegalArgumentException("Unknown aggregate type: " + aggregateType);
         }
@@ -177,7 +184,7 @@ public class DistributedRoot implements Runnable {
 
         List<Long> slidingWatermarkMs = windows.stream()
                 .filter(w -> w instanceof SlidingWindow)
-                .map(w -> ((SlidingWindow) w).getSlide())
+                .map(w -> ((SlidingWindow) w).getSize())
                 .collect(Collectors.toList());
 
         long watermarkMs = Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)
@@ -213,9 +220,14 @@ public class DistributedRoot implements Runnable {
 
         List<AggregateFunction> algebraicFunctions = DistributedUtils.convertAlgebraicFunctions(aggFns);
 
+        List<AggregateFunction> holisticFunctions = aggFns.stream()
+                .filter((fn) -> fn instanceof HolisticAggregateFunction)
+                .map(holisticFn -> new HolisticNoopFunction((HolisticAggregateFunction) holisticFn))
+                .collect(Collectors.toList());
+
         this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numChildren, windows, distributiveFunctions);
         this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numChildren, windows, algebraicFunctions);
-        this.holisticWindowMerger = new LocalHolisticWindowMerger();
+        this.holisticWindowMerger = new GlobalHolisticWindowMerger(this.numChildren, windows, holisticFunctions);
     }
 
     private String rootString(String msg) {

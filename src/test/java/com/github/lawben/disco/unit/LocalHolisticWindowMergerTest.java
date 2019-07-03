@@ -7,7 +7,7 @@ import static org.hamcrest.Matchers.empty;
 import com.github.lawben.disco.LocalHolisticWindowMerger;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.DistributedSlice;
-import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
+import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import com.github.lawben.disco.utils.WindowMergerTestBase;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
@@ -24,7 +24,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
     @Test
     public void testFinalOneChildMedian() {
         windows.add(tumblingWindow);
-        aggregateFunctions.add(new HolisticAggregateWrapper());
+        aggregateFunctions.add(new HolisticNoopFunction());
         LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
 
         FunctionWindowAggregateId windowId1 = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
@@ -59,7 +59,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
     @Test
     public void testFinalTwoChildrenMedian() {
         windows.add(tumblingWindow);
-        aggregateFunctions.add(new HolisticAggregateWrapper());
+        aggregateFunctions.add(new HolisticNoopFunction());
         LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
@@ -127,7 +127,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
     public void testFinalOneChildTwoWindowsMedian() {
         windows.add(tumblingWindow);
         windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
-        aggregateFunctions.add(new HolisticAggregateWrapper());
+        aggregateFunctions.add(new HolisticNoopFunction());
         LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
 
         WindowAggregateId windowId1a = new WindowAggregateId(1,    0, 1000);

@@ -9,7 +9,7 @@ import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
-import com.github.lawben.disco.aggregation.HolisticDummyFunction;
+import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -318,7 +318,7 @@ public class DistributedChild implements Runnable {
             serializedAgg.add(DistributedUtils.ALGEBRAIC_STRING);
             AlgebraicPartial partial = (AlgebraicPartial) aggValue;
             serializedAgg.add(partial.asString());
-        } else if (aggFn instanceof HolisticDummyFunction) {
+        } else if (aggFn instanceof HolisticNoopFunction) {
             serializedAgg.add(DistributedUtils.HOLISTIC_STRING);
             List<Slice> slices = (List<Slice>) aggValue;
             serializedAgg.add(DistributedUtils.slicesToString(slices));

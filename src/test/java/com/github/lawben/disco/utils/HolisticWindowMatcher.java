@@ -1,8 +1,11 @@
 package com.github.lawben.disco.utils;
 
+import static com.github.lawben.disco.DistributedUtils.slicesToString;
+
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import de.tub.dima.scotty.core.WindowAggregateId;
+import de.tub.dima.scotty.slicing.slice.Slice;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,28 +44,5 @@ public class HolisticWindowMatcher extends TypeSafeMatcher<List<String>> {
     @Override
     public void describeTo(Description description) {
         description.appendText("matches window=`" + expectedWindow + "`");
-    }
-
-    private String slicesToString(List<DistributedSlice> slices) {
-        List<String> allSlices = new ArrayList<>();
-
-        for (DistributedSlice slice : slices) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(slice.getTStart());
-            sb.append(',');
-            sb.append(slice.getTEnd());
-            sb.append(';');
-
-            if (slice.getValues().isEmpty()) {
-                allSlices.add(sb.toString());
-                continue;
-            }
-
-            List<String> valueStrings = slice.getValues().stream().map(String::valueOf).collect(Collectors.toList());
-            sb.append(String.join(",", valueStrings));
-            allSlices.add(sb.toString());
-        }
-
-        return String.join("|", allSlices);
     }
 }

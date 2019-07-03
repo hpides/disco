@@ -4,6 +4,7 @@ import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
+import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.MedianAggregateFunction;
 import com.github.lawben.disco.aggregation.SumAggregationFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
@@ -156,7 +157,7 @@ public class DistributedUtils {
         return longs;
     }
 
-    public static String slicesToString(List<Slice> slices) {
+    public static String slicesToString(List<? extends Slice> slices) {
         List<String> allSlices = new ArrayList<>(slices.size());
 
         for (Slice slice : slices) {
@@ -177,18 +178,33 @@ public class DistributedUtils {
             allSlices.add(sb.toString());
         }
 
-        return String.join("|", allSlices);
+        return String.join("/", allSlices);
     }
 
-    public static DistributedSlice sliceFromString(String s) {
-        String[] parts = s.split(",");
-        if (parts.length < 2) {
-            throw new IllegalArgumentException("Slice needs to have at least 2 args, got: " + parts.length);
+    public static List<DistributedSlice> slicesFromString(String slicesString) {
+        List<DistributedSlice> slices = new ArrayList<>();
+        for (String sliceString : slicesString.split("/")) {
+            slices.add(singleSliceFromString(sliceString));
+        }
+        return slices;
+    }
+
+    public static DistributedSlice singleSliceFromString(String sliceString) {
+        String[] parts = sliceString.split(";");
+        String[] times = parts[0].split(",");
+        if (times.length != 2) {
+            throw new IllegalArgumentException("Slice needs to have 'start,end'. Got: " + parts[0]);
         }
 
-        long start = Long.valueOf(parts[0]);
-        long end = Long.valueOf(parts[1]);
-        List<String> valueStrings = Arrays.asList(Arrays.copyOfRange(parts, 2, parts.length));
+        long start = Long.valueOf(times[0]);
+        long end = Long.valueOf(times[1]);
+
+        if (parts.length == 1) {
+            return new DistributedSlice(start, end, new ArrayList<>());
+        }
+
+        String[] rawValues = parts[1].split(",");
+        List<String> valueStrings = Arrays.asList(rawValues);
         List<Integer> values = valueStrings.stream().map(Integer::valueOf).collect(Collectors.toList());
 
         return new DistributedSlice(start, end, values);
@@ -221,7 +237,7 @@ public class DistributedUtils {
         return new AverageAggregateFunction();
     }
 
-    public static AggregateFunction aggregateFunctionMedian() {
+    public static HolisticAggregateFunction aggregateFunctionMedian() {
         return new MedianAggregateFunction();
     }
 

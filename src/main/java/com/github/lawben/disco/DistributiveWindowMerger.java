@@ -5,7 +5,6 @@ import com.github.lawben.disco.aggregation.FunctionWindowId;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
-import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.slicing.state.AggregateState;
 import de.tub.dima.scotty.slicing.state.DistributedAggregateWindowState;
@@ -16,34 +15,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.LongAdder;
 
-public class DistributiveWindowMerger<AggType> implements WindowMerger<AggType> {
-    protected int numRemainingChildren;
-    protected final StateFactory stateFactory;
-    protected final List<AggregateFunction> aggFunctions;
-    protected final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
-    protected final Map<FunctionWindowAggregateId, LongAdder> receivedWindowPreAggCounters = new HashMap<>();
-    protected final Map<FunctionWindowAggregateId, AggregateState<AggType>> windowAggregates = new HashMap<>();
+public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType> {
+    private final StateFactory stateFactory;
+    private final List<AggregateFunction> aggFunctions;
+    private final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
+    private final Map<FunctionWindowAggregateId, AggregateState<AggType>> windowAggregates = new HashMap<>();
 
     public DistributiveWindowMerger(int numChildren, List<Window> windows, List<AggregateFunction> aggFunctions) {
+        super(numChildren);
         this.stateFactory = new MemoryStateFactory();
-        this.numRemainingChildren = numChildren;
         this.aggFunctions = aggFunctions;
 
-        this.currentSessionWindowIds = new HashMap<>();
-        for (Window window : windows) {
-            if (window instanceof SessionWindow) {
-                SessionWindow sw = (SessionWindow) window;
-                long windowId = sw.getWindowId();
-                WindowAggregateId dummyId = new WindowAggregateId(windowId, -1L, -1L);
-
-                for (int functionId = 0; functionId < this.aggFunctions.size(); functionId++) {
-                    FunctionWindowId functionWindowId = new FunctionWindowId(windowId, functionId);
-                    this.currentSessionWindowIds.put(functionWindowId, new FunctionWindowAggregateId(dummyId, functionId));
-                }
-            }
-        }
+        this.currentSessionWindowIds = this.prepareSessionWindows(windows, aggFunctions);
     }
 
     @Override
@@ -64,12 +48,7 @@ public class DistributiveWindowMerger<AggType> implements WindowMerger<AggType> 
         AggregateState<AggType> aggWindow = windowAggregates.get(functionWindowAggId);
         aggWindow.addElement(preAggregate);
 
-        LongAdder receivedCounter = receivedWindowPreAggCounters.computeIfAbsent(functionWindowAggId, k -> new LongAdder());
-        if (receivedCounter.longValue() == 0) {
-            receivedCounter.add(this.numRemainingChildren);
-        }
-        receivedCounter.decrement();
-        return receivedCounter.longValue() == 0 ? Optional.of(functionWindowAggId) : Optional.empty();
+        return checkWindowTrigger(functionWindowAggId);
     }
 
     private Optional<FunctionWindowAggregateId> processSessionWindow(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
@@ -129,7 +108,7 @@ public class DistributiveWindowMerger<AggType> implements WindowMerger<AggType> 
         AggregateWindow<AggType> finalWindow = new DistributedAggregateWindowState<>(
                 functionWindowId.getWindowId(), windowAggregates.get(functionWindowId));
 
-        receivedWindowPreAggCounters.remove(functionWindowId);
+        receivedWindows.remove(functionWindowId);
         windowAggregates.remove(functionWindowId);
 
         return finalWindow;

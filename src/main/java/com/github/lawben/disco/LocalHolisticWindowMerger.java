@@ -1,7 +1,7 @@
 package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.HolisticDummyFunction;
+import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.slicing.slice.Slice;
@@ -46,7 +46,7 @@ public class LocalHolisticWindowMerger implements WindowMerger<List<Slice>> {
             seenChildSlices.add(slice.getTStart());
         }
 
-        List<AggregateFunction> dummyFn = Collections.singletonList(new HolisticDummyFunction());
+        List<AggregateFunction> dummyFn = Collections.singletonList(new HolisticNoopFunction());
         AggregateState<List<Slice>> windowAgg = new AggregateState<>(this.stateFactory, dummyFn);
         windowAgg.addElement(newSlices);
 
@@ -70,6 +70,6 @@ public class LocalHolisticWindowMerger implements WindowMerger<List<Slice>> {
 
     @Override
     public List<AggregateFunction> getAggregateFunctions() {
-        return new ArrayList<>(Collections.singletonList(new HolisticDummyFunction()));
+        return new ArrayList<>(Collections.singletonList(new HolisticNoopFunction()));
     }
 }

@@ -19,8 +19,7 @@ public class AlgebraicWindowMergerTest extends WindowMergerTestBase {
         windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
         aggregateFunctions.add(new AlgebraicMergeFunction());
         int numChildren = 1;
-        AlgebraicWindowMerger<PartialAverage>
-                windowMerger = new AlgebraicWindowMerger<>(numChildren, windows, aggregateFunctions);
+        AlgebraicWindowMerger<PartialAverage> windowMerger = new AlgebraicWindowMerger<>(numChildren, windows, aggregateFunctions);
 
         FunctionWindowAggregateId windowId1a = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
         FunctionWindowAggregateId windowId2a = defaultFnWindowAggId(new WindowAggregateId(1, 1000, 2000));
