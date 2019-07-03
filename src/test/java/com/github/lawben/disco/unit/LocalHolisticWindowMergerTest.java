@@ -9,7 +9,7 @@ import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import com.github.lawben.disco.utils.WindowMergerTestBase;
-import de.tub.dima.scotty.core.AggregateWindow;
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
@@ -34,7 +34,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         Slice slice1 = new DistributedSlice(0, 1000, Arrays.asList(1));
         List<Slice> slices1 = Collections.singletonList(slice1);
         windowMerger.processPreAggregate(slices1, windowId1);
-        AggregateWindow<List<Slice>> final1 = windowMerger.triggerFinalWindow(windowId1);
+        DistributedAggregateWindowState<List<Slice>> final1 = windowMerger.triggerFinalWindow(windowId1);
         Assertions.assertTrue(final1.hasValue());
         Assertions.assertEquals(1, final1.getAggValues().size());
         assertThat(final1.getAggValues().get(0), hasItems(slice1));
@@ -42,7 +42,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         Slice slice2 = new DistributedSlice(1000, 2000, Arrays.asList(1, 2, 3));
         List<Slice> slices2 = Collections.singletonList(slice2);
         windowMerger.processPreAggregate(slices2, windowId2);
-        AggregateWindow<List<Slice>> final2 = windowMerger.triggerFinalWindow(windowId2);
+        DistributedAggregateWindowState<List<Slice>> final2 = windowMerger.triggerFinalWindow(windowId2);
         Assertions.assertTrue(final2.hasValue());
         Assertions.assertEquals(1, final2.getAggValues().size());
         assertThat(final2.getAggValues().get(0), hasItems(slice2));
@@ -50,7 +50,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         Slice slice3 = new DistributedSlice(2000, 3000, Arrays.asList(1, 3, 5, 7, 9, 11));
         List<Slice> slices3 = Collections.singletonList(slice3);
         windowMerger.processPreAggregate(slices3, windowId3);
-        AggregateWindow<List<Slice>> final3 = windowMerger.triggerFinalWindow(windowId3);
+        DistributedAggregateWindowState<List<Slice>> final3 = windowMerger.triggerFinalWindow(windowId3);
         Assertions.assertTrue(final3.hasValue());
         Assertions.assertEquals(1, final3.getAggValues().size());
         assertThat(final3.getAggValues().get(0), hasItems(slice3));
@@ -71,7 +71,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices1a = Collections.singletonList(slice1a);
         FunctionWindowAggregateId functionWindowAggId1 = new FunctionWindowAggregateId(windowId1, 0, 0);
         windowMerger.processPreAggregate(slices1a, functionWindowAggId1);
-        AggregateWindow<List<Slice>> final1a = windowMerger.triggerFinalWindow(functionWindowAggId1);
+        DistributedAggregateWindowState<List<Slice>> final1a = windowMerger.triggerFinalWindow(functionWindowAggId1);
         Assertions.assertTrue(final1a.hasValue());
         Assertions.assertEquals(1, final1a.getAggValues().size());
         assertThat(final1a.getAggValues().get(0), hasItems(slice1a));
@@ -80,7 +80,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices1b = Collections.singletonList(slice1b);
         FunctionWindowAggregateId functionWindowAggId2 = new FunctionWindowAggregateId(windowId1, 0, 1);
         windowMerger.processPreAggregate(slices1b, functionWindowAggId2);
-        AggregateWindow<List<Slice>> final1b = windowMerger.triggerFinalWindow(functionWindowAggId2);
+        DistributedAggregateWindowState<List<Slice>> final1b = windowMerger.triggerFinalWindow(functionWindowAggId2);
         Assertions.assertTrue(final1b.hasValue());
         Assertions.assertEquals(1, final1b.getAggValues().size());
         assertThat(final1b.getAggValues().get(0), hasItems(slice1b));
@@ -89,7 +89,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2a = Collections.singletonList(slice2a);
         FunctionWindowAggregateId functionWindowAggId3 = new FunctionWindowAggregateId(windowId2, 0, 0);
         windowMerger.processPreAggregate(slices2a, functionWindowAggId3);
-        AggregateWindow<List<Slice>> final2a = windowMerger.triggerFinalWindow(functionWindowAggId3);
+        DistributedAggregateWindowState<List<Slice>> final2a = windowMerger.triggerFinalWindow(functionWindowAggId3);
         Assertions.assertTrue(final2a.hasValue());
         Assertions.assertEquals(1, final2a.getAggValues().size());
         assertThat(final2a.getAggValues().get(0), hasItems(slice2a));
@@ -98,7 +98,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2b = Collections.singletonList(slice2b);
         FunctionWindowAggregateId functionWindowAggId4 = new FunctionWindowAggregateId(windowId2, 0, 1);
         windowMerger.processPreAggregate(slices2b, functionWindowAggId4);
-        AggregateWindow<List<Slice>> final2b = windowMerger.triggerFinalWindow(functionWindowAggId4);
+        DistributedAggregateWindowState<List<Slice>> final2b = windowMerger.triggerFinalWindow(functionWindowAggId4);
         Assertions.assertTrue(final2b.hasValue());
         Assertions.assertEquals(1, final2b.getAggValues().size());
         assertThat(final2b.getAggValues().get(0), hasItems(slice2b));
@@ -107,7 +107,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices3a = Collections.singletonList(slice3a);
         FunctionWindowAggregateId functionWindowAggId5 = new FunctionWindowAggregateId(windowId3, 0, 0);
         windowMerger.processPreAggregate(slices3a, functionWindowAggId5);
-        AggregateWindow<List<Slice>> final3a = windowMerger.triggerFinalWindow(functionWindowAggId5);
+        DistributedAggregateWindowState<List<Slice>> final3a = windowMerger.triggerFinalWindow(functionWindowAggId5);
         Assertions.assertTrue(final3a.hasValue());
         Assertions.assertEquals(1, final3a.getAggValues().size());
         assertThat(final3a.getAggValues().get(0), hasItems(slice3a));
@@ -116,7 +116,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices3b = Collections.singletonList(slice3b);
         FunctionWindowAggregateId functionWindowAggId6 = new FunctionWindowAggregateId(windowId3, 0, 1);
         windowMerger.processPreAggregate(slices3b, functionWindowAggId6);
-        AggregateWindow<List<Slice>> final3b = windowMerger.triggerFinalWindow(functionWindowAggId6);
+        DistributedAggregateWindowState<List<Slice>> final3b = windowMerger.triggerFinalWindow(functionWindowAggId6);
         Assertions.assertTrue(final3b.hasValue());
         Assertions.assertEquals(1, final3b.getAggValues().size());
         assertThat(final3b.getAggValues().get(0), hasItems(slice3b));
@@ -145,7 +145,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices1a = Arrays.asList(slice1a1, slice1a2);
         FunctionWindowAggregateId functionWindowAggregateId1a = new FunctionWindowAggregateId(windowId1a, 0, 0);
         windowMerger.processPreAggregate(slices1a, functionWindowAggregateId1a);
-        AggregateWindow<List<Slice>> final1a = windowMerger.triggerFinalWindow(functionWindowAggregateId1a);
+        DistributedAggregateWindowState<List<Slice>> final1a = windowMerger.triggerFinalWindow(functionWindowAggregateId1a);
         Assertions.assertTrue(final1a.hasValue());
         assertThat(final1a.getAggValues().get(0), hasItems(slice1a1, slice1a2));
 
@@ -154,7 +154,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2a = Arrays.asList(slice2a1, slice2a2);
         FunctionWindowAggregateId functionWindowAggregateId2a = new FunctionWindowAggregateId(windowId2a, 0, 0);
         windowMerger.processPreAggregate(slices2a, functionWindowAggregateId2a);
-        AggregateWindow<List<Slice>> final2a = windowMerger.triggerFinalWindow(functionWindowAggregateId2a);
+        DistributedAggregateWindowState<List<Slice>> final2a = windowMerger.triggerFinalWindow(functionWindowAggregateId2a);
         Assertions.assertTrue(final2a.hasValue());
         assertThat(final2a.getAggValues().get(0), empty());
 
@@ -163,7 +163,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2b = Arrays.asList(slice2b1, slice2b2);
         FunctionWindowAggregateId functionWindowAggregateId2b = new FunctionWindowAggregateId(windowId2b, 0, 0);
         windowMerger.processPreAggregate(slices2b, functionWindowAggregateId2b);
-        AggregateWindow<List<Slice>> final2b = windowMerger.triggerFinalWindow(functionWindowAggregateId2b);
+        DistributedAggregateWindowState<List<Slice>> final2b = windowMerger.triggerFinalWindow(functionWindowAggregateId2b);
         Assertions.assertTrue(final2b.hasValue());
         assertThat(final2b.getAggValues().get(0), hasItems(slice2b2));
 
@@ -172,7 +172,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices1b = Arrays.asList(slice1b1, slice1b2);
         FunctionWindowAggregateId functionWindowAggregateId1b = new FunctionWindowAggregateId(windowId1b, 0, 0);
         windowMerger.processPreAggregate(slices1b, functionWindowAggregateId1b);
-        AggregateWindow<List<Slice>> final1b = windowMerger.triggerFinalWindow(functionWindowAggregateId1b);
+        DistributedAggregateWindowState<List<Slice>> final1b = windowMerger.triggerFinalWindow(functionWindowAggregateId1b);
         Assertions.assertTrue(final1b.hasValue());
         assertThat(final1b.getAggValues().get(0), hasItems(slice1b2));
         
@@ -181,7 +181,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2c = Arrays.asList(slice2c1, slice2c2);
         FunctionWindowAggregateId functionWindowAggregateId2c = new FunctionWindowAggregateId(windowId2c, 0, 0);
         windowMerger.processPreAggregate(slices2c, functionWindowAggregateId2c);
-        AggregateWindow<List<Slice>> final2c = windowMerger.triggerFinalWindow(functionWindowAggregateId2c);
+        DistributedAggregateWindowState<List<Slice>> final2c = windowMerger.triggerFinalWindow(functionWindowAggregateId2c);
         Assertions.assertTrue(final2c.hasValue());
         assertThat(final2c.getAggValues().get(0), empty());
 
@@ -190,7 +190,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2d = Arrays.asList(slice2d1, slice2d2);
         FunctionWindowAggregateId functionWindowAggregateId2d = new FunctionWindowAggregateId(windowId2d, 0, 0);
         windowMerger.processPreAggregate(slices2d, functionWindowAggregateId2d);
-        AggregateWindow<List<Slice>> final2d = windowMerger.triggerFinalWindow(functionWindowAggregateId2d);
+        DistributedAggregateWindowState<List<Slice>> final2d = windowMerger.triggerFinalWindow(functionWindowAggregateId2d);
         Assertions.assertTrue(final2d.hasValue());
         assertThat(final2d.getAggValues().get(0), hasItems(slice2d2));
 
@@ -199,7 +199,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices1c = Arrays.asList(slice1c1, slice1c2);
         FunctionWindowAggregateId functionWindowAggregateId1c = new FunctionWindowAggregateId(windowId1c, 0, 0);
         windowMerger.processPreAggregate(slices1c, functionWindowAggregateId1c);
-        AggregateWindow<List<Slice>> final1c = windowMerger.triggerFinalWindow(functionWindowAggregateId1c);
+        DistributedAggregateWindowState<List<Slice>> final1c = windowMerger.triggerFinalWindow(functionWindowAggregateId1c);
         Assertions.assertTrue(final1c.hasValue());
         assertThat(final1c.getAggValues().get(0), hasItems(slice1c2));
 
@@ -208,7 +208,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         List<Slice> slices2e = Arrays.asList(slice2e1, slice2e2);
         FunctionWindowAggregateId functionWindowAggregateId2e = new FunctionWindowAggregateId(windowId2e, 0, 0);
         windowMerger.processPreAggregate(slices2e, functionWindowAggregateId2e);
-        AggregateWindow<List<Slice>> final2e = windowMerger.triggerFinalWindow(functionWindowAggregateId2e);
+        DistributedAggregateWindowState<List<Slice>> final2e = windowMerger.triggerFinalWindow(functionWindowAggregateId2e);
         Assertions.assertTrue(final2e.hasValue());
         assertThat(final2e.getAggValues().get(0), empty());
     }

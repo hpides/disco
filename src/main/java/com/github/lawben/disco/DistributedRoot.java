@@ -7,10 +7,8 @@ import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
-import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
 import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
-import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
@@ -112,14 +110,15 @@ public class DistributedRoot implements Runnable {
             }
 
             int childId = Integer.valueOf(childIdOrStreamEnd);
-            String rawAggregateWindowId = this.windowPuller.recvStr(ZMQ.DONTWAIT);
+            String rawFunctionWindowAggId = this.windowPuller.recvStr(ZMQ.DONTWAIT);
             String aggregateType = this.windowPuller.recvStr(ZMQ.DONTWAIT);
             String rawPreAggregate = this.windowPuller.recvStr(ZMQ.DONTWAIT);
 
-            WindowAggregateId windowId = DistributedUtils.stringToWindowId(rawAggregateWindowId);
+            FunctionWindowAggregateId childlessFunctionWindowAggId =
+                    DistributedUtils.stringToChildlessFunctionWindowAggId(rawFunctionWindowAggId);
 
-            // TODO: fix!
-            FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0, childId);
+            FunctionWindowAggregateId functionWindowAggId =
+                    new FunctionWindowAggregateId(childlessFunctionWindowAggId, childId);
 
             this.processPreAggregateWindow(functionWindowAggId, aggregateType, rawPreAggregate);
         }
@@ -160,7 +159,7 @@ public class DistributedRoot implements Runnable {
         Integer finalAggregate = currentMerger.lowerFinalValue(finalWindow);
         String finalAggregateString = String.valueOf(finalAggregate);
 
-        this.resultPusher.sendMore(DistributedUtils.windowIdToString(functionWindowId.getWindowId()));
+        this.resultPusher.sendMore(DistributedUtils.childlessFunctionWindowIdToString(functionWindowId));
         this.resultPusher.send(finalAggregateString, ZMQ.DONTWAIT);
     }
 
@@ -214,20 +213,11 @@ public class DistributedRoot implements Runnable {
     }
 
     public void setupWindowMerger(List<Window> windows, List<AggregateFunction> aggFns) {
-        List<AggregateFunction> distributiveFunctions = aggFns.stream()
-                .filter((fn) -> fn instanceof DistributiveAggregateFunction)
-                .collect(Collectors.toList());
+        List<AggregateFunction> stateAggFunctions = DistributedUtils.convertAggregateFunctions(aggFns);
 
-        List<AggregateFunction> algebraicFunctions = DistributedUtils.convertAlgebraicFunctions(aggFns);
-
-        List<AggregateFunction> holisticFunctions = aggFns.stream()
-                .filter((fn) -> fn instanceof HolisticAggregateFunction)
-                .map(holisticFn -> new HolisticNoopFunction((HolisticAggregateFunction) holisticFn))
-                .collect(Collectors.toList());
-
-        this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numChildren, windows, distributiveFunctions);
-        this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numChildren, windows, algebraicFunctions);
-        this.holisticWindowMerger = new GlobalHolisticWindowMerger(this.numChildren, windows, holisticFunctions);
+        this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numChildren, windows, stateAggFunctions);
+        this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numChildren, windows, stateAggFunctions);
+        this.holisticWindowMerger = new GlobalHolisticWindowMerger(this.numChildren, windows, stateAggFunctions);
     }
 
     private String rootString(String msg) {

@@ -1,5 +1,6 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.FunctionWindowId;
@@ -11,7 +12,6 @@ import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.slicing.state.AggregateState;
-import de.tub.dima.scotty.slicing.state.DistributedAggregateWindowState;
 import de.tub.dima.scotty.state.StateFactory;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
@@ -56,7 +56,7 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
     }
 
     @Override
-    public AggregateWindow<List<DistributedSlice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+    public DistributedAggregateWindowState<List<DistributedSlice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
         WindowAggregateId windowId = functionWindowId.getWindowId();
         final long windowStart = windowId.getWindowStartTimestamp();
         final long windowEnd = windowId.getWindowEndTimestamp();
@@ -79,7 +79,7 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
         List<AggregateFunction> dummyFn = Collections.singletonList(this.aggFns.get(functionWindowId.getFunctionId()));
         AggregateState<List<DistributedSlice>> windowAgg = new AggregateState<>(this.stateFactory, dummyFn);
         windowAgg.addElement(finalSlices);
-        return new DistributedAggregateWindowState<>(functionWindowId.getWindowId(), windowAgg);
+        return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
     }
 
     @Override

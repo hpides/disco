@@ -5,6 +5,7 @@ import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
@@ -146,15 +147,11 @@ public class DistributedChild implements Runnable {
 
     private void createWindowMergers(WindowingConfig windowingConfig) {
         List<AggregateFunction> functions = windowingConfig.getAggregateFunctions();
-        List<AggregateFunction> distributiveFunctions = functions.stream()
-                .filter((fn) -> fn instanceof DistributiveAggregateFunction)
-                .collect(Collectors.toList());
-
-        List<AggregateFunction> algebraicFunctions = DistributedUtils.convertAlgebraicFunctions(functions);
+        List<AggregateFunction> stateAggFunctions = DistributedUtils.convertAggregateFunctions(functions);
 
         List<Window> windows = windowingConfig.getWindows();
-        this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numStreams, windows, distributiveFunctions);
-        this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numStreams, windows, algebraicFunctions);
+        this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numStreams, windows, stateAggFunctions);
+        this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numStreams, windows, stateAggFunctions);
         this.localHolisticWindowMerger = new LocalHolisticWindowMerger();
     }
 
@@ -221,30 +218,28 @@ public class DistributedChild implements Runnable {
     private void processWatermarkedWindows(long watermarkTimestamp) {
         this.slicerPerStream.forEach((streamId, slicer) -> {
             List<AggregateWindow> preAggregatedWindows = slicer.processWatermark(watermarkTimestamp);
-            List<AggregateWindow> finalPreAggregateWindows = this.mergeStreamWindows(preAggregatedWindows, streamId);
+            List<DistributedAggregateWindowState> finalPreAggregateWindows = this.mergeStreamWindows(preAggregatedWindows, streamId);
             this.sendPreAggregatedWindowsToRoot(finalPreAggregateWindows);
         });
     }
 
-    private List<AggregateWindow> mergeStreamWindows(List<AggregateWindow> preAggregatedWindows, int streamId) {
-        List<AggregateWindow> finalPreAggregateWindows = new ArrayList<>(preAggregatedWindows.size());
+    private List<DistributedAggregateWindowState> mergeStreamWindows(List<AggregateWindow> preAggregatedWindows, int streamId) {
+        List<DistributedAggregateWindowState> finalPreAggregateWindows = new ArrayList<>(preAggregatedWindows.size());
 
         preAggregatedWindows.sort(Comparator.comparingLong(AggregateWindow::getStart));
         for (AggregateWindow preAggWindow : preAggregatedWindows) {
-            List<AggregateWindow> aggregateWindows = mergePreAggWindow((AggregateWindowState) preAggWindow, streamId);
+            List<DistributedAggregateWindowState> aggregateWindows = mergePreAggWindow((AggregateWindowState) preAggWindow, streamId);
             finalPreAggregateWindows.addAll(aggregateWindows);
         }
 
         return finalPreAggregateWindows;
     }
 
-    private List<AggregateWindow> mergePreAggWindow(AggregateWindowState preAggWindow, int streamId) {
-        List<AggregateWindow> finalPreAggregateWindows = new ArrayList<>();
+    private List<DistributedAggregateWindowState> mergePreAggWindow(AggregateWindowState preAggWindow, int streamId) {
+        List<DistributedAggregateWindowState> finalPreAggregateWindows = new ArrayList<>();
+
         WindowAggregateId windowId = preAggWindow.getWindowAggregateId();
         List<AggregateFunction> aggregateFunctions = preAggWindow.getAggregateFunctions();
-
-        int numDistributiveFns = 0;
-        int numAlgebraicFns = 0;
 
         final List aggValues = preAggWindow.getAggValues();
         for (int functionId = 0; functionId < aggValues.size(); functionId++) {
@@ -255,12 +250,10 @@ public class DistributedChild implements Runnable {
             final WindowMerger currentMerger;
 
             if (aggregateFunction instanceof DistributiveAggregateFunction) {
-                functionWindowId = new FunctionWindowAggregateId(windowId, numDistributiveFns++, streamId);
                 Integer partialAggregate = (Integer) aggValues.get(functionId);
                 triggerId = this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
                 currentMerger = this.distributiveWindowMerger;
             } else if (aggregateFunction instanceof AlgebraicAggregateFunction) {
-                functionWindowId = new FunctionWindowAggregateId(windowId, numAlgebraicFns++, streamId);
                 AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
                 triggerId = this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
                 currentMerger = this.algebraicWindowMerger;
@@ -273,7 +266,7 @@ public class DistributedChild implements Runnable {
             }
 
             if (triggerId.isPresent()) {
-                AggregateWindow finalPreAggregateWindow = currentMerger.triggerFinalWindow(triggerId.get());
+                DistributedAggregateWindowState finalPreAggregateWindow = currentMerger.triggerFinalWindow(triggerId.get());
                 finalPreAggregateWindows.add(finalPreAggregateWindow);
             }
         }
@@ -282,24 +275,24 @@ public class DistributedChild implements Runnable {
     }
 
 
-    private void sendPreAggregatedWindowsToRoot(List<AggregateWindow> preAggregatedWindows) {
-        for (AggregateWindow preAggregatedWindow : preAggregatedWindows) {
+    private void sendPreAggregatedWindowsToRoot(List<DistributedAggregateWindowState> preAggregatedWindows) {
+        for (DistributedAggregateWindowState preAggregatedWindow : preAggregatedWindows) {
             List<String> serializedAggWindow = this.serializeAggregate(preAggregatedWindow);
             this.sendToRoot(serializedAggWindow, this.windowPusher);
         }
     }
 
-    private List<String> serializeAggregate(AggregateWindow aggWindow) {
+    private List<String> serializeAggregate(DistributedAggregateWindowState aggWindow) {
         List<AggregateFunction> aggFns = aggWindow.getAggregateFunctions();
         if (aggFns.size() > 1) {
             throw new IllegalStateException("Final agg should only have one function.");
         }
-        WindowAggregateId windowId = aggWindow.getWindowAggregateId();
+        FunctionWindowAggregateId functionWindowAggId = aggWindow.getFunctionWindowId();
 
         List<String> serializedAgg = new ArrayList<>();
         // Add child id and window id for each aggregate type
         serializedAgg.add(String.valueOf(this.childId));
-        serializedAgg.add(DistributedUtils.windowIdToString(windowId));
+        serializedAgg.add(DistributedUtils.childlessFunctionWindowIdToString(functionWindowAggId));
 
         List aggValues = aggWindow.getAggValues();
         if (aggValues.isEmpty()) {

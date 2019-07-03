@@ -1,12 +1,13 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
 public class ResultListener implements Runnable {
-    String resultPath;
+    private String resultPath;
 
     public ResultListener(String resultPath) {
         this.resultPath = resultPath;
@@ -27,12 +28,13 @@ public class ResultListener implements Runnable {
                     return;
                 }
 
-                final byte[] rawAggregatedResult = resultListener.recv(ZMQ.DONTWAIT);
+                final String rawAggregatedResult = resultListener.recvStr(ZMQ.DONTWAIT);
 
-                final WindowAggregateId windowId = DistributedUtils.stringToWindowId(rawAggIdOrStreamEnd);
-                final Object aggregateObject = DistributedUtils.bytesToObject(rawAggregatedResult);
-                final Integer finalAggregate = (Integer) aggregateObject;
-                System.out.println(this.resultString("FINAL WINDOW: " + windowId + " --> " + finalAggregate));
+                final FunctionWindowAggregateId functionWindoAggId =
+                        DistributedUtils.stringToChildlessFunctionWindowAggId(rawAggIdOrStreamEnd);
+
+                final Integer finalAggregate = Integer.valueOf(rawAggregatedResult);
+                System.out.println(this.resultString("FINAL WINDOW: " + functionWindoAggId + " --> " + finalAggregate));
             }
         }
     }

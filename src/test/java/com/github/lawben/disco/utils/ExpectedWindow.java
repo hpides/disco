@@ -1,14 +1,14 @@
 package com.github.lawben.disco.utils;
 
-import de.tub.dima.scotty.core.WindowAggregateId;
+import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 
 public abstract class ExpectedWindow<T> {
     private final T value;
-    private final WindowAggregateId windowAggregateId;
+    private final FunctionWindowAggregateId functionWindowAggregateId;
     private final int childId;
 
-    public ExpectedWindow(WindowAggregateId windowAggregateId, T value, int childId) {
-        this.windowAggregateId = windowAggregateId;
+    public ExpectedWindow(FunctionWindowAggregateId functionWindowAggregateId, T value, int childId) {
+        this.functionWindowAggregateId = functionWindowAggregateId;
         this.value = value;
         this.childId = childId;
     }
@@ -17,8 +17,8 @@ public abstract class ExpectedWindow<T> {
         return childId;
     }
 
-    public WindowAggregateId getWindowAggregateId() {
-        return windowAggregateId;
+    public FunctionWindowAggregateId getFunctionWindowAggregateId() {
+        return functionWindowAggregateId;
     }
 
     public T getValue() {
@@ -29,7 +29,7 @@ public abstract class ExpectedWindow<T> {
     public String toString() {
         return "ExpectedWindow{" +
                 "value=" + value +
-                ", windowAggregateId=" + windowAggregateId +
+                ", functionWindowAggregateId=" + functionWindowAggregateId +
                 ", childId=" + childId +
                 '}';
     }

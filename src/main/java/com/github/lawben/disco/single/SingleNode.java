@@ -1,6 +1,7 @@
 package com.github.lawben.disco.single;
 
 import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
@@ -90,7 +91,9 @@ public class SingleNode implements Runnable {
             Object finalAggregate = aggValues.isEmpty() ? null : aggValues.get(0);
             byte[] finalAggregateBytes = DistributedUtils.objectToBytes(finalAggregate);
 
-            resultPusher.sendMore(DistributedUtils.windowIdToString(windowId));
+            // TODO: fix
+            FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0);
+            resultPusher.sendMore(DistributedUtils.childlessFunctionWindowIdToString(functionWindowAggId));
             resultPusher.send(finalAggregateBytes);
         }
     }

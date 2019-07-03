@@ -1,12 +1,12 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import de.tub.dima.scotty.slicing.state.AggregateState;
-import de.tub.dima.scotty.slicing.state.DistributedAggregateWindowState;
 import de.tub.dima.scotty.state.StateFactory;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
@@ -55,12 +55,9 @@ public class LocalHolisticWindowMerger implements WindowMerger<List<Slice>> {
     }
 
     @Override
-    public AggregateWindow<List<Slice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
-        AggregateWindow<List<Slice>> finalWindow = new DistributedAggregateWindowState<>(
-                functionWindowId.getWindowId(), aggregates.get(functionWindowId));
-
-        aggregates.remove(functionWindowId);
-        return finalWindow;
+    public DistributedAggregateWindowState<List<Slice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+        AggregateState<List<Slice>> aggState = aggregates.remove(functionWindowId);
+        return new DistributedAggregateWindowState<>(functionWindowId, aggState);
     }
 
     @Override

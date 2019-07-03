@@ -2,7 +2,6 @@ package com.github.lawben.disco.aggregation;
 
 import de.tub.dima.scotty.core.WindowAggregateId;
 import java.util.Objects;
-import java.util.Optional;
 
 public class FunctionWindowAggregateId {
     public final static int NO_CHILD_ID = -1;
@@ -19,6 +18,10 @@ public class FunctionWindowAggregateId {
         this.windowId = windowId;
         this.functionId = functionId;
         this.childId = childId;
+    }
+
+    public FunctionWindowAggregateId(FunctionWindowAggregateId functionWindowAggregateId, int childId) {
+        this(functionWindowAggregateId.getWindowId(), functionWindowAggregateId.getFunctionId(), childId);
     }
 
     public WindowAggregateId getWindowId() {

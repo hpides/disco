@@ -4,7 +4,10 @@ import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
+import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
+import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import com.github.lawben.disco.aggregation.MedianAggregateFunction;
 import com.github.lawben.disco.aggregation.SumAggregationFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
@@ -136,16 +139,25 @@ public class DistributedUtils {
     }
 
 
-    public static String windowIdToString(WindowAggregateId windowId) {
-        return windowId.getWindowId() + "," +
-               windowId.getWindowStartTimestamp() + "," +
-               windowId.getWindowEndTimestamp();
+    public static String childlessFunctionWindowIdToString(FunctionWindowAggregateId functionWindowAggId) {
+        WindowAggregateId windowId = functionWindowAggId.getWindowId();
+
+        List<Number> values = new ArrayList<>();
+        values.add(windowId.getWindowId());
+        values.add(windowId.getWindowStartTimestamp());
+        values.add(windowId.getWindowEndTimestamp());
+        values.add(functionWindowAggId.getFunctionId());
+
+        List<String> stringValues = values.stream().map(String::valueOf).collect(Collectors.toList());
+        return String.join(",", stringValues);
     }
 
-    public static WindowAggregateId stringToWindowId(String rawString) {
+    public static FunctionWindowAggregateId stringToChildlessFunctionWindowAggId(String rawString) {
         List<Long> windowIdSplit = stringToLongs(rawString);
-        assert windowIdSplit.size() == 3;
-        return new WindowAggregateId(windowIdSplit.get(0), windowIdSplit.get(1), windowIdSplit.get(2));
+        assert windowIdSplit.size() == 4;
+        WindowAggregateId windowId = new WindowAggregateId(windowIdSplit.get(0), windowIdSplit.get(1), windowIdSplit.get(2));
+        int functionId = Math.toIntExact(windowIdSplit.get(3));
+        return new FunctionWindowAggregateId(windowId, functionId);
     }
 
     public static List<Long> stringToLongs(String rawString) {
@@ -183,6 +195,10 @@ public class DistributedUtils {
 
     public static List<DistributedSlice> slicesFromString(String slicesString) {
         List<DistributedSlice> slices = new ArrayList<>();
+        if (slicesString.isEmpty()) {
+            return slices;
+        }
+
         for (String sliceString : slicesString.split("/")) {
             slices.add(singleSliceFromString(sliceString));
         }
@@ -241,10 +257,17 @@ public class DistributedUtils {
         return new MedianAggregateFunction();
     }
 
-    public static List<AggregateFunction> convertAlgebraicFunctions(List<AggregateFunction> aggFns) {
+    public static List<AggregateFunction> convertAggregateFunctions(List<AggregateFunction> aggFns) {
         return aggFns.stream()
-                .filter((fn) -> fn instanceof AlgebraicAggregateFunction)
-                .map(algebraicFn -> new AlgebraicMergeFunction((AlgebraicAggregateFunction) algebraicFn))
+                .map(aggFn -> {
+                    if (aggFn instanceof AlgebraicAggregateFunction) {
+                        return new AlgebraicMergeFunction((AlgebraicAggregateFunction) aggFn);
+                    } else if(aggFn instanceof HolisticAggregateFunction) {
+                        return new HolisticNoopFunction((HolisticAggregateFunction) aggFn);
+                    } else {
+                        return aggFn;
+                    }
+                })
                 .collect(Collectors.toList());
     }
 }

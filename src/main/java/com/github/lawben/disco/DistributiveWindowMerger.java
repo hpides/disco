@@ -1,5 +1,6 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.FunctionWindowId;
 import de.tub.dima.scotty.core.AggregateWindow;
@@ -7,7 +8,6 @@ import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.slicing.state.AggregateState;
-import de.tub.dima.scotty.slicing.state.DistributedAggregateWindowState;
 import de.tub.dima.scotty.state.StateFactory;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.Collections;
@@ -66,10 +66,7 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
 
         if (lastTimestamp == -1L) {
             // There is no session for this window
-            AggregateState<AggType> newAggWindow = new AggregateState<>(this.stateFactory, this.aggFunctions);
-            newAggWindow.addElement(preAggregate);
-            windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
-            currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
+            createNewSession(preAggregate, functionWindowAggId, functionWindowId, functionWindowPlaceholderId);
             return Optional.empty();
         } else {
             // There is a current session for this window
@@ -91,10 +88,7 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
                 return Optional.empty();
             } else {
                 // This aggregate starts a new session
-                AggregateState<AggType> newAggWindow = new AggregateState<>(this.stateFactory, this.aggFunctions);
-                newAggWindow.addElement(preAggregate);
-                windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
-                currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
+                createNewSession(preAggregate, functionWindowAggId, functionWindowId, functionWindowPlaceholderId);
 
                 // Trigger window that just finished
                 windowAggregates.put(currentFunctionWindowId, aggWindow);
@@ -103,10 +97,20 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
         }
     }
 
+    private void createNewSession(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId,
+            FunctionWindowId functionWindowId, FunctionWindowAggregateId functionWindowPlaceholderId) {
+        AggregateFunction aggFn = this.aggFunctions.get(functionWindowAggId.getFunctionId());
+        List<AggregateFunction> stateAggFns = Collections.singletonList(aggFn);
+        AggregateState<AggType> newAggWindow = new AggregateState<>(this.stateFactory, stateAggFns);
+        newAggWindow.addElement(preAggregate);
+        windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
+        currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
+    }
+
     @Override
-    public AggregateWindow<AggType> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
-        AggregateWindow<AggType> finalWindow = new DistributedAggregateWindowState<>(
-                functionWindowId.getWindowId(), windowAggregates.get(functionWindowId));
+    public DistributedAggregateWindowState<AggType> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+        DistributedAggregateWindowState<AggType> finalWindow =
+                new DistributedAggregateWindowState<>(functionWindowId, windowAggregates.get(functionWindowId));
 
         receivedWindows.remove(functionWindowId);
         windowAggregates.remove(functionWindowId);
