@@ -6,11 +6,13 @@ public abstract class ExpectedWindow<T> {
     private final T value;
     private final FunctionWindowAggregateId functionWindowAggregateId;
     private final int childId;
+    protected boolean windowIsComplete;
 
     public ExpectedWindow(FunctionWindowAggregateId functionWindowAggregateId, T value, int childId) {
         this.functionWindowAggregateId = functionWindowAggregateId;
         this.value = value;
         this.childId = childId;
+        this.windowIsComplete = true;
     }
 
     public int getChildId() {
@@ -23,6 +25,10 @@ public abstract class ExpectedWindow<T> {
 
     public T getValue() {
         return value;
+    }
+
+    public boolean windowIsComplete() {
+        return windowIsComplete;
     }
 
     @Override

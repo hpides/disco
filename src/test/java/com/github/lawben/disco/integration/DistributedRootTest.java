@@ -5,8 +5,10 @@ import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS
 import static com.github.lawben.disco.DistributedUtils.DISTRIBUTIVE_STRING;
 import static com.github.lawben.disco.DistributedUtils.HOLISTIC_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
+import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
+import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
+import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 import static com.github.lawben.disco.DistributedUtils.slicesToString;
-import static com.github.lawben.disco.DistributedUtils.childlessFunctionWindowIdToString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
@@ -14,11 +16,13 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.lawben.disco.DistributedRoot;
+import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
+import com.github.lawben.disco.utils.BaseWindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
 import com.github.lawben.disco.utils.ZMQPullMock;
 import com.github.lawben.disco.utils.ZMQPushMock;
@@ -53,7 +57,7 @@ public class DistributedRootTest {
         this.controllerPort = Utils.findOpenPort();
         this.windowPort = Utils.findOpenPort();
 
-        File tempFile = File.createTempFile("disco-", "-test");
+        File tempFile = File.createTempFile("disco-test-", "");
         tempFile.deleteOnExit();
         this.resultPath = tempFile.getAbsolutePath();
 
@@ -133,10 +137,7 @@ public class DistributedRootTest {
     }
 
     void assertFunctionWindowIdStringEquals(String functionWindowString, FunctionWindowAggregateId functionWindowId) {
-        WindowAggregateId windowId = functionWindowId.getWindowId();
-        String expectedWindowString = windowId.getWindowId() + "," + windowId.getWindowStartTimestamp() +
-                "," + windowId.getWindowEndTimestamp() + "," + functionWindowId.getFunctionId();
-        assertEquals(expectedWindowString, functionWindowString);
+        assertTrue(BaseWindowMatcher.functionWindowIdStringsMatch(functionWindowId, functionWindowString));
     }
 
     @Test
@@ -169,8 +170,8 @@ public class DistributedRootTest {
 
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
-        child.addMessage("0", childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "5");
-        child.addMessage("0", childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "7");
+        child.addMessage("0", functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "5");
+        child.addMessage("0", functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "7");
         child.addMessage(STREAM_END, "0");
         child.sendNext();
         child.sendNext();
@@ -198,8 +199,8 @@ public class DistributedRootTest {
 
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
-        child.addMessage("0", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "6,2");
-        child.addMessage("0", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "8,4");
+        child.addMessage("0", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "6,2");
+        child.addMessage("0", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "8,4");
         child.addMessage(STREAM_END, "0");
         child.sendNext();
         child.sendNext();
@@ -232,8 +233,8 @@ public class DistributedRootTest {
         Slice slice2 = new DistributedSlice(100, 150, Arrays.asList(5, 6, 7));
         Slice slice3 = new DistributedSlice(150, 200, Arrays.asList(0, 1, 2, 3, 4));
 
-        child.addMessage("0", childlessFunctionWindowIdToString(windowId1), HOLISTIC_STRING, slicesToString(Arrays.asList(slice1)));
-        child.addMessage("0", childlessFunctionWindowIdToString(windowId2), HOLISTIC_STRING, slicesToString(Arrays.asList(slice2, slice3)));
+        child.addMessage("0", functionWindowIdToString(windowId1), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice1)));
+        child.addMessage("0", functionWindowIdToString(windowId2), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice2, slice3)));
         child.addMessage(STREAM_END, "0");
         child.sendNext();
         child.sendNext();
@@ -265,15 +266,15 @@ public class DistributedRootTest {
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
 
-        child1.addMessage(child1Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "5");
-        child1.addMessage(child1Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "7");
+        child1.addMessage(child1Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "5");
+        child1.addMessage(child1Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "7");
         child1.addMessage(STREAM_END, child1Id);
         child1.sendNext();
         child1.sendNext();
         child1.sendNext();
 
-        child2.addMessage(child2Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "3");
-        child2.addMessage(child2Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "4");
+        child2.addMessage(child2Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "3");
+        child2.addMessage(child2Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "4");
         child2.addMessage(STREAM_END, child2Id);
         child2.sendNext();
         child2.sendNext();
@@ -306,19 +307,28 @@ public class DistributedRootTest {
         WindowAggregateId window1 = new WindowAggregateId(0,   0, 100);
         WindowAggregateId window2 = new WindowAggregateId(0, 100, 200);
 
+        FunctionWindowAggregateId med1Window1Id = new FunctionWindowAggregateId(window1, 4);
+        FunctionWindowAggregateId med2Window1Id = new FunctionWindowAggregateId(window1, 5);
+        FunctionWindowAggregateId med1Window2Id = new FunctionWindowAggregateId(window2, 4);
+        FunctionWindowAggregateId med2Window2Id = new FunctionWindowAggregateId(window2, 5);
+
         FunctionWindowAggregateId sum1Window1Id = new FunctionWindowAggregateId(window1, 0);
         FunctionWindowAggregateId sum2Window1Id = new FunctionWindowAggregateId(window1, 1);
         FunctionWindowAggregateId avg1Window1Id = new FunctionWindowAggregateId(window1, 2);
         FunctionWindowAggregateId avg2Window1Id = new FunctionWindowAggregateId(window1, 3);
-        FunctionWindowAggregateId med1Window1Id = new FunctionWindowAggregateId(window1, 4);
-        FunctionWindowAggregateId med2Window1Id = new FunctionWindowAggregateId(window1, 5);
+        FunctionWindowAggregateId med11Window1Id = new FunctionWindowAggregateId(window1, 4, 1);
+        FunctionWindowAggregateId med12Window1Id = new FunctionWindowAggregateId(window1, 5, 1);
+        FunctionWindowAggregateId med21Window1Id = new FunctionWindowAggregateId(window1, 4, 2);
+        FunctionWindowAggregateId med22Window1Id = new FunctionWindowAggregateId(window1, 5, 2);
 
         FunctionWindowAggregateId sum1Window2Id = new FunctionWindowAggregateId(window2, 0);
         FunctionWindowAggregateId sum2Window2Id = new FunctionWindowAggregateId(window2, 1);
         FunctionWindowAggregateId avg1Window2Id = new FunctionWindowAggregateId(window2, 2);
         FunctionWindowAggregateId avg2Window2Id = new FunctionWindowAggregateId(window2, 3);
-        FunctionWindowAggregateId med1Window2Id = new FunctionWindowAggregateId(window2, 4);
-        FunctionWindowAggregateId med2Window2Id = new FunctionWindowAggregateId(window2, 5);
+        FunctionWindowAggregateId med11Window2Id = new FunctionWindowAggregateId(window2, 4, 1);
+        FunctionWindowAggregateId med12Window2Id = new FunctionWindowAggregateId(window2, 5, 1);
+        FunctionWindowAggregateId med21Window2Id = new FunctionWindowAggregateId(window2, 4, 2);
+        FunctionWindowAggregateId med22Window2Id = new FunctionWindowAggregateId(window2, 5, 2);
 
         Slice slice1a = new DistributedSlice(  0,  50, Arrays.asList(1, 2, 3));
         Slice slice1b = new DistributedSlice( 50, 100, Arrays.asList(4, 5, 6));
@@ -330,24 +340,25 @@ public class DistributedRootTest {
 
         List<List<String>> child1Messages = Arrays.asList(
                 // Window 1
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(sum1Window1Id), DISTRIBUTIVE_STRING, "5"),
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(sum2Window1Id), DISTRIBUTIVE_STRING, "2"),
+                Arrays.asList(child1Id, functionWindowIdToString(sum1Window1Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "5"),
+                Arrays.asList(child1Id, functionWindowIdToString(sum2Window1Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "2"),
 
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(avg1Window1Id), ALGEBRAIC_STRING, "7,2"),
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(avg2Window1Id), ALGEBRAIC_STRING, "100,4"),
+                Arrays.asList(child1Id, functionWindowIdToString(avg1Window1Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "7,2"),
+                Arrays.asList(child1Id, functionWindowIdToString(avg2Window1Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "100,4"),
 
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(med1Window1Id), HOLISTIC_STRING, slicesToString(Arrays.asList(slice1a, slice1b))),
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(med2Window1Id), HOLISTIC_STRING, slicesToString(Arrays.asList())),
+                Arrays.asList(child1Id, functionWindowIdToString(med11Window1Id), HOLISTIC_STRING, WINDOW_PARTIAL,  slicesToString(Arrays.asList(slice1a))),
+                Arrays.asList(child1Id, functionWindowIdToString(med11Window1Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice1b))),
+                Arrays.asList(child1Id, functionWindowIdToString(med12Window1Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList())),
 
                 // Window 2
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(sum1Window2Id), DISTRIBUTIVE_STRING, "5"),
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(sum2Window2Id), DISTRIBUTIVE_STRING, "9"),
+                Arrays.asList(child1Id, functionWindowIdToString(sum1Window2Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "5"),
+                Arrays.asList(child1Id, functionWindowIdToString(sum2Window2Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "9"),
 
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(avg1Window2Id), ALGEBRAIC_STRING, "2,1"),
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(avg2Window2Id), ALGEBRAIC_STRING, "0,2"),
+                Arrays.asList(child1Id, functionWindowIdToString(avg1Window2Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "2,1"),
+                Arrays.asList(child1Id, functionWindowIdToString(avg2Window2Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "0,2"),
 
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(med1Window2Id), HOLISTIC_STRING, slicesToString(Arrays.asList(slice1c))),
-                Arrays.asList(child1Id, childlessFunctionWindowIdToString(med2Window2Id), HOLISTIC_STRING, slicesToString(Arrays.asList())),
+                Arrays.asList(child1Id, functionWindowIdToString(med11Window2Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice1c))),
+                Arrays.asList(child1Id, functionWindowIdToString(med12Window2Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList())),
 
                 Arrays.asList(STREAM_END, child1Id)
         );
@@ -359,24 +370,24 @@ public class DistributedRootTest {
 
         List<List<String>> child2Messages = Arrays.asList(
                 // Window 1
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(sum1Window1Id), DISTRIBUTIVE_STRING, "10"),
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(sum2Window1Id), DISTRIBUTIVE_STRING, "2"),
+                Arrays.asList(child2Id, functionWindowIdToString(sum1Window1Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "10"),
+                Arrays.asList(child2Id, functionWindowIdToString(sum2Window1Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "2"),
 
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(avg1Window1Id), ALGEBRAIC_STRING, "10,3"),
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(avg2Window1Id), ALGEBRAIC_STRING, "10,1"),
+                Arrays.asList(child2Id, functionWindowIdToString(avg1Window1Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "10,3"),
+                Arrays.asList(child2Id, functionWindowIdToString(avg2Window1Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "10,1"),
 
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(med1Window1Id), HOLISTIC_STRING, slicesToString(Arrays.asList(slice2a, slice2b))),
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(med2Window1Id), HOLISTIC_STRING, slicesToString(Arrays.asList())),
+                Arrays.asList(child2Id, functionWindowIdToString(med21Window1Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice2a, slice2b))),
+                Arrays.asList(child2Id, functionWindowIdToString(med22Window1Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList())),
 
                 // Window 2
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(sum1Window2Id), DISTRIBUTIVE_STRING, "8"),
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(sum2Window2Id), DISTRIBUTIVE_STRING, "7"),
+                Arrays.asList(child2Id, functionWindowIdToString(sum1Window2Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "8"),
+                Arrays.asList(child2Id, functionWindowIdToString(sum2Window2Id), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "7"),
 
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(avg1Window2Id), ALGEBRAIC_STRING, "5,5"),
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(avg2Window2Id), ALGEBRAIC_STRING, "50,1"),
+                Arrays.asList(child2Id, functionWindowIdToString(avg1Window2Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "5,5"),
+                Arrays.asList(child2Id, functionWindowIdToString(avg2Window2Id), ALGEBRAIC_STRING, WINDOW_COMPLETE, "50,1"),
 
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(med1Window2Id), HOLISTIC_STRING, slicesToString(Arrays.asList(slice2c))),
-                Arrays.asList(child2Id, childlessFunctionWindowIdToString(med2Window2Id), HOLISTIC_STRING, slicesToString(Arrays.asList())),
+                Arrays.asList(child2Id, functionWindowIdToString(med21Window2Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice2c))),
+                Arrays.asList(child2Id, functionWindowIdToString(med22Window2Id), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList())),
 
                 Arrays.asList(STREAM_END, child2Id)
         );
@@ -461,15 +472,15 @@ public class DistributedRootTest {
 
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
-        child1.addMessage("0", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "6,2");
-        child1.addMessage("0", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "14,4");
+        child1.addMessage("0", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "6,2");
+        child1.addMessage("0", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "14,4");
         child1.addMessage(STREAM_END, "0");
         child1.sendNext();
         child1.sendNext();
         child1.sendNext();
 
-        child2.addMessage("1", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "9,3");
-        child2.addMessage("1", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "10,2");
+        child2.addMessage("1", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "9,3");
+        child2.addMessage("1", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "10,2");
         child2.addMessage(STREAM_END, "1");
         child2.sendNext();
         child2.sendNext();
@@ -496,18 +507,26 @@ public class DistributedRootTest {
         ZMQPushMock child1 = children.get(0);
         ZMQPushMock child2 = children.get(1);
 
-        FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0,   0, 100));
-        FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0,  50, 150));
-        FunctionWindowAggregateId windowId3 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
+        FunctionWindowAggregateId window1 = getDefaultFunctionWindowId(new WindowAggregateId(0,   0, 100));
+        FunctionWindowAggregateId window2 = getDefaultFunctionWindowId(new WindowAggregateId(0,  50, 150));
+        FunctionWindowAggregateId window3 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
+
+        FunctionWindowAggregateId windowId11 = new FunctionWindowAggregateId(window1, 1);
+        FunctionWindowAggregateId windowId21 = new FunctionWindowAggregateId(window2, 1);
+        FunctionWindowAggregateId windowId31 = new FunctionWindowAggregateId(window3, 1);
+
+        FunctionWindowAggregateId windowId12 = new FunctionWindowAggregateId(window1, 2);
+        FunctionWindowAggregateId windowId22 = new FunctionWindowAggregateId(window2, 2);
+        FunctionWindowAggregateId windowId32 = new FunctionWindowAggregateId(window3, 2);
 
         Slice slice1a = new DistributedSlice(  0,  50, Arrays.asList(1, 2, 3));
         Slice slice1b = new DistributedSlice( 50, 100, Arrays.asList(2, 3, 4));
         Slice slice1c = new DistributedSlice(100, 150, Arrays.asList(5, 6, 7));
         Slice slice1d = new DistributedSlice(150, 200, Arrays.asList(0, 1, 2, 3, 4));
 
-        child1.addMessage("1", childlessFunctionWindowIdToString(windowId1), HOLISTIC_STRING, slicesToString(Arrays.asList(slice1a, slice1b)));
-        child1.addMessage("1", childlessFunctionWindowIdToString(windowId2), HOLISTIC_STRING, slicesToString(Arrays.asList(slice1c)));
-        child1.addMessage("1", childlessFunctionWindowIdToString(windowId3), HOLISTIC_STRING, slicesToString(Arrays.asList(slice1d)));
+        child1.addMessage("1", functionWindowIdToString(windowId11), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice1a, slice1b)));
+        child1.addMessage("1", functionWindowIdToString(windowId21), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice1c)));
+        child1.addMessage("1", functionWindowIdToString(windowId31), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice1d)));
         child1.addMessage(STREAM_END, "1");
         child1.sendNext();
         child1.sendNext();
@@ -519,9 +538,9 @@ public class DistributedRootTest {
         Slice slice2c = new DistributedSlice(100, 150, Arrays.asList(15, 25, 35));
         Slice slice2d = new DistributedSlice(150, 200, Collections.emptyList());
 
-        child2.addMessage("2", childlessFunctionWindowIdToString(windowId1), HOLISTIC_STRING, slicesToString(Arrays.asList(slice2a, slice2b)));
-        child2.addMessage("2", childlessFunctionWindowIdToString(windowId2), HOLISTIC_STRING, slicesToString(Arrays.asList(slice2c)));
-        child2.addMessage("2", childlessFunctionWindowIdToString(windowId3), HOLISTIC_STRING, slicesToString(Arrays.asList(slice2d)));
+        child2.addMessage("2", functionWindowIdToString(windowId12), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice2a, slice2b)));
+        child2.addMessage("2", functionWindowIdToString(windowId22), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice2c)));
+        child2.addMessage("2", functionWindowIdToString(windowId32), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice2d)));
         child2.addMessage(STREAM_END, "2");
         child2.sendNext();
         child2.sendNext();
@@ -529,15 +548,15 @@ public class DistributedRootTest {
         child2.sendNext();
 
         List<String> result1 = resultListener.receiveNext(2);
-        assertFunctionWindowIdStringEquals(result1.get(0), windowId1);
+        List<String> result2 = resultListener.receiveNext(2);
+        List<String> result3 = resultListener.receiveNext(2);
+        assertFunctionWindowIdStringEquals(result1.get(0), window1);
         assertThat(result1.get(1), equalTo("3"));
 
-        List<String> result2 = resultListener.receiveNext(2);
-        assertFunctionWindowIdStringEquals(result2.get(0), windowId2);
+        assertFunctionWindowIdStringEquals(result2.get(0), window2);
         assertThat(result2.get(1), equalTo("10"));
 
-        List<String> result3 = resultListener.receiveNext(2);
-        assertFunctionWindowIdStringEquals(result3.get(0), windowId3);
+        assertFunctionWindowIdStringEquals(result3.get(0), window3);
         assertThat(result3.get(1), equalTo("5"));
 
         assertRootEnd();
@@ -564,36 +583,36 @@ public class DistributedRootTest {
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
 
-        child1.addMessage(child1Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "5");
-        child1.addMessage(child1Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "7");
+        child1.addMessage(child1Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "5");
+        child1.addMessage(child1Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "7");
         child1.addMessage(STREAM_END, child1Id);
         child1.sendNext();
         child1.sendNext();
         child1.sendNext();
 
-        child2.addMessage(child2Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "3");
-        child2.addMessage(child2Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "4");
+        child2.addMessage(child2Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "3");
+        child2.addMessage(child2Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "4");
         child2.addMessage(STREAM_END, child2Id);
         child2.sendNext();
         child2.sendNext();
         child2.sendNext();
 
-        child3.addMessage(child3Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "1");
-        child3.addMessage(child3Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "0");
+        child3.addMessage(child3Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "1");
+        child3.addMessage(child3Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "0");
         child3.addMessage(STREAM_END, child3Id);
         child3.sendNext();
         child3.sendNext();
         child3.sendNext();
 
-        child4.addMessage(child4Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "10");
-        child4.addMessage(child4Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "100");
+        child4.addMessage(child4Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "10");
+        child4.addMessage(child4Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "100");
         child4.addMessage(STREAM_END, child4Id);
         child4.sendNext();
         child4.sendNext();
         child4.sendNext();
 
-        child5.addMessage(child5Id, childlessFunctionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, "0");
-        child5.addMessage(child5Id, childlessFunctionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, "3");
+        child5.addMessage(child5Id, functionWindowIdToString(windowId1), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "0");
+        child5.addMessage(child5Id, functionWindowIdToString(windowId2), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "3");
         child5.addMessage(STREAM_END, child5Id);
         child5.sendNext();
         child5.sendNext();
@@ -626,36 +645,36 @@ public class DistributedRootTest {
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
 
-        child1.addMessage("1", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "6,2");
-        child1.addMessage("1", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "14,4");
+        child1.addMessage("1", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "6,2");
+        child1.addMessage("1", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "14,4");
         child1.addMessage(STREAM_END, "1");
         child1.sendNext();
         child1.sendNext();
         child1.sendNext();
 
-        child2.addMessage("2", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "9,3");
-        child2.addMessage("2", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "10,2");
+        child2.addMessage("2", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "9,3");
+        child2.addMessage("2", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "10,2");
         child2.addMessage(STREAM_END, "2");
         child2.sendNext();
         child2.sendNext();
         child2.sendNext();
 
-        child3.addMessage("3", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "1,2");
-        child3.addMessage("3", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "0,0");
+        child3.addMessage("3", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "1,2");
+        child3.addMessage("3", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "0,0");
         child3.addMessage(STREAM_END, "3");
         child3.sendNext();
         child3.sendNext();
         child3.sendNext();
 
-        child4.addMessage("4", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "10,3");
-        child4.addMessage("4", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "10,2");
+        child4.addMessage("4", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "10,3");
+        child4.addMessage("4", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "10,2");
         child4.addMessage(STREAM_END, "4");
         child4.sendNext();
         child4.sendNext();
         child4.sendNext();
 
-        child5.addMessage("5", childlessFunctionWindowIdToString(windowId1), ALGEBRAIC_STRING, "150,2");
-        child5.addMessage("5", childlessFunctionWindowIdToString(windowId2), ALGEBRAIC_STRING, "25,20");
+        child5.addMessage("5", functionWindowIdToString(windowId1), ALGEBRAIC_STRING, WINDOW_COMPLETE, "150,2");
+        child5.addMessage("5", functionWindowIdToString(windowId2), ALGEBRAIC_STRING, WINDOW_COMPLETE, "25,20");
         child5.addMessage(STREAM_END, "5");
         child5.sendNext();
         child5.sendNext();

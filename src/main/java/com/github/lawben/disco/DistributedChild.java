@@ -1,6 +1,8 @@
 package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
+import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
+import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
 
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
@@ -26,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -152,7 +153,7 @@ public class DistributedChild implements Runnable {
         List<Window> windows = windowingConfig.getWindows();
         this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numStreams, windows, stateAggFunctions);
         this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numStreams, windows, stateAggFunctions);
-        this.localHolisticWindowMerger = new LocalHolisticWindowMerger();
+        this.localHolisticWindowMerger = new LocalHolisticWindowMerger(this.numStreams, windows);
     }
 
     private void processStreams() {
@@ -244,7 +245,8 @@ public class DistributedChild implements Runnable {
         final List aggValues = preAggWindow.getAggValues();
         for (int functionId = 0; functionId < aggValues.size(); functionId++) {
             final AggregateFunction aggregateFunction = aggregateFunctions.get(functionId);
-            FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId, streamId);
+            FunctionWindowAggregateId functionWindowId =
+                    new FunctionWindowAggregateId(windowId, functionId, this.childId, streamId);
 
             final Optional<FunctionWindowAggregateId> triggerId;
             final WindowMerger currentMerger;
@@ -292,7 +294,8 @@ public class DistributedChild implements Runnable {
         List<String> serializedAgg = new ArrayList<>();
         // Add child id and window id for each aggregate type
         serializedAgg.add(String.valueOf(this.childId));
-        serializedAgg.add(DistributedUtils.childlessFunctionWindowIdToString(functionWindowAggId));
+        serializedAgg.add(DistributedUtils.functionWindowIdToString(functionWindowAggId));
+        serializedAgg.add(aggWindow.windowIsComplete() ? WINDOW_COMPLETE : WINDOW_PARTIAL);
 
         List aggValues = aggWindow.getAggValues();
         if (aggValues.isEmpty()) {
@@ -314,7 +317,8 @@ public class DistributedChild implements Runnable {
         } else if (aggFn instanceof HolisticNoopFunction) {
             serializedAgg.add(DistributedUtils.HOLISTIC_STRING);
             List<Slice> slices = (List<Slice>) aggValue;
-            serializedAgg.add(DistributedUtils.slicesToString(slices));
+            // Add functionId as slice might have multiple states
+            serializedAgg.add(DistributedUtils.slicesToString(slices, functionWindowAggId.getFunctionId()));
         } else {
             throw new IllegalArgumentException("Unknown aggregate function type: " + aggFn.getClass().getSimpleName());
         }

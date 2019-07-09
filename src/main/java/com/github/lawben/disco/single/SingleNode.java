@@ -93,7 +93,7 @@ public class SingleNode implements Runnable {
 
             // TODO: fix
             FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0);
-            resultPusher.sendMore(DistributedUtils.childlessFunctionWindowIdToString(functionWindowAggId));
+            resultPusher.sendMore(DistributedUtils.functionWindowIdToString(functionWindowAggId));
             resultPusher.send(finalAggregateBytes);
         }
     }

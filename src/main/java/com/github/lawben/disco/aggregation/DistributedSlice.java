@@ -11,11 +11,17 @@ public class DistributedSlice implements Slice {
     private final long tStart;
     private final long tEnd;
     private final List<Integer> values;
+    private final int streamId;
 
     public DistributedSlice(long tStart, long tEnd, List<Integer> values) {
+        this(tStart, tEnd, values, FunctionWindowAggregateId.NO_STREAM_ID);
+    }
+
+    public DistributedSlice(long tStart, long tEnd, List<Integer> values, int streamId) {
         this.tStart = tStart;
         this.tEnd = tEnd;
         this.values = values;
+        this.streamId = streamId;
     }
 
     @Override
@@ -31,6 +37,10 @@ public class DistributedSlice implements Slice {
     @Override
     public long getTLast() {
         return tEnd;
+    }
+
+    public int getStreamId() {
+        return streamId;
     }
 
     @Override

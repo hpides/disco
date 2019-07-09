@@ -77,13 +77,15 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         DistributedSlice slice1a = new DistributedSlice(0, 1000, Arrays.asList(1));
         List<DistributedSlice> slices1a = Collections.singletonList(slice1a);
         FunctionWindowAggregateId functionWindowAggId1 = new FunctionWindowAggregateId(windowId1, 0, 0);
-        Optional<FunctionWindowAggregateId> trigger1a = windowMerger.processPreAggregate(slices1a, functionWindowAggId1);
+        windowMerger.processPreAggregate(slices1a, functionWindowAggId1);
+        Optional<FunctionWindowAggregateId> trigger1a = windowMerger.checkWindowComplete(functionWindowAggId1, true);
         assertTrue(trigger1a.isEmpty());
 
         DistributedSlice slice1b = new DistributedSlice(0, 1000, Arrays.asList(2));
         List<DistributedSlice> slices1b = Collections.singletonList(slice1b);
         FunctionWindowAggregateId functionWindowAggId2 = new FunctionWindowAggregateId(windowId1, 0, 1);
-        Optional<FunctionWindowAggregateId> trigger1b = windowMerger.processPreAggregate(slices1b, functionWindowAggId2);
+        windowMerger.processPreAggregate(slices1b, functionWindowAggId2);
+        Optional<FunctionWindowAggregateId> trigger1b = windowMerger.checkWindowComplete(functionWindowAggId2, true);
         assertTrue(trigger1b.isPresent());
         AggregateWindow<List<DistributedSlice>> final1b = windowMerger.triggerFinalWindow(trigger1b.get());
         assertTrue(final1b.hasValue());
@@ -95,13 +97,15 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         DistributedSlice slice2a = new DistributedSlice(1000, 2000, Arrays.asList(2, 3, 4));
         List<DistributedSlice> slices2a = Collections.singletonList(slice2a);
         FunctionWindowAggregateId functionWindowAggId3 = new FunctionWindowAggregateId(windowId2, 0, 0);
-        Optional<FunctionWindowAggregateId> trigger2a = windowMerger.processPreAggregate(slices2a, functionWindowAggId3);
+        windowMerger.processPreAggregate(slices2a, functionWindowAggId3);
+        Optional<FunctionWindowAggregateId> trigger2a = windowMerger.checkWindowComplete(functionWindowAggId3, true);
         assertTrue(trigger2a.isEmpty());
 
         DistributedSlice slice2b = new DistributedSlice(1000, 2000, Arrays.asList(1, 2, 3));
         List<DistributedSlice> slices2b = Collections.singletonList(slice2b);
         FunctionWindowAggregateId functionWindowAggId4 = new FunctionWindowAggregateId(windowId2, 0, 1);
-        Optional<FunctionWindowAggregateId> trigger2b = windowMerger.processPreAggregate(slices2b, functionWindowAggId4);
+        windowMerger.processPreAggregate(slices2b, functionWindowAggId4);
+        Optional<FunctionWindowAggregateId> trigger2b = windowMerger.checkWindowComplete(functionWindowAggId4, true);
         assertTrue(trigger2b.isPresent());
         AggregateWindow<List<DistributedSlice>> final2b = windowMerger.triggerFinalWindow(trigger2b.get());
         assertTrue(final2b.hasValue());
@@ -113,13 +117,15 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         DistributedSlice slice3a = new DistributedSlice(2000, 3000, Arrays.asList(1, 3, 5, 6, 7, 9, 11));
         List<DistributedSlice> slices3a = Collections.singletonList(slice3a);
         FunctionWindowAggregateId functionWindowAggId5 = new FunctionWindowAggregateId(windowId3, 0, 0);
-        Optional<FunctionWindowAggregateId> trigger3a = windowMerger.processPreAggregate(slices3a, functionWindowAggId5);
+        windowMerger.processPreAggregate(slices3a, functionWindowAggId5);
+        Optional<FunctionWindowAggregateId> trigger3a = windowMerger.checkWindowComplete(functionWindowAggId5, true);
         assertTrue(trigger3a.isEmpty());
 
         DistributedSlice slice3b = new DistributedSlice(2000, 3000, Arrays.asList(1, 3, 5, 7, 9, 11));
         List<DistributedSlice> slices3b = Collections.singletonList(slice3b);
         FunctionWindowAggregateId functionWindowAggId6 = new FunctionWindowAggregateId(windowId3, 0, 1);
-        Optional<FunctionWindowAggregateId> trigger3b = windowMerger.processPreAggregate(slices3b, functionWindowAggId6);
+        windowMerger.processPreAggregate(slices3b, functionWindowAggId6);
+        Optional<FunctionWindowAggregateId> trigger3b = windowMerger.checkWindowComplete(functionWindowAggId6, true);
         assertTrue(trigger3b.isPresent());
         AggregateWindow<List<DistributedSlice>> final3b = windowMerger.triggerFinalWindow(trigger3b.get());
         assertTrue(final3b.hasValue());
@@ -129,6 +135,90 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         assertThat(finalAgg3, equalTo(6));
     }
 
+    @Test
+    public void testFinalTwoChildrenFourStreamsMedian() {
+        windows.add(tumblingWindow);
+        aggregateFunctions.add(new HolisticNoopFunction(DistributedUtils.aggregateFunctionMedian()));
+        GlobalHolisticWindowMerger windowMerger = new GlobalHolisticWindowMerger(2, windows, aggregateFunctions);
+
+        WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
+        WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
+
+        int child1Id = 0;
+        int child2Id = 1;
+        int stream1Id = 0;
+        int stream2Id = 1;
+
+        // Window 1
+        DistributedSlice slice11a = new DistributedSlice(0, 1000, Arrays.asList(1));
+        List<DistributedSlice> slices11a = Collections.singletonList(slice11a);
+        FunctionWindowAggregateId functionWindowAggId11a = new FunctionWindowAggregateId(windowId1, 0, child1Id, stream1Id);
+        windowMerger.processPreAggregate(slices11a, functionWindowAggId11a);
+        Optional<FunctionWindowAggregateId> trigger11a = windowMerger.checkWindowComplete(functionWindowAggId11a, false);
+        assertTrue(trigger11a.isEmpty());
+
+        DistributedSlice slice12a = new DistributedSlice(0, 1000, Arrays.asList(2, 3));
+        List<DistributedSlice> slices12a = Collections.singletonList(slice12a);
+        FunctionWindowAggregateId functionWindowAggId12a = new FunctionWindowAggregateId(windowId1, 0, child1Id, stream2Id);
+        windowMerger.processPreAggregate(slices12a, functionWindowAggId12a);
+        Optional<FunctionWindowAggregateId> trigger12a = windowMerger.checkWindowComplete(functionWindowAggId12a, true);
+        assertTrue(trigger12a.isEmpty());
+
+        DistributedSlice slice21a = new DistributedSlice(0, 1000, Arrays.asList(4));
+        List<DistributedSlice> slices21a = Collections.singletonList(slice21a);
+        FunctionWindowAggregateId functionWindowAggId21a = new FunctionWindowAggregateId(windowId1, 0, child2Id, stream1Id);
+        windowMerger.processPreAggregate(slices21a, functionWindowAggId21a);
+        Optional<FunctionWindowAggregateId> trigger21a = windowMerger.checkWindowComplete(functionWindowAggId21a, false);
+        assertTrue(trigger21a.isEmpty());
+
+        DistributedSlice slice22a = new DistributedSlice(0, 1000, Arrays.asList(0));
+        List<DistributedSlice> slices22a = Collections.singletonList(slice22a);
+        FunctionWindowAggregateId functionWindowAggId22a = new FunctionWindowAggregateId(windowId1, 0, child2Id, stream2Id);
+        windowMerger.processPreAggregate(slices22a, functionWindowAggId22a);
+        Optional<FunctionWindowAggregateId> trigger22a = windowMerger.checkWindowComplete(functionWindowAggId22a, true);
+        assertTrue(trigger22a.isPresent());
+        AggregateWindow<List<DistributedSlice>> final22a = windowMerger.triggerFinalWindow(trigger22a.get());
+        assertTrue(final22a.hasValue());
+        Assertions.assertEquals(1, final22a.getAggValues().size());
+        assertThat(final22a.getAggValues().get(0), hasItems(slice22a));
+        Integer finalAgg1 = windowMerger.lowerFinalValue(final22a);
+        assertThat(finalAgg1, equalTo(2));
+
+        // Window 2
+        DistributedSlice slice11b = new DistributedSlice(1000, 2000, Arrays.asList(2, 3, 4));
+        List<DistributedSlice> slices11b = Collections.singletonList(slice11b);
+        FunctionWindowAggregateId functionWindowAggId11b = new FunctionWindowAggregateId(windowId2, 0, child1Id, stream1Id);
+        windowMerger.processPreAggregate(slices11b, functionWindowAggId11b);
+        Optional<FunctionWindowAggregateId> trigger11b = windowMerger.checkWindowComplete(functionWindowAggId11b, false);
+        assertTrue(trigger11b.isEmpty());
+
+        DistributedSlice slice12b = new DistributedSlice(1000, 2000, Arrays.asList(5, 6, 7));
+        List<DistributedSlice> slices12b = Collections.singletonList(slice12b);
+        FunctionWindowAggregateId functionWindowAggId12b = new FunctionWindowAggregateId(windowId2, 0, child1Id, stream2Id);
+        windowMerger.processPreAggregate(slices12b, functionWindowAggId12b);
+        Optional<FunctionWindowAggregateId> trigger12b = windowMerger.checkWindowComplete(functionWindowAggId12b, true);
+        assertTrue(trigger12b.isEmpty());
+
+        DistributedSlice slice21b = new DistributedSlice(1000, 2000, Arrays.asList(4));
+        List<DistributedSlice> slices21b = Collections.singletonList(slice21b);
+        FunctionWindowAggregateId functionWindowAggId21b = new FunctionWindowAggregateId(windowId2, 0, child2Id, stream1Id);
+        windowMerger.processPreAggregate(slices21b, functionWindowAggId21b);
+        Optional<FunctionWindowAggregateId> trigger21b = windowMerger.checkWindowComplete(functionWindowAggId21b, false);
+        assertTrue(trigger21b.isEmpty());
+
+        DistributedSlice slice22b = new DistributedSlice(1000, 2000, Arrays.asList(1, 2, 3));
+        List<DistributedSlice> slices22b = Collections.singletonList(slice22b);
+        FunctionWindowAggregateId functionWindowAggId22b = new FunctionWindowAggregateId(windowId2, 0, child2Id, stream2Id);
+        windowMerger.processPreAggregate(slices22b, functionWindowAggId22b);
+        Optional<FunctionWindowAggregateId> trigger22b = windowMerger.checkWindowComplete(functionWindowAggId22b, true);
+        assertTrue(trigger22b.isPresent());
+        AggregateWindow<List<DistributedSlice>> final22b = windowMerger.triggerFinalWindow(trigger22b.get());
+        assertTrue(final22b.hasValue());
+        Assertions.assertEquals(1, final22b.getAggValues().size());
+        assertThat(final22b.getAggValues().get(0), hasItems(slice22b));
+        Integer finalAgg2 = windowMerger.lowerFinalValue(final22b);
+        assertThat(finalAgg2, equalTo(4));
+    }
 
     @Test
     public void testFinalOneChildTwoWindowsMedian() {

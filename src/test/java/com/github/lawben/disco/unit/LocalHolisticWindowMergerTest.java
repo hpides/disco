@@ -22,10 +22,11 @@ import org.junit.jupiter.api.Test;
 
 public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
     @Test
-    public void testFinalOneChildMedian() {
+    public void testFinalOneStreamMedian() {
         windows.add(tumblingWindow);
         aggregateFunctions.add(new HolisticNoopFunction());
-        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
+        int numStreams = 1;
+        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger(numStreams, windows);
 
         FunctionWindowAggregateId windowId1 = defaultFnWindowAggId(new WindowAggregateId(1,    0, 1000));
         FunctionWindowAggregateId windowId2 = defaultFnWindowAggId(new WindowAggregateId(1, 1000, 2000));
@@ -57,19 +58,19 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
     }
 
     @Test
-    public void testFinalTwoChildrenMedian() {
+    public void testFinalTwoStreamsMedian() {
         windows.add(tumblingWindow);
         aggregateFunctions.add(new HolisticNoopFunction());
-        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
+        int numStreams = 2;
+        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger(numStreams, windows);
 
         WindowAggregateId windowId1 = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId2 = new WindowAggregateId(1, 1000, 2000);
         WindowAggregateId windowId3 = new WindowAggregateId(1, 2000, 3000);
 
-
         Slice slice1a = new DistributedSlice(0, 1000, Arrays.asList(1));
         List<Slice> slices1a = Collections.singletonList(slice1a);
-        FunctionWindowAggregateId functionWindowAggId1 = new FunctionWindowAggregateId(windowId1, 0, 0);
+        FunctionWindowAggregateId functionWindowAggId1 = new FunctionWindowAggregateId(windowId1, 0, 0, 0);
         windowMerger.processPreAggregate(slices1a, functionWindowAggId1);
         DistributedAggregateWindowState<List<Slice>> final1a = windowMerger.triggerFinalWindow(functionWindowAggId1);
         Assertions.assertTrue(final1a.hasValue());
@@ -78,7 +79,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
 
         Slice slice1b = new DistributedSlice(0, 1000, Arrays.asList(2));
         List<Slice> slices1b = Collections.singletonList(slice1b);
-        FunctionWindowAggregateId functionWindowAggId2 = new FunctionWindowAggregateId(windowId1, 0, 1);
+        FunctionWindowAggregateId functionWindowAggId2 = new FunctionWindowAggregateId(windowId1, 0, 0, 1);
         windowMerger.processPreAggregate(slices1b, functionWindowAggId2);
         DistributedAggregateWindowState<List<Slice>> final1b = windowMerger.triggerFinalWindow(functionWindowAggId2);
         Assertions.assertTrue(final1b.hasValue());
@@ -87,7 +88,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
 
         Slice slice2a = new DistributedSlice(1000, 2000, Arrays.asList(2, 3, 4));
         List<Slice> slices2a = Collections.singletonList(slice2a);
-        FunctionWindowAggregateId functionWindowAggId3 = new FunctionWindowAggregateId(windowId2, 0, 0);
+        FunctionWindowAggregateId functionWindowAggId3 = new FunctionWindowAggregateId(windowId2, 0, 0, 0);
         windowMerger.processPreAggregate(slices2a, functionWindowAggId3);
         DistributedAggregateWindowState<List<Slice>> final2a = windowMerger.triggerFinalWindow(functionWindowAggId3);
         Assertions.assertTrue(final2a.hasValue());
@@ -96,7 +97,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
 
         Slice slice2b = new DistributedSlice(1000, 2000, Arrays.asList(1, 2, 3));
         List<Slice> slices2b = Collections.singletonList(slice2b);
-        FunctionWindowAggregateId functionWindowAggId4 = new FunctionWindowAggregateId(windowId2, 0, 1);
+        FunctionWindowAggregateId functionWindowAggId4 = new FunctionWindowAggregateId(windowId2, 0, 0, 1);
         windowMerger.processPreAggregate(slices2b, functionWindowAggId4);
         DistributedAggregateWindowState<List<Slice>> final2b = windowMerger.triggerFinalWindow(functionWindowAggId4);
         Assertions.assertTrue(final2b.hasValue());
@@ -105,7 +106,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
 
         Slice slice3a = new DistributedSlice(2000, 3000, Arrays.asList(1, 3, 5, 7, 9, 11));
         List<Slice> slices3a = Collections.singletonList(slice3a);
-        FunctionWindowAggregateId functionWindowAggId5 = new FunctionWindowAggregateId(windowId3, 0, 0);
+        FunctionWindowAggregateId functionWindowAggId5 = new FunctionWindowAggregateId(windowId3, 0, 0, 0);
         windowMerger.processPreAggregate(slices3a, functionWindowAggId5);
         DistributedAggregateWindowState<List<Slice>> final3a = windowMerger.triggerFinalWindow(functionWindowAggId5);
         Assertions.assertTrue(final3a.hasValue());
@@ -114,7 +115,7 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
 
         Slice slice3b = new DistributedSlice(2000, 3000, Arrays.asList(1, 3, 5, 7, 9, 11));
         List<Slice> slices3b = Collections.singletonList(slice3b);
-        FunctionWindowAggregateId functionWindowAggId6 = new FunctionWindowAggregateId(windowId3, 0, 1);
+        FunctionWindowAggregateId functionWindowAggId6 = new FunctionWindowAggregateId(windowId3, 0, 0, 1);
         windowMerger.processPreAggregate(slices3b, functionWindowAggId6);
         DistributedAggregateWindowState<List<Slice>> final3b = windowMerger.triggerFinalWindow(functionWindowAggId6);
         Assertions.assertTrue(final3b.hasValue());
@@ -122,13 +123,13 @@ public class LocalHolisticWindowMergerTest extends WindowMergerTestBase {
         assertThat(final3b.getAggValues().get(0), hasItems(slice3b));
     }
 
-
     @Test
-    public void testFinalOneChildTwoWindowsMedian() {
+    public void testFinalOneStreamTwoWindowsMedian() {
         windows.add(tumblingWindow);
         windows.add(new SlidingWindow(WindowMeasure.Time, 1000, 500, 2));
         aggregateFunctions.add(new HolisticNoopFunction());
-        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger();
+        int numStreams = 1;
+        LocalHolisticWindowMerger windowMerger = new LocalHolisticWindowMerger(numStreams, windows);
 
         WindowAggregateId windowId1a = new WindowAggregateId(1,    0, 1000);
         WindowAggregateId windowId1b = new WindowAggregateId(1, 1000, 2000);

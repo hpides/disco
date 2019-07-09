@@ -13,13 +13,24 @@ public class DistributedAggregateWindowState<AggregateType> implements Aggregate
     private final FunctionWindowAggregateId functionWindowId;
     private final AggregateState<AggregateType> windowState;
 
+    private boolean windowIsComplete;
+
     public DistributedAggregateWindowState(FunctionWindowAggregateId functionWindowId, AggregateState<AggregateType> windowState) {
         this.functionWindowId = functionWindowId;
         this.windowState = windowState;
+        this.windowIsComplete = false;
     }
 
     public FunctionWindowAggregateId getFunctionWindowId() {
         return functionWindowId;
+    }
+
+    public void setWindowComplete() {
+        windowIsComplete = true;
+    }
+
+    public boolean windowIsComplete() {
+        return windowIsComplete;
     }
 
     @Override

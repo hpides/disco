@@ -1,5 +1,6 @@
 package com.github.lawben.disco;
 
+import com.github.lawben.disco.aggregation.ChildStreamId;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
@@ -24,7 +25,7 @@ import java.util.Optional;
 
 public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<DistributedSlice>> {
     private final StateFactory stateFactory;
-    private final Map<Integer, List<DistributedSlice>> childSlices;
+    private final Map<ChildStreamId, List<DistributedSlice>> childSlices;
     private final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
     private final List<AggregateFunction> aggFns;
 
@@ -47,12 +48,12 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
             throw new RuntimeException("holistic session not supported");
         }
 
-        final int childId = functionWindowAggId.getChildId();
-        childSlices.putIfAbsent(childId, new ArrayList<>());
-        List<DistributedSlice> childSlices = this.childSlices.get(childId);
+        ChildStreamId childStreamId = ChildStreamId.fromFunctionWindowId(functionWindowAggId);
+        childSlices.putIfAbsent(childStreamId, new ArrayList<>());
+        List<DistributedSlice> childSlices = this.childSlices.get(childStreamId);
         childSlices.addAll(preAggregate);
 
-        return checkWindowTrigger(functionWindowAggId);
+        return Optional.empty();
     }
 
     @Override
@@ -105,5 +106,12 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
     @Override
     public List<AggregateFunction> getAggregateFunctions() {
         return new ArrayList<>(Collections.singletonList(new HolisticAggregateWrapper()));
+    }
+
+    public Optional<FunctionWindowAggregateId> checkWindowComplete(FunctionWindowAggregateId functionWindowId, boolean windowIsComplete) {
+        if (windowIsComplete) {
+            return this.checkWindowTrigger(functionWindowId);
+        }
+        return Optional.empty();
     }
 }

@@ -2,16 +2,22 @@ package com.github.lawben.disco.integration;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
-import static com.github.lawben.disco.DistributedUtils.childlessFunctionWindowIdToString;
+import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
+import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
+import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.github.lawben.disco.DistributedChild;
@@ -20,6 +26,7 @@ import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.PartialAverage;
 import com.github.lawben.disco.utils.AlgebraicWindowMatcher;
+import com.github.lawben.disco.utils.BaseWindowMatcher;
 import com.github.lawben.disco.utils.ExpectedAlgebraicWindow;
 import com.github.lawben.disco.utils.ExpectedDistributiveWindow;
 import com.github.lawben.disco.utils.DistributiveWindowMatcher;
@@ -135,18 +142,19 @@ public class DistributedChildTest {
     }
 
     void assertDistributiveWindowEquals(List<String> rawWindowString, FunctionWindowAggregateId functionWindowId, Integer value) {
-        assertThat(rawWindowString, hasSize(4));
+        assertThat(rawWindowString, hasSize(5));
         assertEquals(String.valueOf(this.childId), rawWindowString.get(0));
 
-        String expectedWindowString = childlessFunctionWindowIdToString(functionWindowId);
-        assertEquals(expectedWindowString, rawWindowString.get(1));
+        assertTrue(BaseWindowMatcher.functionWindowIdStringsMatch(functionWindowId, rawWindowString.get(1)));
 
-        assertEquals(DistributedUtils.DISTRIBUTIVE_STRING, rawWindowString.get(2));
-        assertEquals(String.valueOf(value), rawWindowString.get(3));
+        assertThat(rawWindowString.get(2), anyOf(equalTo(WINDOW_COMPLETE), equalTo(WINDOW_PARTIAL)));
+
+        assertEquals(DistributedUtils.DISTRIBUTIVE_STRING, rawWindowString.get(3));
+        assertEquals(String.valueOf(value), rawWindowString.get(4));
     }
 
     List<String> receiveWindow(ZMQPullMock receiver) {
-        return receiver.receiveNext(4);
+        return receiver.receiveNext(5);
     }
 
 
@@ -613,17 +621,17 @@ public class DistributedChildTest {
         );
 
         List<ExpectedHolisticWindow> expectedWindows = Arrays.asList(
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0,   0, 100)), Arrays.asList(stream0Slices.get(0), stream0Slices.get(1)), childId),
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0,   0, 100)), Arrays.asList(stream1Slices.get(0), stream1Slices.get(1)), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 100), 0, childId, 0), Arrays.asList(stream0Slices.get(0), stream0Slices.get(1)), childId, false),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 100), 0, childId, 1), Arrays.asList(stream1Slices.get(0), stream1Slices.get(1)), childId),
 
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0,  50, 150)), Arrays.asList(stream0Slices.get(2)) , childId),
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0,  50, 150)), Collections.emptyList(), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,  50, 150), 0, childId, 0), Arrays.asList(stream0Slices.get(2)) , childId, false),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,  50, 150), 0, childId, 1), Collections.emptyList(), childId),
 
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0, 100, 200)), Arrays.asList(stream0Slices.get(3)) , childId),
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0, 100, 200)), Arrays.asList(stream1Slices.get(2)) , childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 100, 200), 0, childId, 0), Arrays.asList(stream0Slices.get(3)) , childId, false),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 100, 200), 0, childId, 1), Arrays.asList(stream1Slices.get(2)) , childId),
 
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0, 150, 250)), Collections.emptyList(), childId),
-                new ExpectedHolisticWindow(defaultFunctionWindowId(new WindowAggregateId(0, 150, 250)), Collections.emptyList(), childId)
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 150, 250), 0, childId, 0), Collections.emptyList(), childId, false),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 150, 250), 0, childId, 1), Collections.emptyList(), childId)
         );
 
         List<Matcher<? super List<String>>> windowMatchers = expectedWindows.stream()
@@ -641,7 +649,138 @@ public class DistributedChildTest {
     }
 
     @Test
-    void testTwoChildrenSumAvgMedianAggregatesTwice() {
-        fail();
+    void testTwoStreamsSumAvgMedianAggregatesTwice() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0", "SUM\nSUM\nAVG\nAVG\nMEDIAN\nMEDIAN");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        DistributedChild child = runDefaultChild(rootInitPort, rootWindowPort, 2);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        registerStream(0);
+        registerStream(1);
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        ZMQPushMock streamSender0 = streamSenders.get(0);
+        ZMQPushMock streamSender1 = streamSenders.get(1);
+
+        String[] events0 = {
+                "0,10,1", "0,30,1", "0,50,1", "0,70,1", "0,90,1",  // window 1
+                "0,110,10", "0,115,20", "0,120,30", "0,190,40", "0,195,50",  // window 2
+        };
+
+        String[] events1 = {
+                "1,20,1", "1,40,1", "1,60,1", "1,80,1", "1,85,1",  // window 1
+                "1,175,10", "1,180,20", "1,185,30", "1,190,40", "1,195,50",  // window 2
+        };
+
+        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
+                .flatMap(Collection::stream)
+                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
+                .collect(Collectors.toList());
+
+        for (String event : sortedEvents) {
+            if (event.startsWith("0")) {
+                streamSender0.addMessage(event);
+                streamSender0.sendNext();
+            } else {
+                streamSender1.addMessage(event);
+                streamSender1.sendNext();
+            }
+        }
+
+        streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
+        streamSender0.sendNext();
+
+        streamSender1.addMessage(DistributedUtils.STREAM_END, "1");
+        streamSender1.sendNext();
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        List<DistributedSlice> stream0Slices = Arrays.asList(
+                new DistributedSlice(  0,  90, Arrays.asList(1, 1, 1, 1, 1)),
+                new DistributedSlice(100, 195, Arrays.asList(10, 20, 30, 40, 50))
+        );
+
+        List<DistributedSlice> stream1Slices = Arrays.asList(
+                new DistributedSlice(  0,  85, Arrays.asList(1, 1, 1, 1, 1)),
+                new DistributedSlice(100, 195, Arrays.asList(10, 20, 30, 40, 50))
+        );
+
+        WindowAggregateId window1 = new WindowAggregateId(0,   0, 100);
+        WindowAggregateId window2 = new WindowAggregateId(0, 100, 200);
+
+        FunctionWindowAggregateId sum1Window1Id = new FunctionWindowAggregateId(window1, 0);
+        FunctionWindowAggregateId sum2Window1Id = new FunctionWindowAggregateId(window1, 1);
+        FunctionWindowAggregateId avg1Window1Id = new FunctionWindowAggregateId(window1, 2);
+        FunctionWindowAggregateId avg2Window1Id = new FunctionWindowAggregateId(window1, 3);
+        FunctionWindowAggregateId med11Window1Id = new FunctionWindowAggregateId(window1, 4, childId, 0);
+        FunctionWindowAggregateId med12Window1Id = new FunctionWindowAggregateId(window1, 5, childId, 0);
+        FunctionWindowAggregateId med21Window1Id = new FunctionWindowAggregateId(window1, 4, childId, 1);
+        FunctionWindowAggregateId med22Window1Id = new FunctionWindowAggregateId(window1, 5, childId, 1);
+
+        FunctionWindowAggregateId sum1Window2Id = new FunctionWindowAggregateId(window2, 0);
+        FunctionWindowAggregateId sum2Window2Id = new FunctionWindowAggregateId(window2, 1);
+        FunctionWindowAggregateId avg1Window2Id = new FunctionWindowAggregateId(window2, 2);
+        FunctionWindowAggregateId avg2Window2Id = new FunctionWindowAggregateId(window2, 3);
+        FunctionWindowAggregateId med11Window2Id = new FunctionWindowAggregateId(window2, 4, childId, 0);
+        FunctionWindowAggregateId med12Window2Id = new FunctionWindowAggregateId(window2, 5, childId, 0);
+        FunctionWindowAggregateId med21Window2Id = new FunctionWindowAggregateId(window2, 4, childId, 1);
+        FunctionWindowAggregateId med22Window2Id = new FunctionWindowAggregateId(window2, 5, childId, 1);
+
+        ExpectedDistributiveWindow expectedSum1Window1 = new ExpectedDistributiveWindow(sum1Window1Id, 10, childId);
+        ExpectedDistributiveWindow expectedSum2Window1 = new ExpectedDistributiveWindow(sum2Window1Id, 10, childId);
+        ExpectedAlgebraicWindow expectedAvg1Window1 = new ExpectedAlgebraicWindow(avg1Window1Id, new PartialAverage(10, 10), childId);
+        ExpectedAlgebraicWindow expectedAvg2Window1 = new ExpectedAlgebraicWindow(avg2Window1Id, new PartialAverage(10, 10), childId);
+        ExpectedHolisticWindow expectedMed11Window1 = new ExpectedHolisticWindow(med11Window1Id, Arrays.asList(stream0Slices.get(0)), 0, false);
+        ExpectedHolisticWindow expectedMed12Window1 = new ExpectedHolisticWindow(med12Window1Id, Arrays.asList(), childId, false);
+        ExpectedHolisticWindow expectedMed21Window1 = new ExpectedHolisticWindow(med21Window1Id, Arrays.asList(stream1Slices.get(0)), childId);
+        ExpectedHolisticWindow expectedMed22Window1 = new ExpectedHolisticWindow(med22Window1Id, Arrays.asList(), childId);
+
+        ExpectedDistributiveWindow expectedSum1Window2 = new ExpectedDistributiveWindow(sum1Window2Id, 300, childId);
+        ExpectedDistributiveWindow expectedSum2Window2 = new ExpectedDistributiveWindow(sum2Window2Id, 300, childId);
+        ExpectedAlgebraicWindow expectedAvg1Window2 = new ExpectedAlgebraicWindow(avg1Window2Id, new PartialAverage(300, 10), childId);
+        ExpectedAlgebraicWindow expectedAvg2Window2 = new ExpectedAlgebraicWindow(avg2Window2Id, new PartialAverage(300, 10), childId);
+        ExpectedHolisticWindow expectedMed11Window2 = new ExpectedHolisticWindow(med11Window2Id, Arrays.asList(stream0Slices.get(1)), childId, false);
+        ExpectedHolisticWindow expectedMed12Window2 = new ExpectedHolisticWindow(med12Window2Id, Arrays.asList(), childId, false);
+        ExpectedHolisticWindow expectedMed21Window2 = new ExpectedHolisticWindow(med21Window2Id, Arrays.asList(stream1Slices.get(1)), childId);
+        ExpectedHolisticWindow expectedMed22Window2 = new ExpectedHolisticWindow(med22Window2Id, Arrays.asList(), childId);
+
+
+        List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
+                DistributiveWindowMatcher.equalsWindow(expectedSum1Window1),
+                DistributiveWindowMatcher.equalsWindow(expectedSum2Window1),
+                AlgebraicWindowMatcher.equalsWindow(expectedAvg1Window1),
+                AlgebraicWindowMatcher.equalsWindow(expectedAvg2Window1),
+                HolisticWindowMatcher.equalsWindow(expectedMed11Window1),
+                HolisticWindowMatcher.equalsWindow(expectedMed12Window1),
+                HolisticWindowMatcher.equalsWindow(expectedMed21Window1),
+                HolisticWindowMatcher.equalsWindow(expectedMed22Window1),
+                DistributiveWindowMatcher.equalsWindow(expectedSum1Window2),
+                DistributiveWindowMatcher.equalsWindow(expectedSum2Window2),
+                AlgebraicWindowMatcher.equalsWindow(expectedAvg1Window2),
+                AlgebraicWindowMatcher.equalsWindow(expectedAvg2Window2),
+                HolisticWindowMatcher.equalsWindow(expectedMed11Window2),
+                HolisticWindowMatcher.equalsWindow(expectedMed12Window2),
+                HolisticWindowMatcher.equalsWindow(expectedMed21Window2),
+                HolisticWindowMatcher.equalsWindow(expectedMed22Window2)
+        );
+
+        List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
+        for (int i = 0; i < windowMatchers.size(); i++) {
+            windowStrings.add(receiveWindow(rootWindowReceiver));
+        }
+
+        assertThat(windowStrings, containsInAnyOrder(windowMatchers));
+
+        assertChildEnd();
+        assertNoFinalThreadException(child);
     }
 }

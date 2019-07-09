@@ -39,6 +39,9 @@ public class DistributedUtils {
     public static final String ALGEBRAIC_STRING = "ALG";
     public static final String HOLISTIC_STRING = "HOL";
 
+    public static final String WINDOW_COMPLETE = "C";
+    public static final String WINDOW_PARTIAL = "P";
+
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
             return integerToByte((Integer) object);
@@ -139,7 +142,7 @@ public class DistributedUtils {
     }
 
 
-    public static String childlessFunctionWindowIdToString(FunctionWindowAggregateId functionWindowAggId) {
+    public static String functionWindowIdToString(FunctionWindowAggregateId functionWindowAggId) {
         WindowAggregateId windowId = functionWindowAggId.getWindowId();
 
         List<Number> values = new ArrayList<>();
@@ -147,17 +150,21 @@ public class DistributedUtils {
         values.add(windowId.getWindowStartTimestamp());
         values.add(windowId.getWindowEndTimestamp());
         values.add(functionWindowAggId.getFunctionId());
+        values.add(functionWindowAggId.getChildId());
+        values.add(functionWindowAggId.getStreamId());
 
         List<String> stringValues = values.stream().map(String::valueOf).collect(Collectors.toList());
         return String.join(",", stringValues);
     }
 
-    public static FunctionWindowAggregateId stringToChildlessFunctionWindowAggId(String rawString) {
+    public static FunctionWindowAggregateId stringToFunctionWindowAggId(String rawString) {
         List<Long> windowIdSplit = stringToLongs(rawString);
-        assert windowIdSplit.size() == 4;
+        assert windowIdSplit.size() == 6;
         WindowAggregateId windowId = new WindowAggregateId(windowIdSplit.get(0), windowIdSplit.get(1), windowIdSplit.get(2));
         int functionId = Math.toIntExact(windowIdSplit.get(3));
-        return new FunctionWindowAggregateId(windowId, functionId);
+        int childId = Math.toIntExact(windowIdSplit.get(4));
+        int streamId = Math.toIntExact(windowIdSplit.get(5));
+        return new FunctionWindowAggregateId(windowId, functionId, childId, streamId);
     }
 
     public static List<Long> stringToLongs(String rawString) {
@@ -169,7 +176,7 @@ public class DistributedUtils {
         return longs;
     }
 
-    public static String slicesToString(List<? extends Slice> slices) {
+    public static String slicesToString(List<? extends Slice> slices, int functionId) {
         List<String> allSlices = new ArrayList<>(slices.size());
 
         for (Slice slice : slices) {
@@ -184,7 +191,7 @@ public class DistributedUtils {
             sb.append(slice.getTLast());
             sb.append(';');
 
-            List<Integer> values = aggValues.get(0);
+            List<Integer> values = aggValues.get(functionId);
             List<String> valueStrings = values.stream().map(String::valueOf).collect(Collectors.toList());
             sb.append(String.join(",", valueStrings));
             allSlices.add(sb.toString());
@@ -192,6 +199,11 @@ public class DistributedUtils {
 
         return String.join("/", allSlices);
     }
+
+    public static String slicesToString(List<? extends Slice> slices) {
+        return slicesToString(slices, 0);
+    }
+
 
     public static List<DistributedSlice> slicesFromString(String slicesString) {
         List<DistributedSlice> slices = new ArrayList<>();

@@ -115,6 +115,7 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
         receivedWindows.remove(functionWindowId);
         windowAggregates.remove(functionWindowId);
 
+        finalWindow.setWindowComplete();
         return finalWindow;
     }
 

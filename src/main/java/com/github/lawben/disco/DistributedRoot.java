@@ -1,13 +1,12 @@
 package com.github.lawben.disco;
 
+import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
+
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.DistributedSlice;
-import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
-import com.github.lawben.disco.aggregation.HolisticNoopFunction;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
@@ -112,19 +111,17 @@ public class DistributedRoot implements Runnable {
             int childId = Integer.valueOf(childIdOrStreamEnd);
             String rawFunctionWindowAggId = this.windowPuller.recvStr(ZMQ.DONTWAIT);
             String aggregateType = this.windowPuller.recvStr(ZMQ.DONTWAIT);
+            boolean windowIsComplete = this.windowPuller.recvStr(ZMQ.DONTWAIT).equals(WINDOW_COMPLETE);
             String rawPreAggregate = this.windowPuller.recvStr(ZMQ.DONTWAIT);
 
-            FunctionWindowAggregateId childlessFunctionWindowAggId =
-                    DistributedUtils.stringToChildlessFunctionWindowAggId(rawFunctionWindowAggId);
-
             FunctionWindowAggregateId functionWindowAggId =
-                    new FunctionWindowAggregateId(childlessFunctionWindowAggId, childId);
+                    DistributedUtils.stringToFunctionWindowAggId(rawFunctionWindowAggId);
 
-            this.processPreAggregateWindow(functionWindowAggId, aggregateType, rawPreAggregate);
+            this.processPreAggregateWindow(functionWindowAggId, aggregateType, rawPreAggregate, windowIsComplete);
         }
     }
 
-    private void processPreAggregateWindow(FunctionWindowAggregateId functionWindowId, String aggregateType, String rawPreAggregate) {
+    private void processPreAggregateWindow(FunctionWindowAggregateId functionWindowId, String aggregateType, String rawPreAggregate, boolean windowIsComplete) {
         final Optional<FunctionWindowAggregateId> triggerId;
         final WindowMerger currentMerger;
 
@@ -144,7 +141,8 @@ public class DistributedRoot implements Runnable {
                 break;
             case DistributedUtils.HOLISTIC_STRING:
                 List<DistributedSlice> slices = DistributedUtils.slicesFromString(rawPreAggregate);
-                triggerId = this.holisticWindowMerger.processPreAggregate(slices, functionWindowId);
+                this.holisticWindowMerger.processPreAggregate(slices, functionWindowId);
+                triggerId = this.holisticWindowMerger.checkWindowComplete(functionWindowId, windowIsComplete);
                 currentMerger = this.holisticWindowMerger;
                 break;
             default:
@@ -159,7 +157,7 @@ public class DistributedRoot implements Runnable {
         Integer finalAggregate = currentMerger.lowerFinalValue(finalWindow);
         String finalAggregateString = String.valueOf(finalAggregate);
 
-        this.resultPusher.sendMore(DistributedUtils.childlessFunctionWindowIdToString(functionWindowId));
+        this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(functionWindowId));
         this.resultPusher.send(finalAggregateString, ZMQ.DONTWAIT);
     }
 

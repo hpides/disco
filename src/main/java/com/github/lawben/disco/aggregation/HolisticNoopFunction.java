@@ -4,7 +4,7 @@ import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import java.util.List;
 
-public class HolisticNoopFunction implements ReduceAggregateFunction<List<Slice>> {
+public class HolisticNoopFunction implements ReduceAggregateFunction<List<? extends Slice>> {
     private final HolisticAggregateFunction originalFn;
 
     public HolisticNoopFunction(HolisticAggregateFunction originalFn) {
@@ -20,7 +20,7 @@ public class HolisticNoopFunction implements ReduceAggregateFunction<List<Slice>
     }
 
     @Override
-    public List<Slice> combine(List<Slice> partialAggregate1, List<Slice> partialAggregate2) {
+    public List<? extends Slice> combine(List<? extends Slice> partialAggregate1, List<? extends Slice> partialAggregate2) {
         throw new RuntimeException("combine not supported");
     }
 }

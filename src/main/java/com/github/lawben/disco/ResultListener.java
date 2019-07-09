@@ -1,7 +1,6 @@
 package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import de.tub.dima.scotty.core.WindowAggregateId;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -31,7 +30,7 @@ public class ResultListener implements Runnable {
                 final String rawAggregatedResult = resultListener.recvStr(ZMQ.DONTWAIT);
 
                 final FunctionWindowAggregateId functionWindoAggId =
-                        DistributedUtils.stringToChildlessFunctionWindowAggId(rawAggIdOrStreamEnd);
+                        DistributedUtils.stringToFunctionWindowAggId(rawAggIdOrStreamEnd);
 
                 final Integer finalAggregate = Integer.valueOf(rawAggregatedResult);
                 System.out.println(this.resultString("FINAL WINDOW: " + functionWindoAggId + " --> " + finalAggregate));
