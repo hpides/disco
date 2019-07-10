@@ -45,7 +45,7 @@ public class DistributedSlice implements Slice {
 
     @Override
     public AggregateState getAggState() {
-        List<AggregateFunction> aggFn = Collections.singletonList(new HolisticNoopFunction());
+        List<AggregateFunction> aggFn = Collections.singletonList(new HolisticMergeWrapper());
         AggregateState<List<Integer>> state = new AggregateState<>(new MemoryStateFactory(), aggFn);
         state.addElement(this.values);
         return state;

@@ -13,6 +13,7 @@ import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -141,8 +142,7 @@ public class DistributedRoot implements Runnable {
                 break;
             case DistributedUtils.HOLISTIC_STRING:
                 List<DistributedSlice> slices = DistributedUtils.slicesFromString(rawPreAggregate);
-                this.holisticWindowMerger.processPreAggregate(slices, functionWindowId);
-                triggerId = this.holisticWindowMerger.checkWindowComplete(functionWindowId, windowIsComplete);
+                triggerId = this.holisticWindowMerger.processPreAggregateAndCheckComplete(slices, functionWindowId, windowIsComplete);
                 currentMerger = this.holisticWindowMerger;
                 break;
             default:
@@ -153,11 +153,12 @@ public class DistributedRoot implements Runnable {
             return;
         }
 
-        AggregateWindow finalWindow = currentMerger.triggerFinalWindow(triggerId.get());
+        FunctionWindowAggregateId finalWindowId = triggerId.get();
+        AggregateWindow finalWindow = currentMerger.triggerFinalWindow(finalWindowId);
         Integer finalAggregate = currentMerger.lowerFinalValue(finalWindow);
         String finalAggregateString = String.valueOf(finalAggregate);
 
-        this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(functionWindowId));
+        this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(finalWindowId));
         this.resultPusher.send(finalAggregateString, ZMQ.DONTWAIT);
     }
 

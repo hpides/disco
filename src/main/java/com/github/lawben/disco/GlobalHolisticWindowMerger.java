@@ -6,8 +6,7 @@ import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.FunctionWindowId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
-import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
-import com.github.lawben.disco.aggregation.HolisticNoopFunction;
+import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -26,26 +25,33 @@ import java.util.Optional;
 public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<DistributedSlice>> {
     private final StateFactory stateFactory;
     private final Map<ChildStreamId, List<DistributedSlice>> childSlices;
-    private final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
     private final List<AggregateFunction> aggFns;
 
     public GlobalHolisticWindowMerger(int numChildren, List<Window> windows, List<AggregateFunction> aggFunctions) {
-        super(numChildren);
+        super(numChildren, windows, aggFunctions);
         this.aggFns = aggFunctions;
         this.stateFactory = new MemoryStateFactory();
         this.childSlices = new HashMap<>();
-        this.currentSessionWindowIds = this.prepareSessionWindows(windows, aggFunctions);
+    }
+
+    public Optional<FunctionWindowAggregateId> processPreAggregateAndCheckComplete(List<DistributedSlice> preAggregate, FunctionWindowAggregateId functionWindowAggId, boolean windowIsComplete) {
+        Optional<FunctionWindowAggregateId> triggerId = this.processPreAggregate(preAggregate, functionWindowAggId);
+
+        if (triggerId.isPresent()) {
+            return triggerId;
+        }
+
+        if (!this.isSessionWindow(functionWindowAggId) && windowIsComplete) {
+            return this.checkWindowTrigger(functionWindowAggId);
+        }
+
+        return Optional.empty();
     }
 
     @Override
     public Optional<FunctionWindowAggregateId> processPreAggregate(List<DistributedSlice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
-        final long windowId = functionWindowAggId.getWindowId().getWindowId();
-        final int functionId = functionWindowAggId.getFunctionId();
-        final FunctionWindowId functionWindowId = new FunctionWindowId(windowId, functionId);
-
-        // Process session windows
-        if (currentSessionWindowIds.containsKey(functionWindowId)) {
-            throw new RuntimeException("holistic session not supported");
+        if (this.isSessionWindow(functionWindowAggId)) {
+            return this.processSessionWindow(preAggregate, functionWindowAggId);
         }
 
         ChildStreamId childStreamId = ChildStreamId.fromFunctionWindowId(functionWindowAggId);
@@ -58,6 +64,11 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
 
     @Override
     public DistributedAggregateWindowState<List<DistributedSlice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+        if (this.isSessionWindow(functionWindowId)) {
+            AggregateState<List<DistributedSlice>> windowAgg = this.windowAggregates.remove(functionWindowId);
+            return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
+        }
+
         WindowAggregateId windowId = functionWindowId.getWindowId();
         final long windowStart = windowId.getWindowStartTimestamp();
         final long windowEnd = windowId.getWindowEndTimestamp();
@@ -77,8 +88,8 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
             }
         }
 
-        List<AggregateFunction> dummyFn = Collections.singletonList(this.aggFns.get(functionWindowId.getFunctionId()));
-        AggregateState<List<DistributedSlice>> windowAgg = new AggregateState<>(this.stateFactory, dummyFn);
+        List<AggregateFunction> noOpFn = Collections.singletonList(this.aggFns.get(functionWindowId.getFunctionId()));
+        AggregateState<List<DistributedSlice>> windowAgg = new AggregateState<>(this.stateFactory, noOpFn);
         windowAgg.addElement(finalSlices);
         return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
     }
@@ -98,20 +109,13 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
             allValues.addAll(slice.getValues());
         }
 
-        HolisticNoopFunction holisticMergeFunction = (HolisticNoopFunction) finalWindow.getAggregateFunctions().get(0);
+        HolisticMergeWrapper holisticMergeFunction = (HolisticMergeWrapper) finalWindow.getAggregateFunctions().get(0);
         HolisticAggregateFunction originalFn = holisticMergeFunction.getOriginalFn();
         return (Integer) originalFn.lower(allValues);
     }
 
     @Override
     public List<AggregateFunction> getAggregateFunctions() {
-        return new ArrayList<>(Collections.singletonList(new HolisticAggregateWrapper()));
-    }
-
-    public Optional<FunctionWindowAggregateId> checkWindowComplete(FunctionWindowAggregateId functionWindowId, boolean windowIsComplete) {
-        if (windowIsComplete) {
-            return this.checkWindowTrigger(functionWindowId);
-        }
-        return Optional.empty();
+        return new ArrayList<>(Collections.singletonList(new HolisticMergeWrapper()));
     }
 }

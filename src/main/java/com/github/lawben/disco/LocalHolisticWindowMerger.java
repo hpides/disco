@@ -2,7 +2,7 @@ package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.HolisticNoopFunction;
+import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
@@ -27,15 +27,15 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
     private final Set<Long> sessionWindowIds;
 
     public LocalHolisticWindowMerger(int numStreams, List<Window> windows) {
-        super(numStreams);
+        super(numStreams, windows, Collections.singletonList(new HolisticMergeWrapper()));
         this.stateFactory = new MemoryStateFactory();
         this.seenSlices = new HashMap<>();
         this.aggregates = new HashMap<>();
 
         this.sessionWindowIds = new HashSet<>();
-        for (int windowId = 0; windowId < windows.size(); windowId++) {
-            if (windows.get(windowId) instanceof SessionWindow) {
-                this.sessionWindowIds.add((long) windowId);
+        for (Window window : windows) {
+            if (window instanceof SessionWindow) {
+                this.sessionWindowIds.add(window.getWindowId());
             }
         }
     }
@@ -57,7 +57,7 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
             seenStreamSlices.add(slice.getTStart());
         }
 
-        List<AggregateFunction> dummyFn = Collections.singletonList(new HolisticNoopFunction());
+        List<AggregateFunction> dummyFn = Collections.singletonList(new HolisticMergeWrapper());
         AggregateState<List<Slice>> windowAgg = new AggregateState<>(this.stateFactory, dummyFn);
         windowAgg.addElement(newSlices);
 
@@ -84,10 +84,5 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
     @Override
     public Integer lowerFinalValue(AggregateWindow finalWindow) {
         throw new RuntimeException(this.getClass().getSimpleName() + " does not support lowerFinalValue()");
-    }
-
-    @Override
-    public List<AggregateFunction> getAggregateFunctions() {
-        return new ArrayList<>(Collections.singletonList(new HolisticNoopFunction()));
     }
 }

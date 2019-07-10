@@ -4,21 +4,18 @@ import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
-import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
-import com.github.lawben.disco.aggregation.HolisticNoopFunction;
+import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import com.github.lawben.disco.aggregation.MedianAggregateFunction;
 import com.github.lawben.disco.aggregation.SumAggregationFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
-import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
-import de.tub.dima.scotty.slicing.slice.LazySlice;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -275,7 +272,7 @@ public class DistributedUtils {
                     if (aggFn instanceof AlgebraicAggregateFunction) {
                         return new AlgebraicMergeFunction((AlgebraicAggregateFunction) aggFn);
                     } else if(aggFn instanceof HolisticAggregateFunction) {
-                        return new HolisticNoopFunction((HolisticAggregateFunction) aggFn);
+                        return new HolisticMergeWrapper((HolisticAggregateFunction) aggFn);
                     } else {
                         return aggFn;
                     }

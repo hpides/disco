@@ -5,21 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class HolisticAggregateWrapper<InputType> implements AggregateFunction<InputType, List<InputType>, List<InputType>> {
-    private final HolisticAggregateFunction originalFn;
-
-    public HolisticAggregateWrapper(HolisticAggregateFunction originalFn) {
-        this.originalFn = originalFn;
-    }
-
-    public HolisticAggregateWrapper() {
-        this(null);
-    }
-
-    public HolisticAggregateFunction getOriginalFn() {
-        return originalFn;
-    }
-
+// Used in child to process single events.
+public class HolisticAggregateHelper<InputType> implements AggregateFunction<InputType, List<InputType>, List<InputType>> {
     @Override
     public List<InputType> lift(InputType inputTuple) {
         return new ArrayList<>(Collections.singleton(inputTuple));
@@ -37,3 +24,4 @@ public class HolisticAggregateWrapper<InputType> implements AggregateFunction<In
         return aggregate;
     }
 }
+

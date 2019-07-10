@@ -30,4 +30,9 @@ public class ZMQPushMock extends ZMQMock {
 
         throw new IllegalStateException("No more messages to send");
     }
+
+    public void sendNext(String... msgParts) {
+        addMessage(msgParts);
+        sendNext();
+    }
 }

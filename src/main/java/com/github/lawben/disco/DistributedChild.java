@@ -11,8 +11,8 @@ import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
-import com.github.lawben.disco.aggregation.HolisticAggregateWrapper;
-import com.github.lawben.disco.aggregation.HolisticNoopFunction;
+import com.github.lawben.disco.aggregation.HolisticAggregateHelper;
+import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -123,7 +123,7 @@ public class DistributedChild implements Runnable {
 
             for (AggregateFunction aggFn : windowingConfig.getAggregateFunctions()) {
                 if (aggFn instanceof HolisticAggregateFunction) {
-                    AggregateFunction wrapperAggFn = new HolisticAggregateWrapper();
+                    AggregateFunction wrapperAggFn = new HolisticAggregateHelper();
                     childSlicer.addWindowFunction(wrapperAggFn);
                 } else {
                     childSlicer.addWindowFunction(aggFn);
@@ -259,7 +259,7 @@ public class DistributedChild implements Runnable {
                 AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(functionId);
                 triggerId = this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
                 currentMerger = this.algebraicWindowMerger;
-            } else if (aggregateFunction instanceof HolisticAggregateWrapper) {
+            } else if (aggregateFunction instanceof HolisticAggregateHelper) {
                 List<Slice> slices = preAggWindow.getSlices();
                 triggerId = this.localHolisticWindowMerger.processPreAggregate(slices, functionWindowId);
                 currentMerger = this.localHolisticWindowMerger;
@@ -314,7 +314,7 @@ public class DistributedChild implements Runnable {
             serializedAgg.add(DistributedUtils.ALGEBRAIC_STRING);
             AlgebraicPartial partial = (AlgebraicPartial) aggValue;
             serializedAgg.add(partial.asString());
-        } else if (aggFn instanceof HolisticNoopFunction) {
+        } else if (aggFn instanceof HolisticMergeWrapper) {
             serializedAgg.add(DistributedUtils.HOLISTIC_STRING);
             List<Slice> slices = (List<Slice>) aggValue;
             // Add functionId as slice might have multiple states

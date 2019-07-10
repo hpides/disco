@@ -783,4 +783,100 @@ public class DistributedChildTest {
         assertChildEnd();
         assertNoFinalThreadException(child);
     }
+
+    @Test
+    void testTwoStreamsSessionMedian() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("100", "SESSION,100,0", "MEDIAN");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        DistributedChild child = runDefaultChild(rootInitPort, rootWindowPort, 2);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        registerStream(0);
+        registerStream(1);
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        int streamId1 = 0;
+        int streamId2 = 1;
+        ZMQPushMock streamSender0 = streamSenders.get(streamId1);
+        ZMQPushMock streamSender1 = streamSenders.get(streamId2);
+
+        String[] events0 = {
+                "0,0,1", "0,1,2", "0,4,3", "0,5,4", "0,6,5", "0,10,6",
+                "0,120,0", "0,140,5", "0,170,10",
+                "0,400,0", "0,405,5", "0,410,15",
+                "0,550,100", "0,560,0"
+        };
+
+        String[] events1 = {
+                "1,0,1", "1,15,2", "1,30,3",
+                "1,460,15", "1,500,5", "1,590,20",
+                "1,700,100", "1,750,0"
+        };
+
+        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
+                .flatMap(Collection::stream)
+                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
+                .collect(Collectors.toList());
+
+        for (String event : sortedEvents) {
+            if (event.startsWith("0")) {
+                streamSender0.sendNext(event);
+            } else {
+                streamSender1.sendNext(event);
+            }
+            Thread.sleep(100);
+        }
+
+        streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
+        streamSender0.sendNext();
+
+        streamSender1.addMessage(DistributedUtils.STREAM_END, "1");
+        streamSender1.sendNext();
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        List<DistributedSlice> stream0Slices = Arrays.asList(
+                new DistributedSlice(  0,  10, Arrays.asList(1, 2, 3, 4, 5, 6)),
+                new DistributedSlice(120, 170, Arrays.asList(0, 5, 10)),
+                new DistributedSlice(400, 410, Arrays.asList(0, 5, 15)),
+                new DistributedSlice(550, 560, Arrays.asList(100, 0))
+        );
+
+        List<DistributedSlice> stream1Slices = Arrays.asList(
+                new DistributedSlice(  0,  30, Arrays.asList( 1, 2,  3)),
+                new DistributedSlice(460, 590, Arrays.asList(15, 5, 20)),
+                new DistributedSlice(700, 750, Arrays.asList(100, 0))
+        );
+
+        List<ExpectedHolisticWindow> expectedWindows = Arrays.asList(
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 110), 0, childId, streamId1), Arrays.asList(stream0Slices.get(0)), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 130), 0, childId, streamId2), Arrays.asList(stream1Slices.get(0)), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 120, 270), 0, childId, streamId1), Arrays.asList(stream0Slices.get(1)), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 510), 0, childId, streamId1), Arrays.asList(stream0Slices.get(2)), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 460, 690), 0, childId, streamId2), Arrays.asList(stream1Slices.get(1)), childId),
+                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 550, 660), 0, childId, streamId1), Arrays.asList(stream0Slices.get(3)), childId)
+        );
+
+        List<Matcher<? super List<String>>> windowMatchers = expectedWindows.stream()
+                .map(HolisticWindowMatcher::equalsWindow).collect(Collectors.toList());
+
+        List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
+        for (int i = 0; i < windowMatchers.size(); i++) {
+            windowStrings.add(receiveWindow(rootWindowReceiver));
+        }
+
+        assertThat(windowStrings, containsInAnyOrder(windowMatchers));
+
+        assertChildEnd();
+        assertNoFinalThreadException(child);
+    }
 }

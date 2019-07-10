@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.github.lawben.disco.DistributedRoot;
 import com.github.lawben.disco.DistributedUtils;
@@ -502,7 +503,7 @@ public class DistributedRootTest {
     void testTwoChildrenMedianAggregate() throws Exception {
         int numChildren = 2;
         DistributedRoot root = runRoot(numChildren,
-                Collections.singletonList("SLIDING,100,501"), Collections.singletonList("MEDIAN"));
+                Collections.singletonList("SLIDING,100,50"), Collections.singletonList("MEDIAN"));
 
         ZMQPushMock child1 = children.get(0);
         ZMQPushMock child2 = children.get(1);
@@ -548,14 +549,14 @@ public class DistributedRootTest {
         child2.sendNext();
 
         List<String> result1 = resultListener.receiveNext(2);
-        List<String> result2 = resultListener.receiveNext(2);
-        List<String> result3 = resultListener.receiveNext(2);
         assertFunctionWindowIdStringEquals(result1.get(0), window1);
         assertThat(result1.get(1), equalTo("3"));
 
+        List<String> result2 = resultListener.receiveNext(2);
         assertFunctionWindowIdStringEquals(result2.get(0), window2);
         assertThat(result2.get(1), equalTo("10"));
 
+        List<String> result3 = resultListener.receiveNext(2);
         assertFunctionWindowIdStringEquals(result3.get(0), window3);
         assertThat(result3.get(1), equalTo("5"));
 
@@ -687,6 +688,69 @@ public class DistributedRootTest {
         List<String> result2 = resultListener.receiveNext(2);
         assertFunctionWindowIdStringEquals(result2.get(0), windowId2);
         assertThat(result2.get(1), equalTo("2"));
+
+        assertRootEnd();
+        assertNoFinalThreadException(root);
+    }
+
+    @Test
+    void testTwoChildrenSessionMedian() throws Exception {
+        int numChildren = 2;
+        DistributedRoot root = runRoot(numChildren,
+                Collections.singletonList("SESSION,100,1"), Collections.singletonList("MEDIAN"));
+
+        ZMQPushMock child1 = children.get(0);
+        ZMQPushMock child2 = children.get(1);
+
+        int childId1 = 1;
+        int childId2 = 2;
+
+        FunctionWindowAggregateId windowId11 = new FunctionWindowAggregateId(new WindowAggregateId(1,   0, 110), 0, childId1);
+        FunctionWindowAggregateId windowId12 = new FunctionWindowAggregateId(new WindowAggregateId(1, 120, 270), 0, childId1);
+        FunctionWindowAggregateId windowId13 = new FunctionWindowAggregateId(new WindowAggregateId(1, 400, 510), 0, childId1);
+        FunctionWindowAggregateId windowId14 = new FunctionWindowAggregateId(new WindowAggregateId(1, 550, 660), 0, childId1);
+
+        FunctionWindowAggregateId windowId21 = new FunctionWindowAggregateId(new WindowAggregateId(1,   0, 130), 0, childId2);
+        FunctionWindowAggregateId windowId22 = new FunctionWindowAggregateId(new WindowAggregateId(1, 460, 690), 0, childId2);
+        FunctionWindowAggregateId windowId23 = new FunctionWindowAggregateId(new WindowAggregateId(1, 700, 850), 0, childId2);
+
+        DistributedSlice slice11a = new DistributedSlice(  0,   4, Arrays.asList(1, 2,  3));
+        DistributedSlice slice11b = new DistributedSlice(  5,  10, Arrays.asList(4, 5,  6));
+        DistributedSlice slice12 =  new DistributedSlice(120, 170, Arrays.asList(0, 5, 10));
+        DistributedSlice slice13 =  new DistributedSlice(400, 410, Arrays.asList(0, 5, 15));
+        DistributedSlice slice14 =  new DistributedSlice(550, 560, Arrays.asList(100, 0));
+
+        DistributedSlice slice21 =  new DistributedSlice(  0,  30, Arrays.asList( 1, 2,  3));
+        DistributedSlice slice22 =  new DistributedSlice(460, 590, Arrays.asList(15, 5, 20));
+        DistributedSlice slice23 =  new DistributedSlice(700, 750, Arrays.asList(100, 0));
+
+        child1.sendNext("1", functionWindowIdToString(windowId11), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice11a, slice11b)));
+        Thread.sleep(100);
+        child2.sendNext("2", functionWindowIdToString(windowId21), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice21)));
+        Thread.sleep(100);
+        child1.sendNext("1", functionWindowIdToString(windowId12), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice12)));
+        Thread.sleep(100);
+        child1.sendNext("1", functionWindowIdToString(windowId13), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice13)));
+        Thread.sleep(100);
+        child2.sendNext("2", functionWindowIdToString(windowId22), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice22)));
+        Thread.sleep(100);
+        child1.sendNext("1", functionWindowIdToString(windowId14), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice14)));
+        Thread.sleep(100);
+        child1.sendNext(STREAM_END, "1");
+        Thread.sleep(100);
+        child2.sendNext("2", functionWindowIdToString(windowId23), HOLISTIC_STRING, WINDOW_COMPLETE, slicesToString(Arrays.asList(slice23)));
+        Thread.sleep(100);
+        child2.sendNext(STREAM_END, "2");
+
+        List<String> result1 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId1 = new FunctionWindowAggregateId(new WindowAggregateId(1, 0, 270), 0);
+        assertFunctionWindowIdStringEquals(result1.get(0), expectedFunctionWindowId1);
+        assertThat(result1.get(1), equalTo("3"));
+
+        List<String> result2 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId2 = new FunctionWindowAggregateId(new WindowAggregateId(1, 400, 690), 0);
+        assertFunctionWindowIdStringEquals(result2.get(0), expectedFunctionWindowId2);
+        assertThat(result2.get(1), equalTo("15"));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
