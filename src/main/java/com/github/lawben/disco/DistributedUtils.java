@@ -39,6 +39,8 @@ public class DistributedUtils {
     public static final String WINDOW_COMPLETE = "C";
     public static final String WINDOW_PARTIAL = "P";
 
+    public static final String EVENT_STRING = "E";
+
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
             return integerToByte((Integer) object);
@@ -92,6 +94,16 @@ public class DistributedUtils {
         return "ipc://" + path;
     }
 
+    public static WindowMeasure windowMeasureFromString(String measureString) {
+        if (measureString.equals("COUNT")) {
+            return WindowMeasure.Count;
+        } else if (measureString.equals("TIME")) {
+            return WindowMeasure.Time;
+        }
+
+        throw new IllegalArgumentException("Unknown measure: " + measureString);
+    }
+
     public static Window buildWindowFromString(String windowString) {
         String[] windowDetails = windowString.split(",");
         assert windowDetails.length > 0;
@@ -99,15 +111,21 @@ public class DistributedUtils {
             case "TUMBLING": {
                 assert windowDetails.length >= 2;
                 final long size = Integer.parseInt(windowDetails[1]);
-                final long windowId = windowDetails.length == 3 ? Integer.parseInt(windowDetails[2]) : -1;
-                return new TumblingWindow(WindowMeasure.Time, size, windowId);
+                final long windowId = windowDetails.length >= 3 ? Integer.parseInt(windowDetails[2]) : -1;
+                final WindowMeasure measure = windowDetails.length >= 4
+                        ? windowMeasureFromString(windowDetails[3])
+                        : WindowMeasure.Time;
+                return new TumblingWindow(measure, size, windowId);
             }
             case "SLIDING": {
                 assert windowDetails.length >= 3;
                 final long size = Integer.parseInt(windowDetails[1]);
                 final long slide = Integer.parseInt(windowDetails[2]);
                 final long windowId = windowDetails.length == 4 ? Integer.parseInt(windowDetails[3]) : -1;
-                return new SlidingWindow(WindowMeasure.Time, size, slide, windowId);
+                final WindowMeasure measure = windowDetails.length >= 5
+                        ? windowMeasureFromString(windowDetails[4])
+                        : WindowMeasure.Time;
+                return new SlidingWindow(measure, size, slide, windowId);
             }
             case "SESSION": {
                 assert windowDetails.length >= 2;

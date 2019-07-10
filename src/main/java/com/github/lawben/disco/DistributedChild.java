@@ -1,6 +1,7 @@
 package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
+import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
 
@@ -17,10 +18,12 @@ import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
+import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import de.tub.dima.scotty.slicing.state.AggregateWindowState;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -57,6 +61,8 @@ public class DistributedChild implements Runnable {
     private long watermarkMs;
     private Set<Integer> streamEnds;
 
+    private boolean hasCountWindow;
+
     public DistributedChild(String rootIp, int rootControllerPort, int rootWindowPort, int streamInputPort, int childId, int numStreams) {
         this.rootIp = rootIp;
         this.rootControllerPort = rootControllerPort;
@@ -67,6 +73,7 @@ public class DistributedChild implements Runnable {
         this.streamEnds = new HashSet<>(this.numStreams);
         this.slicerPerStream = new HashMap<>();
         this.context = new ZContext();
+        this.hasCountWindow = false;
     }
 
     @Override
@@ -79,13 +86,15 @@ public class DistributedChild implements Runnable {
         // 1.1. receive commands from root (i.e. windows, agg. functions, etc.)
         WindowingConfig config = this.registerAtRoot();
 
-        if (config.getWindows().isEmpty()) {
+        if (config.getTimeWindows().isEmpty() && config.getCountWindows().isEmpty()) {
             throw new RuntimeException(this.childIdString("Did not receive any windows from root!"));
         }
 
         if (config.getAggregateFunctions().isEmpty()) {
             throw new RuntimeException(this.childIdString("Did not receive any aggFns from root!"));
         }
+
+        this.hasCountWindow = !config.getCountWindows().isEmpty();
 
         // 2. register streams
         boolean registerSuccess = this.registerStreams(config);
@@ -117,7 +126,7 @@ public class DistributedChild implements Runnable {
             System.out.println(this.childIdString("Registering stream " + streamId));
 
             DistributedChildSlicer<Integer> childSlicer = new DistributedChildSlicer<>(stateFactory);
-            for (Window window : windowingConfig.getWindows()) {
+            for (Window window : windowingConfig.getTimeWindows()) {
                 childSlicer.addWindowAssigner(window);
             }
 
@@ -150,7 +159,7 @@ public class DistributedChild implements Runnable {
         List<AggregateFunction> functions = windowingConfig.getAggregateFunctions();
         List<AggregateFunction> stateAggFunctions = DistributedUtils.convertAggregateFunctions(functions);
 
-        List<Window> windows = windowingConfig.getWindows();
+        List<Window> windows = windowingConfig.getTimeWindows();
         this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numStreams, windows, stateAggFunctions);
         this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numStreams, windows, stateAggFunctions);
         this.localHolisticWindowMerger = new LocalHolisticWindowMerger(this.numStreams, windows);
@@ -167,12 +176,12 @@ public class DistributedChild implements Runnable {
         long numEvents = 0;
 
         while (!interrupt) {
-            String streamIdOrStreamEnd = streamInput.recvStr();
-            if (streamIdOrStreamEnd == null) {
+            String eventOrStreamEnd = streamInput.recvStr();
+            if (eventOrStreamEnd == null) {
                 continue;
             }
 
-            if (streamIdOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
+            if (eventOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
                 int streamId = Integer.valueOf(streamInput.recvStr(ZMQ.DONTWAIT));
                 System.out.println(this.childIdString("Stream end from STREAM-" + streamId));
                 this.streamEnds.add(streamId);
@@ -189,7 +198,11 @@ public class DistributedChild implements Runnable {
                 continue;
             }
 
-            final String[] eventParts = streamIdOrStreamEnd.split(",");
+            if (this.hasCountWindow()) {
+                this.sendToRoot(Arrays.asList(EVENT_STRING, eventOrStreamEnd), this.windowPusher);
+            }
+
+            final String[] eventParts = eventOrStreamEnd.split(",");
             final int streamId = Integer.parseInt(eventParts[0]);
             final long eventTimestamp = Long.valueOf(eventParts[1]);
             final int eventValue = Integer.valueOf(eventParts[2]);
@@ -326,11 +339,11 @@ public class DistributedChild implements Runnable {
         return serializedAgg;
     }
 
-    private void sendToRoot(List<String> serializedAggWindow, ZMQ.Socket sender) {
-        for (int i = 0; i < serializedAggWindow.size() - 1; i++) {
-            sender.sendMore(serializedAggWindow.get(i));
+    private void sendToRoot(List<String> serializedMessage, ZMQ.Socket sender) {
+        for (int i = 0; i < serializedMessage.size() - 1; i++) {
+            sender.sendMore(serializedMessage.get(i));
         }
-        sender.send(serializedAggWindow.get(serializedAggWindow.size() - 1), ZMQ.DONTWAIT);
+        sender.send(serializedMessage.get(serializedMessage.size() - 1), ZMQ.DONTWAIT);
     }
 
     private WindowingConfig registerAtRoot() {
@@ -348,9 +361,18 @@ public class DistributedChild implements Runnable {
         this.windowPusher = this.context.createSocket(SocketType.PUSH);
         this.windowPusher.connect(DistributedUtils.buildTcpUrl(this.rootIp, this.rootWindowPort));
 
-        List<Window> windows = this.createWindowsFromString(windowString);
+        List<Window> allWindows = this.createWindowsFromString(windowString);
         List<AggregateFunction> aggregateFunctions = this.createAggFunctionsFromString(aggString);
-        return new WindowingConfig(windows, aggregateFunctions);
+
+        List<Window> timeWindows = allWindows.stream()
+                .filter(w -> w.getWindowMeasure() == WindowMeasure.Time)
+                .collect(Collectors.toList());
+
+        List<Window> countWindows = allWindows.stream()
+                .filter(w -> w.getWindowMeasure() == WindowMeasure.Count)
+                .collect(Collectors.toList());
+
+        return new WindowingConfig(timeWindows, countWindows, aggregateFunctions);
     }
 
     private List<Window> createWindowsFromString(String windowString) {
@@ -383,26 +405,36 @@ public class DistributedChild implements Runnable {
         return "[CHILD-" + this.childId + "] " + msg;
     }
 
+    private boolean hasCountWindow() {
+        return this.hasCountWindow;
+    }
+
+    public void interrupt() {
+        this.interrupt = true;
+    }
+
     private class WindowingConfig {
-        private final List<Window> windows;
+        private final List<Window> timeWindows;
+        private final List<Window> countWindows;
         private final List<AggregateFunction> aggregateFunctions;
 
-        public WindowingConfig(List<Window> windows, List<AggregateFunction> aggregateFunctions) {
-            this.windows = windows;
+        public WindowingConfig(List<Window> timeWindows, List<Window> countWindows, List<AggregateFunction> aggregateFunctions) {
+            this.timeWindows = timeWindows;
+            this.countWindows = countWindows;
             this.aggregateFunctions = aggregateFunctions;
         }
 
-        public List<Window> getWindows() {
-            return windows;
+        public List<Window> getTimeWindows() {
+            return timeWindows;
+        }
+
+        public List<Window> getCountWindows() {
+            return countWindows;
         }
 
         public List<AggregateFunction> getAggregateFunctions() {
             return aggregateFunctions;
         }
 
-    }
-
-    public void interrupt() {
-        this.interrupt = true;
     }
 }

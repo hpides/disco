@@ -2,6 +2,7 @@ package com.github.lawben.disco.integration;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
+import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
 import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
@@ -12,9 +13,11 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,6 +30,7 @@ import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.PartialAverage;
 import com.github.lawben.disco.utils.AlgebraicWindowMatcher;
 import com.github.lawben.disco.utils.BaseWindowMatcher;
+import com.github.lawben.disco.utils.EventMatcher;
 import com.github.lawben.disco.utils.ExpectedAlgebraicWindow;
 import com.github.lawben.disco.utils.ExpectedDistributiveWindow;
 import com.github.lawben.disco.utils.DistributiveWindowMatcher;
@@ -185,7 +189,7 @@ public class DistributedChildTest {
         }
     }
 
-    void registerStream(int streamId) {
+    ZMQPushMock registerStream(int streamId) {
         String streamIdString = String.valueOf(streamId);
         try (ZMQRequestMock streamRegister = new ZMQRequestMock(childPort + STREAM_REGISTER_PORT_OFFSET)) {
             streamRegister.addMessage(streamIdString);
@@ -196,7 +200,35 @@ public class DistributedChildTest {
             assertEquals('\0', registerResult.get(0).charAt(0));
         }
 
-        streamSenders.add(new ZMQPushMock(childPort));
+        ZMQPushMock stream = new ZMQPushMock(childPort);
+        streamSenders.add(stream);
+        return stream;
+    }
+
+    void sendSleepSortedEvents(int sleep, String[]... events) throws Exception {
+        List<String> sortedEvents = Stream.of(events)
+                .flatMap(Arrays::stream)
+                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
+                .collect(Collectors.toList());
+
+        for (String event : sortedEvents) {
+            int streamId = Character.getNumericValue(event.charAt(0));
+            this.streamSenders.get(streamId).sendNext(event);
+            if (sleep > 0) {
+                Thread.sleep(sleep);
+            }
+        }
+
+        for (int streamId = 0; streamId < this.streamSenders.size(); streamId++) {
+            this.streamSenders.get(streamId).sendNext(STREAM_END, String.valueOf(streamId));
+            if (sleep > 0) {
+                Thread.sleep(sleep);
+            }
+        }
+    }
+
+    void sendSortedEvents(String[]... events) throws Exception {
+        sendSleepSortedEvents(0, events);
     }
 
     @Test
@@ -875,6 +907,113 @@ public class DistributedChildTest {
         }
 
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
+
+        assertChildEnd();
+        assertNoFinalThreadException(child);
+    }
+
+    @Test
+    void testSingleStreamCountWindow() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("100", "TUMBLING,3,0,COUNT", "SUM");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        DistributedChild child = runDefaultChild(rootInitPort, rootWindowPort, 1);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        registerStream(0);
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        String[] events = { "0,10,1", "0,20,2", "0,30,3", "0,40,4", "0,50,5", "0,60,6", "0,70,7" };
+        sendSortedEvents(events);
+
+        List<Matcher<? super List<String>>> expectedEvents = Arrays.asList(
+                EventMatcher.equalsEvent("0,10,1"),
+                EventMatcher.equalsEvent("0,20,2"),
+                EventMatcher.equalsEvent("0,30,3"),
+                EventMatcher.equalsEvent("0,40,4"),
+                EventMatcher.equalsEvent("0,50,5"),
+                EventMatcher.equalsEvent("0,60,6"),
+                EventMatcher.equalsEvent("0,70,7")
+        );
+
+        List<List<String>> actualEventStrings = new ArrayList<>();
+        for (int i = 0; i < expectedEvents.size(); i++) {
+            actualEventStrings.add(rootWindowReceiver.receiveNext(2));
+        }
+
+        assertThat(actualEventStrings, contains(expectedEvents));
+
+        assertChildEnd();
+        assertNoFinalThreadException(child);
+    }
+
+    @Test
+    void testTwoStreamsCountAndTimeWindow() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("30", "TUMBLING,3,0,COUNT\nTUMBLING,30,1", "SUM");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        DistributedChild child = runDefaultChild(rootInitPort, rootWindowPort, 2);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        registerStream(0);
+        registerStream(1);
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        String[] events0 = { "0,10,1", "0,20,2", "0,30,3", "0,40,4", "0,50,5", "0,60,6", "0,70,7" };
+        String[] events1 = { "1,15,10", "1,25,20", "1,35,30", "1,45,40", "1,55,50", "1,65,60", "1,75,70" };
+
+        sendSleepSortedEvents(10, events0, events1);
+
+        List<ExpectedDistributiveWindow> expectedWindows = Arrays.asList(
+                new ExpectedDistributiveWindow(defaultFunctionWindowId(new WindowAggregateId(1,  0, 30)),  33, 0),
+                new ExpectedDistributiveWindow(defaultFunctionWindowId(new WindowAggregateId(1, 30, 60)), 132, 0),
+                new ExpectedDistributiveWindow(defaultFunctionWindowId(new WindowAggregateId(1, 60, 90)), 143, 0)
+        );
+
+        List<Matcher<? super List<String>>> expectedMessagesToRoot = Arrays.asList(
+                EventMatcher.equalsEvent("0,10,1"),
+                EventMatcher.equalsEvent("1,15,10"),
+                EventMatcher.equalsEvent("0,20,2"),
+                EventMatcher.equalsEvent("1,25,20"),
+                EventMatcher.equalsEvent("0,30,3"),
+                EventMatcher.equalsEvent("1,35,30"),
+                EventMatcher.equalsEvent("0,40,4"),
+                EventMatcher.equalsEvent("1,45,40"),
+                EventMatcher.equalsEvent("0,50,5"),
+                EventMatcher.equalsEvent("1,55,50"),
+                EventMatcher.equalsEvent("0,60,6"),
+                DistributiveWindowMatcher.equalsWindow(expectedWindows.get(0)),
+                EventMatcher.equalsEvent("1,65,60"),
+                EventMatcher.equalsEvent("0,70,7"),
+                EventMatcher.equalsEvent("1,75,70"),
+                DistributiveWindowMatcher.equalsWindow(expectedWindows.get(1)),
+                DistributiveWindowMatcher.equalsWindow(expectedWindows.get(2))
+        );
+
+        List<List<String>> actualEventStrings = new ArrayList<>();
+        for (Matcher m : expectedMessagesToRoot) {
+            if (m instanceof EventMatcher) {
+                actualEventStrings.add(rootWindowReceiver.receiveNext(2));
+            } else {
+                actualEventStrings.add(receiveWindow(rootWindowReceiver));
+            }
+        }
+
+        assertThat(actualEventStrings, contains(expectedMessagesToRoot));
 
         assertChildEnd();
         assertNoFinalThreadException(child);
