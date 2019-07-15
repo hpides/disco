@@ -13,7 +13,6 @@ import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -41,12 +40,15 @@ public class DistributedRoot implements Runnable {
     private final String[] windowStrings;
     private final String[] aggregateFnStrings;
 
+    private long watermarkMs;
+
     private boolean interrupt;
 
     // Slicing related
     private DistributiveWindowMerger<Integer> distributiveWindowMerger;
     private AlgebraicWindowMerger<AlgebraicPartial> algebraicWindowMerger;
     private GlobalHolisticWindowMerger holisticWindowMerger;
+    private DistributedChildSlicer<Integer> countBasedSlicer;
 
     public DistributedRoot(int controllerPort, int windowPort, String resultPath, int numChildren, String windowsString, String aggregateFunctionsString) {
         this.controllerPort = controllerPort;
@@ -86,13 +88,17 @@ public class DistributedRoot implements Runnable {
     }
 
     private void processPreAggregatedWindows() {
+        long currentEventTime = 0;
+        long lastWatermark = 0;
+        long numEvents = 0;
+
         while (!this.interrupt) {
-            String childIdOrStreamEnd = this.windowPuller.recvStr();
-            if (childIdOrStreamEnd == null) {
+            String messageOrStreamEnd = this.windowPuller.recvStr();
+            if (messageOrStreamEnd == null) {
                 continue;
             }
 
-            if (childIdOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
+            if (messageOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
                 int childId = Integer.valueOf(this.windowPuller.recvStr(ZMQ.DONTWAIT));
                 System.out.println(this.rootString("Stream end from CHILD-" + childId));
                 this.childStreamEnds.add(childId);
@@ -109,7 +115,27 @@ public class DistributedRoot implements Runnable {
                 continue;
             }
 
-            int childId = Integer.valueOf(childIdOrStreamEnd);
+//            if (messageOrStreamEnd.equals(DistributedUtils.EVENT_STRING)) {
+//                String rawEvent = this.windowPuller.recvStr(ZMQ.DONTWAIT);
+//                final String[] eventParts = rawEvent.split(",");
+//                final int streamId = Integer.parseInt(eventParts[0]);
+//                final long eventTimestamp = Long.valueOf(eventParts[1]);
+//                final int eventValue = Integer.valueOf(eventParts[2]);
+//                this.countBasedSlicer.processElement(eventValue, eventTimestamp);
+//
+//                currentEventTime = eventTimestamp;
+//                numEvents++;
+//                final long maxLateness = this.watermarkMs;
+//                final long watermarkTimestamp = lastWatermark + this.watermarkMs;
+//                if (currentEventTime >= watermarkTimestamp + maxLateness) {
+//                    this.processWatermarkedWindows(watermarkTimestamp);
+//                    lastWatermark = watermarkTimestamp;
+//                }
+//
+//                continue;
+//            }
+
+            int childId = Integer.valueOf(messageOrStreamEnd);
             String rawFunctionWindowAggId = this.windowPuller.recvStr(ZMQ.DONTWAIT);
             String aggregateType = this.windowPuller.recvStr(ZMQ.DONTWAIT);
             boolean windowIsComplete = this.windowPuller.recvStr(ZMQ.DONTWAIT).equals(WINDOW_COMPLETE);
@@ -185,7 +211,7 @@ public class DistributedRoot implements Runnable {
                 .map(w -> ((SlidingWindow) w).getSize())
                 .collect(Collectors.toList());
 
-        long watermarkMs = Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)
+        this.watermarkMs = Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)
                 .flatMap(Collection::stream)
                 .min(Comparator.naturalOrder())
                 .orElseThrow(() -> new IllegalArgumentException("Could not find watermark ms."));
@@ -204,7 +230,7 @@ public class DistributedRoot implements Runnable {
             String message = childReceiver.recvStr();
             System.out.println(this.rootString("Received from child: " + message));
 
-            childReceiver.sendMore(String.valueOf(watermarkMs));
+            childReceiver.sendMore(String.valueOf(this.watermarkMs));
             childReceiver.sendMore(completeWindowString);
             childReceiver.send(completeAggFnString);
             numChildrenRegistered++;
@@ -217,6 +243,8 @@ public class DistributedRoot implements Runnable {
         this.distributiveWindowMerger = new DistributiveWindowMerger<>(this.numChildren, windows, stateAggFunctions);
         this.algebraicWindowMerger = new AlgebraicWindowMerger<>(this.numChildren, windows, stateAggFunctions);
         this.holisticWindowMerger = new GlobalHolisticWindowMerger(this.numChildren, windows, stateAggFunctions);
+
+        this.countBasedSlicer = new DistributedChildSlicer<>(windows, aggFns);
     }
 
     private String rootString(String msg) {
