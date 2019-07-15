@@ -9,10 +9,12 @@ import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
+import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.slicing.state.AggregateWindowState;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class RootMerger {
     private DistributiveWindowMerger<Integer> distributiveWindowMerger;
@@ -27,7 +29,11 @@ public class RootMerger {
         this.algebraicWindowMerger = new AlgebraicWindowMerger<>(numChildren, windows, stateAggFunctions);
         this.holisticWindowMerger = new GlobalHolisticWindowMerger(numChildren, windows, stateAggFunctions);
 
-        this.countBasedSlicer = new DistributedChildSlicer<>(windows, aggFns);
+        List<Window> countWindows = windows.stream()
+                .filter(w -> w.getWindowMeasure() == WindowMeasure.Count)
+                .collect(Collectors.toList());
+
+        this.countBasedSlicer = new DistributedChildSlicer<>(countWindows, aggFns);
     }
 
     public void processCountEvent(int eventValue, long eventTimestamp) {

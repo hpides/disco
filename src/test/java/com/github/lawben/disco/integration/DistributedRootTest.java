@@ -3,6 +3,7 @@ package com.github.lawben.disco.integration;
 import static com.github.lawben.disco.DistributedUtils.ALGEBRAIC_STRING;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.DISTRIBUTIVE_STRING;
+import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.HOLISTIC_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
@@ -751,6 +752,92 @@ public class DistributedRootTest {
         FunctionWindowAggregateId expectedFunctionWindowId2 = new FunctionWindowAggregateId(new WindowAggregateId(1, 400, 690), 0);
         assertFunctionWindowIdStringEquals(result2.get(0), expectedFunctionWindowId2);
         assertThat(result2.get(1), equalTo("15"));
+
+        assertRootEnd();
+        assertNoFinalThreadException(root);
+    }
+
+    @Test
+    void testTwoChildrenCountAndTimeWindow() throws Exception {
+        int numChildren = 2;
+        DistributedRoot root = runRoot(numChildren,
+                Arrays.asList("TUMBLING,3,0,COUNT", "TUMBLING,30,1"), Collections.singletonList("SUM"));
+
+        ZMQPushMock child1 = children.get(0);
+        ZMQPushMock child2 = children.get(1);
+
+        int childId1 = 1;
+        int childId2 = 2;
+        FunctionWindowAggregateId windowId11 = new FunctionWindowAggregateId(new WindowAggregateId(0,  0, 30), 0, childId1);
+        FunctionWindowAggregateId windowId12 = new FunctionWindowAggregateId(new WindowAggregateId(0,  0, 30), 0, childId2);
+        FunctionWindowAggregateId windowId21 = new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0, childId1);
+        FunctionWindowAggregateId windowId22 = new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0, childId2);
+        FunctionWindowAggregateId windowId31 = new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0, childId1);
+        FunctionWindowAggregateId windowId32 = new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0, childId2);
+
+        child1.sendNext(EVENT_STRING, "1,10,1");
+        Thread.sleep(50);
+        child2.sendNext(EVENT_STRING, "2,20,2");
+        Thread.sleep(50);
+        child1.sendNext(EVENT_STRING, "1,30,3");
+        Thread.sleep(50);
+        child2.sendNext(EVENT_STRING, "2,40,4");
+        Thread.sleep(50);
+        child1.sendNext(EVENT_STRING, "1,50,5");
+        Thread.sleep(50);
+        child2.sendNext(EVENT_STRING, "2,60,6");
+        Thread.sleep(50);
+        child1.sendNext("1", functionWindowIdToString(windowId11), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "1");
+        Thread.sleep(50);
+        child1.sendNext(EVENT_STRING, "1,70,7");
+        Thread.sleep(50);
+        child2.sendNext("2", functionWindowIdToString(windowId12), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "2");
+        Thread.sleep(50);
+        child2.sendNext(EVENT_STRING, "2,80,8");
+        Thread.sleep(50);
+        child1.sendNext(EVENT_STRING, "1,90,9");
+        Thread.sleep(50);
+        child1.sendNext("1", functionWindowIdToString(windowId21), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "8");
+        Thread.sleep(50);
+        child1.sendNext("1", functionWindowIdToString(windowId31), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "7");
+        Thread.sleep(50);
+        child1.sendNext(STREAM_END, "1");
+        Thread.sleep(50);
+        child2.sendNext("2", functionWindowIdToString(windowId22), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "4");
+        Thread.sleep(50);
+        child2.sendNext("2", functionWindowIdToString(windowId32), DISTRIBUTIVE_STRING, WINDOW_COMPLETE, "14");
+        Thread.sleep(50);
+        child2.sendNext(STREAM_END, "2");
+
+        // Count 0-3
+        List<String> result1 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId1 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 3), 0);
+        assertFunctionWindowIdStringEquals(result1.get(0), expectedFunctionWindowId1);
+        assertThat(result1.get(1), equalTo("6"));
+
+        // Time 0-30
+        List<String> result2 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId2 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 30), 0);
+        assertFunctionWindowIdStringEquals(result2.get(0), expectedFunctionWindowId2);
+        assertThat(result2.get(1), equalTo("3"));
+
+        // Count 3-6
+        List<String> result3 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId3 = new FunctionWindowAggregateId(new WindowAggregateId(0, 3, 6), 0);
+        assertFunctionWindowIdStringEquals(result3.get(0), expectedFunctionWindowId3);
+        assertThat(result3.get(1), equalTo("15"));
+
+        // Time 30-60
+        List<String> result4 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId4 = new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0);
+        assertFunctionWindowIdStringEquals(result4.get(0), expectedFunctionWindowId4);
+        assertThat(result4.get(1), equalTo("12"));
+
+        // Time 60-90
+        List<String> result5 = resultListener.receiveNext(2);
+        FunctionWindowAggregateId expectedFunctionWindowId5 = new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0);
+        assertFunctionWindowIdStringEquals(result5.get(0), expectedFunctionWindowId5);
+        assertThat(result5.get(1), equalTo("21"));
 
         assertRootEnd();
         assertNoFinalThreadException(root);

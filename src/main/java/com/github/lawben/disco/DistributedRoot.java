@@ -15,6 +15,7 @@ import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
+import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.slicing.state.AggregateWindowState;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -169,17 +170,21 @@ public class DistributedRoot implements Runnable {
                 .map(DistributedUtils::buildWindowFromString)
                 .collect(Collectors.toList());
 
-        List<Long> sessionWatermarkMs = windows.stream()
+        List<Window> timedWindows = windows.stream()
+                .filter(w -> w.getWindowMeasure() == WindowMeasure.Time)
+                .collect(Collectors.toList());
+
+        List<Long> sessionWatermarkMs = timedWindows.stream()
                 .filter(w -> w instanceof SessionWindow)
                 .map(w -> ((SessionWindow) w).getGap())
                 .collect(Collectors.toList());
 
-        List<Long> tumblingWatermarkMs = windows.stream()
+        List<Long> tumblingWatermarkMs = timedWindows.stream()
                 .filter(w -> w instanceof TumblingWindow)
                 .map(w -> ((TumblingWindow) w).getSize())
                 .collect(Collectors.toList());
 
-        List<Long> slidingWatermarkMs = windows.stream()
+        List<Long> slidingWatermarkMs = timedWindows.stream()
                 .filter(w -> w instanceof SlidingWindow)
                 .map(w -> ((SlidingWindow) w).getSize())
                 .collect(Collectors.toList());
