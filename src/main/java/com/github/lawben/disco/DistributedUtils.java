@@ -40,6 +40,7 @@ public class DistributedUtils {
     public static final String WINDOW_PARTIAL = "P";
 
     public static final String EVENT_STRING = "E";
+    public static final int NO_KEY = Integer.MAX_VALUE;
 
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
@@ -166,7 +167,7 @@ public class DistributedUtils {
         values.add(windowId.getWindowEndTimestamp());
         values.add(functionWindowAggId.getFunctionId());
         values.add(functionWindowAggId.getChildId());
-        values.add(functionWindowAggId.getStreamId());
+        values.add(functionWindowAggId.getKey());
 
         List<String> stringValues = values.stream().map(String::valueOf).collect(Collectors.toList());
         return String.join(",", stringValues);
@@ -178,8 +179,8 @@ public class DistributedUtils {
         WindowAggregateId windowId = new WindowAggregateId(windowIdSplit.get(0), windowIdSplit.get(1), windowIdSplit.get(2));
         int functionId = Math.toIntExact(windowIdSplit.get(3));
         int childId = Math.toIntExact(windowIdSplit.get(4));
-        int streamId = Math.toIntExact(windowIdSplit.get(5));
-        return new FunctionWindowAggregateId(windowId, functionId, childId, streamId);
+        int key = Math.toIntExact(windowIdSplit.get(5));
+        return new FunctionWindowAggregateId(windowId, functionId, childId, key);
     }
 
     public static List<Long> stringToLongs(String rawString) {

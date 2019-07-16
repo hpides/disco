@@ -42,10 +42,8 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
 
     @Override
     public Optional<FunctionWindowAggregateId> processPreAggregate(List<Slice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
-        final int streamId = functionWindowAggId.getStreamId();
-        seenSlices.putIfAbsent(streamId, new HashSet<>());
-
-        Set<Long> seenStreamSlices = seenSlices.get(streamId);
+        final int key = functionWindowAggId.getKey();
+        Set<Long> seenStreamSlices = seenSlices.computeIfAbsent(key, k -> new HashSet<>());
         List<Slice> newSlices = new ArrayList<>(preAggregate.size());
 
         for (Slice slice : preAggregate) {

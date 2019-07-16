@@ -17,15 +17,15 @@ import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 
 public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType> {
-    protected int numRemainingChildren;
+    protected int numInputs;
     protected final StateFactory stateFactory;
     protected final List<AggregateFunction> aggFunctions;
     protected final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
     protected final Map<FunctionWindowAggregateId, LongAdder> receivedWindows;
     protected final Map<FunctionWindowAggregateId, AggregateState<AggType>> windowAggregates = new HashMap<>();
 
-    public BaseWindowMerger(int numChildren, List<Window> windows, List<AggregateFunction> aggFunctions) {
-        this.numRemainingChildren = numChildren;
+    public BaseWindowMerger(int numInputs, List<Window> windows, List<AggregateFunction> aggFunctions) {
+        this.numInputs = numInputs;
         this.stateFactory = new MemoryStateFactory();
         this.aggFunctions = aggFunctions;
         this.receivedWindows = new HashMap<>();
@@ -35,7 +35,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
     protected Optional<FunctionWindowAggregateId> checkWindowTrigger(FunctionWindowAggregateId functionWindowAggId) {
         LongAdder receivedCounter = receivedWindows.computeIfAbsent(functionWindowAggId, k -> new LongAdder());
         if (receivedCounter.longValue() == 0) {
-            receivedCounter.add(numRemainingChildren);
+            receivedCounter.add(numInputs);
         }
         receivedCounter.decrement();
         return receivedCounter.longValue() == 0 ? Optional.of(functionWindowAggId) : Optional.empty();
@@ -124,5 +124,11 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
         newAggWindow.addElement(preAggregate);
         windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
         currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
+    }
+
+    @Override
+    public void addKey(int key) {
+        this.numInputs++;
+        this.receivedWindows.values().forEach(LongAdder::increment);
     }
 }

@@ -1,10 +1,9 @@
 package com.github.lawben.disco;
 
-import com.github.lawben.disco.aggregation.ChildStreamId;
+import com.github.lawben.disco.aggregation.ChildKey;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.FunctionWindowId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import de.tub.dima.scotty.core.AggregateWindow;
@@ -24,7 +23,7 @@ import java.util.Optional;
 
 public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<DistributedSlice>> {
     private final StateFactory stateFactory;
-    private final Map<ChildStreamId, List<DistributedSlice>> childSlices;
+    private final Map<ChildKey, List<DistributedSlice>> childSlices;
     private final List<AggregateFunction> aggFns;
 
     public GlobalHolisticWindowMerger(int numChildren, List<Window> windows, List<AggregateFunction> aggFunctions) {
@@ -54,9 +53,9 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
             return this.processSessionWindow(preAggregate, functionWindowAggId);
         }
 
-        ChildStreamId childStreamId = ChildStreamId.fromFunctionWindowId(functionWindowAggId);
-        childSlices.putIfAbsent(childStreamId, new ArrayList<>());
-        List<DistributedSlice> childSlices = this.childSlices.get(childStreamId);
+        ChildKey childKey = ChildKey.fromFunctionWindowId(functionWindowAggId);
+        childSlices.putIfAbsent(childKey, new ArrayList<>());
+        List<DistributedSlice> childSlices = this.childSlices.get(childKey);
         childSlices.addAll(preAggregate);
 
         return Optional.empty();

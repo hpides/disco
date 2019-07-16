@@ -33,7 +33,7 @@ public abstract class BaseWindowMatcher<WindowType extends ExpectedWindow> exten
 
     public static boolean functionWindowIdStringsMatch(FunctionWindowAggregateId functionWindowId, String windowString) {
         String expectedWindowString = DistributedUtils.functionWindowIdToString(functionWindowId);
-        if (functionWindowId.getStreamId() == FunctionWindowAggregateId.NO_STREAM_ID) {
+        if (functionWindowId.getKey() == FunctionWindowAggregateId.NO_KEY) {
             // Ignore stream id
             int endIndex = 5;
             if (functionWindowId.getChildId() == FunctionWindowAggregateId.NO_CHILD_ID) {

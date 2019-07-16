@@ -2,10 +2,10 @@ package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
+import static com.github.lawben.disco.DistributedUtils.NO_KEY;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
 
-import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
@@ -14,24 +14,15 @@ import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticAggregateHelper;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
-import de.tub.dima.scotty.core.AggregateWindow;
-import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.slicing.slice.Slice;
-import de.tub.dima.scotty.slicing.state.AggregateWindowState;
-import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -109,10 +100,9 @@ public class DistributedChild implements Runnable {
         streamReceiver.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
         streamReceiver.bind(DistributedUtils.buildBindingTcpUrl(this.streamInputPort + STREAM_REGISTER_PORT_OFFSET));
 
-        final MemoryStateFactory stateFactory = new MemoryStateFactory();
         byte[] ackResponse = new byte[] {'\0'};
 
-        Map<Integer, DistributedChildSlicer<Integer>> slicerPerStream = new HashMap<>();
+        int numRegisteredStreams = 0;
         while (!interrupt) {
             final String rawStreamId = streamReceiver.recvStr();
 
@@ -122,28 +112,13 @@ public class DistributedChild implements Runnable {
 
             final int streamId = Integer.parseInt(rawStreamId);
             System.out.println(this.childIdString("Registering stream " + streamId));
-
-            DistributedChildSlicer<Integer> childSlicer = new DistributedChildSlicer<>();
-            for (Window window : windowingConfig.getTimeWindows()) {
-                childSlicer.addWindowAssigner(window);
-            }
-
-            for (AggregateFunction aggFn : windowingConfig.getAggregateFunctions()) {
-                if (aggFn instanceof HolisticAggregateFunction) {
-                    AggregateFunction wrapperAggFn = new HolisticAggregateHelper();
-                    childSlicer.addWindowFunction(wrapperAggFn);
-                } else {
-                    childSlicer.addWindowFunction(aggFn);
-                }
-            }
-
-            slicerPerStream.put(streamId, childSlicer);
             streamReceiver.send(ackResponse);
+            numRegisteredStreams++;
 
-            if (slicerPerStream.size() == this.numStreams) {
+            if (numRegisteredStreams == this.numStreams) {
                 // All streams registered
                 System.out.println(this.childIdString("Registered all streams (" + this.numStreams + " in total)"));
-                this.childMerger = new ChildMerger(slicerPerStream, windowingConfig.timeWindows,
+                this.childMerger = new ChildMerger(windowingConfig.timeWindows,
                         windowingConfig.getAggregateFunctions(), this.childId);
                 return true;
             }
@@ -197,8 +172,9 @@ public class DistributedChild implements Runnable {
             final int streamId = Integer.parseInt(eventParts[0]);
             final long eventTimestamp = Long.valueOf(eventParts[1]);
             final int eventValue = Integer.valueOf(eventParts[2]);
+            final int key = eventParts.length == 4 ? Integer.valueOf(eventParts[3]) : NO_KEY;
 
-            this.childMerger.processElement(eventValue, eventTimestamp, streamId);
+            this.childMerger.processElement(eventValue, eventTimestamp, key);
             currentEventTime = eventTimestamp;
             numEvents++;
 

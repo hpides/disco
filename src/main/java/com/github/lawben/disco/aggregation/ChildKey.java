@@ -2,27 +2,27 @@ package com.github.lawben.disco.aggregation;
 
 import java.util.Objects;
 
-public class ChildStreamId {
+public class ChildKey {
     private final int childId;
-    private final int streamId;
+    private final int key;
 
-    public ChildStreamId(int childId, int streamId) {
+    public ChildKey(int childId, int key) {
         this.childId = childId;
-        this.streamId = streamId;
+        this.key = key;
     }
 
     public int getChildId() {
         return childId;
     }
 
-    public int getStreamId() {
-        return streamId;
+    public int getKey() {
+        return key;
     }
 
-    public static ChildStreamId fromFunctionWindowId(FunctionWindowAggregateId functionWindowId) {
+    public static ChildKey fromFunctionWindowId(FunctionWindowAggregateId functionWindowId) {
         final int childId = functionWindowId.getChildId();
-        final int streamId = functionWindowId.getStreamId();
-        return new ChildStreamId(childId, streamId);
+        final int key = functionWindowId.getKey();
+        return new ChildKey(childId, key);
     }
 
     @Override
@@ -33,21 +33,21 @@ public class ChildStreamId {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ChildStreamId that = (ChildStreamId) o;
+        ChildKey that = (ChildKey) o;
         return childId == that.childId &&
-                streamId == that.streamId;
+                key == that.key;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(childId, streamId);
+        return Objects.hash(childId, key);
     }
 
     @Override
     public String toString() {
-        return "ChildStreamId{" +
+        return "ChildKey{" +
                 "childId=" + childId +
-                ", streamId=" + streamId +
+                ", key=" + key +
                 '}';
     }
 }

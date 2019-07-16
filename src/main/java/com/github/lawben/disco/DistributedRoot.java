@@ -2,22 +2,13 @@ package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
 
-import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
-import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
-import com.github.lawben.disco.aggregation.AlgebraicPartial;
-import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
-import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import de.tub.dima.scotty.core.AggregateWindow;
-import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
-import de.tub.dima.scotty.slicing.state.AggregateWindowState;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -186,7 +177,7 @@ public class DistributedRoot implements Runnable {
 
         List<Long> slidingWatermarkMs = timedWindows.stream()
                 .filter(w -> w instanceof SlidingWindow)
-                .map(w -> ((SlidingWindow) w).getSize())
+                .map(w -> ((SlidingWindow) w).getSlide())
                 .collect(Collectors.toList());
 
         this.watermarkMs = Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)

@@ -14,14 +14,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import com.github.lawben.disco.DistributedRoot;
-import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.utils.BaseWindowMatcher;

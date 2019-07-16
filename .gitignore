@@ -31,3 +31,4 @@ venv/
 __pycache__/
 
 benchmark-runs/
+out/

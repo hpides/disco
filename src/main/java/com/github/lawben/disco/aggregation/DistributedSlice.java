@@ -14,7 +14,7 @@ public class DistributedSlice implements Slice {
     private final int streamId;
 
     public DistributedSlice(long tStart, long tEnd, List<Integer> values) {
-        this(tStart, tEnd, values, FunctionWindowAggregateId.NO_STREAM_ID);
+        this(tStart, tEnd, values, FunctionWindowAggregateId.NO_KEY);
     }
 
     public DistributedSlice(long tStart, long tEnd, List<Integer> values, int streamId) {
@@ -53,6 +53,16 @@ public class DistributedSlice implements Slice {
 
     public List<Integer> getValues() {
         return values;
+    }
+
+    @Override
+    public String toString() {
+        return "DistributedSlice{" +
+                "tStart=" + tStart +
+                ", tEnd=" + tEnd +
+                ", values=" + values +
+                ", streamId=" + streamId +
+                '}';
     }
 
     // Ignore from here on down

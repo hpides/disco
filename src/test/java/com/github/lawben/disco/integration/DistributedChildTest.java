@@ -5,15 +5,12 @@ import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
 import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
-import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
@@ -21,7 +18,6 @@ import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import com.github.lawben.disco.DistributedChild;
 import com.github.lawben.disco.DistributedUtils;
@@ -30,10 +26,10 @@ import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.PartialAverage;
 import com.github.lawben.disco.utils.AlgebraicWindowMatcher;
 import com.github.lawben.disco.utils.BaseWindowMatcher;
+import com.github.lawben.disco.utils.DistributiveWindowMatcher;
 import com.github.lawben.disco.utils.EventMatcher;
 import com.github.lawben.disco.utils.ExpectedAlgebraicWindow;
 import com.github.lawben.disco.utils.ExpectedDistributiveWindow;
-import com.github.lawben.disco.utils.DistributiveWindowMatcher;
 import com.github.lawben.disco.utils.ExpectedHolisticWindow;
 import com.github.lawben.disco.utils.HolisticWindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
@@ -526,9 +522,6 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
         assertNull(threadException);
 
-        ZMQPushMock streamSender0 = streamSenders.get(0);
-        ZMQPushMock streamSender1 = streamSenders.get(1);
-
         String[] events0 = {
                 "0,10,1", "0,30,1", "0,50,1", "0,70,1", "0,90,1",  // window 1
                 "0,110,10", "0,115,20", "0,120,30", "0,190,40", "0,195,50",  // window 2
@@ -539,27 +532,7 @@ public class DistributedChildTest {
                 "1,175,10", "1,180,20", "1,185,30", "1,190,40", "1,195,50",  // window 2
         };
 
-        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
-                .flatMap(Collection::stream)
-                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
-                .collect(Collectors.toList());
-
-        for (String event : sortedEvents) {
-            if (event.startsWith("0")) {
-                streamSender0.addMessage(event);
-                streamSender0.sendNext();
-            } else {
-                streamSender1.addMessage(event);
-                streamSender1.sendNext();
-            }
-        }
-
-        streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
-        streamSender0.sendNext();
-
-        streamSender1.addMessage(DistributedUtils.STREAM_END, "1");
-        streamSender1.sendNext();
-
+        sendSortedEvents(events0, events1);
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<ExpectedAlgebraicWindow> expectedWindows = Arrays.asList(
@@ -607,13 +580,13 @@ public class DistributedChildTest {
         ZMQPushMock streamSender1 = streamSenders.get(1);
 
         String[] events0 = {
-                "0,10,1", "0,30,1", "0,50,1", "0,70,1", "0,90,1",  // window 1
-                "0,110,10", "0,115,20", "0,120,30", "0,190,40", "0,195,50",  // window 2
+                "0,10,1,0", "0,30,1,0", "0,50,1,0", "0,70,1,0", "0,90,1,0",  // window 1
+                "0,110,10,0", "0,115,20,0", "0,120,30,0", "0,190,40,0", "0,195,50,0",  // window 2
         };
 
         String[] events1 = {
-                "1,20,1", "1,40,1", "1,60,1", "1,80,1", "1,85,1",  // window 1
-                "1,175,10", "1,180,20", "1,185,30", "1,190,40", "1,195,50",  // window 2
+                "1,20,1,1", "1,40,1,1", "1,60,1,1", "1,80,1,1", "1,85,1,1",  // window 1
+                "1,175,10,1", "1,180,20,1", "1,185,30,1", "1,190,40,1", "1,195,50,1",  // window 2
         };
 
         List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
@@ -700,40 +673,17 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
         assertNull(threadException);
 
-        ZMQPushMock streamSender0 = streamSenders.get(0);
-        ZMQPushMock streamSender1 = streamSenders.get(1);
-
         String[] events0 = {
-                "0,10,1", "0,30,1", "0,50,1", "0,70,1", "0,90,1",  // window 1
-                "0,110,10", "0,115,20", "0,120,30", "0,190,40", "0,195,50",  // window 2
+                "0,10,1,0", "0,30,1,0", "0,50,1,0", "0,70,1,0", "0,90,1,0",  // window 1
+                "0,110,10,0", "0,115,20,0", "0,120,30,0", "0,190,40,0", "0,195,50,0",  // window 2
         };
 
         String[] events1 = {
-                "1,20,1", "1,40,1", "1,60,1", "1,80,1", "1,85,1",  // window 1
-                "1,175,10", "1,180,20", "1,185,30", "1,190,40", "1,195,50",  // window 2
+                "1,20,1,1", "1,40,1,1", "1,60,1,1", "1,80,1,1", "1,85,1,1",  // window 1
+                "1,175,10,1", "1,180,20,1", "1,185,30,1", "1,190,40,1", "1,195,50,1",  // window 2
         };
 
-        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
-                .flatMap(Collection::stream)
-                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
-                .collect(Collectors.toList());
-
-        for (String event : sortedEvents) {
-            if (event.startsWith("0")) {
-                streamSender0.addMessage(event);
-                streamSender0.sendNext();
-            } else {
-                streamSender1.addMessage(event);
-                streamSender1.sendNext();
-            }
-        }
-
-        streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
-        streamSender0.sendNext();
-
-        streamSender1.addMessage(DistributedUtils.STREAM_END, "1");
-        streamSender1.sendNext();
-
+        sendSortedEvents(events0, events1);
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<DistributedSlice> stream0Slices = Arrays.asList(
@@ -838,42 +788,20 @@ public class DistributedChildTest {
 
         int streamId1 = 0;
         int streamId2 = 1;
-        ZMQPushMock streamSender0 = streamSenders.get(streamId1);
-        ZMQPushMock streamSender1 = streamSenders.get(streamId2);
-
         String[] events0 = {
-                "0,0,1", "0,1,2", "0,4,3", "0,5,4", "0,6,5", "0,10,6",
-                "0,120,0", "0,140,5", "0,170,10",
-                "0,400,0", "0,405,5", "0,410,15",
-                "0,550,100", "0,560,0"
+                "0,0,1,0", "0,1,2,0", "0,4,3,0", "0,5,4,0", "0,6,5,0", "0,10,6,0",
+                "0,120,0,0", "0,140,5,0", "0,170,10,0",
+                "0,400,0,0", "0,405,5,0", "0,410,15,0",
+                "0,550,100,0", "0,560,0,0"
         };
 
         String[] events1 = {
-                "1,0,1", "1,15,2", "1,30,3",
-                "1,460,15", "1,500,5", "1,590,20",
-                "1,700,100", "1,750,0"
+                "1,0,1,1", "1,15,2,1", "1,30,3,1",
+                "1,460,15,1", "1,500,5,1", "1,590,20,1",
+                "1,700,100,1", "1,750,0,1"
         };
 
-        List<String> sortedEvents = Stream.of(Arrays.asList(events0), Arrays.asList(events1))
-                .flatMap(Collection::stream)
-                .sorted(Comparator.comparingInt((String e) -> Integer.valueOf(e.split(",")[1])))
-                .collect(Collectors.toList());
-
-        for (String event : sortedEvents) {
-            if (event.startsWith("0")) {
-                streamSender0.sendNext(event);
-            } else {
-                streamSender1.sendNext(event);
-            }
-            Thread.sleep(100);
-        }
-
-        streamSender0.addMessage(DistributedUtils.STREAM_END, "0");
-        streamSender0.sendNext();
-
-        streamSender1.addMessage(DistributedUtils.STREAM_END, "1");
-        streamSender1.sendNext();
-
+        sendSleepSortedEvents(100, events0, events1);
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<DistributedSlice> stream0Slices = Arrays.asList(

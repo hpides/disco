@@ -1,10 +1,7 @@
 package com.github.lawben.disco.utils;
 
 import com.github.lawben.disco.DistributedUtils;
-import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import java.util.List;
-import org.hamcrest.Description;
-import org.hamcrest.TypeSafeMatcher;
 
 
 public class AlgebraicWindowMatcher extends BaseWindowMatcher<ExpectedAlgebraicWindow> {

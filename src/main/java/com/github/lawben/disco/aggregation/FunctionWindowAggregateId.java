@@ -5,34 +5,34 @@ import java.util.Objects;
 
 public class FunctionWindowAggregateId {
     public final static int NO_CHILD_ID = -1;
-    public final static int NO_STREAM_ID = -2;
+    public final static int NO_KEY = -2;
 
     private final WindowAggregateId windowId;
     private final int functionId;
     private final int childId;
-    private final int streamId;
+    private final int key;
 
     public FunctionWindowAggregateId(WindowAggregateId windowId, int functionId) {
         this(windowId, functionId, NO_CHILD_ID);
     }
 
     public FunctionWindowAggregateId(WindowAggregateId windowId, int functionId, int childId) {
-        this(windowId, functionId, childId, NO_STREAM_ID);
+        this(windowId, functionId, childId, NO_KEY);
     }
 
-    public FunctionWindowAggregateId(WindowAggregateId windowId, int functionId, int childId, int streamId) {
+    public FunctionWindowAggregateId(WindowAggregateId windowId, int functionId, int childId, int key) {
         this.windowId = windowId;
         this.functionId = functionId;
         this.childId = childId;
-        this.streamId = streamId;
+        this.key = key;
     }
 
     public FunctionWindowAggregateId(FunctionWindowAggregateId functionWindowAggregateId, int childId) {
-        this(functionWindowAggregateId, childId, NO_STREAM_ID);
+        this(functionWindowAggregateId, childId, NO_KEY);
     }
 
-    public FunctionWindowAggregateId(FunctionWindowAggregateId functionWindowAggregateId, int childId, int streamId) {
-        this(functionWindowAggregateId.getWindowId(), functionWindowAggregateId.getFunctionId(), childId, streamId);
+    public FunctionWindowAggregateId(FunctionWindowAggregateId functionWindowAggregateId, int childId, int key) {
+        this(functionWindowAggregateId.getWindowId(), functionWindowAggregateId.getFunctionId(), childId, key);
     }
 
     public WindowAggregateId getWindowId() {
@@ -47,8 +47,8 @@ public class FunctionWindowAggregateId {
         return childId;
     }
 
-    public int getStreamId() {
-        return streamId;
+    public int getKey() {
+        return key;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class FunctionWindowAggregateId {
                 "windowId=" + windowId +
                 ", functionId=" + functionId +
                 ", (childId=" + childId + ")" +
-                ", (streamId=" + streamId + ")" +
+                ", (key=" + key + ")" +
                 "}";
     }
 

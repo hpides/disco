@@ -15,4 +15,6 @@ public interface WindowMerger<AggType> {
     Integer lowerFinalValue(AggregateWindow finalWindow);
 
     List<AggregateFunction> getAggregateFunctions();
+
+    void addKey(int key);
 }
