@@ -437,6 +437,7 @@ public class DistributedChildTest {
                 new ExpectedWindow(childId, defaultFunctionWindowId(new WindowAggregateId(1, 100, 200)), new DistributiveWindowAggregate(150, 0), new DistributiveWindowAggregate(150, 1)),
                 new ExpectedWindow(childId, defaultFunctionWindowId(new WindowAggregateId(1, 150, 250)), new DistributiveWindowAggregate(90, 0), new DistributiveWindowAggregate(150, 1)),
                 new ExpectedWindow(childId, defaultFunctionWindowId(new WindowAggregateId(2, 185, 255)), new DistributiveWindowAggregate(150, 1)),
+                // This only exists because of the STREAM_END logic
                 new ExpectedWindow(childId, defaultFunctionWindowId(new WindowAggregateId(2, 190, 255)), new DistributiveWindowAggregate(null, 0))
         );
 
@@ -853,6 +854,69 @@ public class DistributedChildTest {
         }
 
         assertThat(actualEventStrings, containsInAnyOrder(expectedMessagesToRoot));
+
+        assertChildEnd();
+        assertNoFinalThreadException(child);
+    }
+
+    @Test
+    void testTwoStreamsMixedKeysSum() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0", "SUM");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        DistributedChild child = runDefaultChild(rootInitPort, rootWindowPort, 2);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        registerStream(0);
+        registerStream(1);
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        assertNull(threadException);
+
+        int key0 = 0;
+        int key1 = 1;
+        int key2 = 2;
+
+        String[] events0 = {
+                "0,10,1,0", "0,30,1,0", "0,50,1,0", "0,70,1,1", "0,90,1,0",  // window 1
+                "0,110,10,1", "0,115,20,1", "0,120,30,1", "0,190,40,2", "0,195,50,2",  // window 2
+        };
+
+        String[] events1 = {
+                "1,20,1,1", "1,40,1,0", "1,60,1,0", "1,80,1,0", "1,85,1,1",  // window 1
+                "1,175,10,1", "1,180,20,0", "1,185,30,1", "1,190,40,0", "1,195,50,1",  // window 2
+        };
+
+        sendSleepSortedEvents(100, events0, events1);
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        List<ExpectedWindow> expectedWindows = Arrays.asList(
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, childId),
+                        new DistributiveWindowAggregate(  7, key0),
+                        new DistributiveWindowAggregate(  3, key1),
+                        // This only exists because of the STREAM_END logic
+                        new DistributiveWindowAggregate(null, key2)),
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 100, 200), 0, childId),
+                        new DistributiveWindowAggregate( 60, key0),
+                        new DistributiveWindowAggregate(150, key1),
+                        new DistributiveWindowAggregate( 90, key2))
+        );
+
+        List<Matcher<? super List<String>>> windowMatchers = expectedWindows.stream()
+                .map(WindowMatcher::equalsWindow).collect(Collectors.toList());
+
+        List<List<String>> windowStrings = new ArrayList<>(windowMatchers.size());
+        for (int i = 0; i < windowMatchers.size(); i++) {
+            windowStrings.add(receiveWindow(rootWindowReceiver));
+        }
+
+        assertThat(windowStrings, containsInAnyOrder(windowMatchers));
 
         assertChildEnd();
         assertNoFinalThreadException(child);
