@@ -1,42 +1,43 @@
 package com.github.lawben.disco.utils;
 
+import com.github.lawben.disco.aggregation.BaseWindowAggregate;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
+import java.util.Arrays;
+import java.util.List;
 
-public abstract class ExpectedWindow<T> {
-    private final T value;
-    private final FunctionWindowAggregateId functionWindowAggregateId;
+public class ExpectedWindow {
     private final int childId;
-    protected boolean windowIsComplete;
+    private final FunctionWindowAggregateId functionWindowId;
+    private final List<BaseWindowAggregate> expectedWindowAggregates;
 
-    public ExpectedWindow(FunctionWindowAggregateId functionWindowAggregateId, T value, int childId) {
-        this.functionWindowAggregateId = functionWindowAggregateId;
-        this.value = value;
+    public ExpectedWindow(int childId, FunctionWindowAggregateId functionWindowId, BaseWindowAggregate... expectedWindowAggregates) {
+        this(childId, functionWindowId, Arrays.asList(expectedWindowAggregates));
+    }
+
+    public ExpectedWindow(int childId, FunctionWindowAggregateId functionWindowId, List<BaseWindowAggregate> expectedWindowAggregates) {
         this.childId = childId;
-        this.windowIsComplete = true;
+        this.functionWindowId = functionWindowId;
+        this.expectedWindowAggregates = expectedWindowAggregates;
     }
 
     public int getChildId() {
         return childId;
     }
 
-    public FunctionWindowAggregateId getFunctionWindowAggregateId() {
-        return functionWindowAggregateId;
+    public FunctionWindowAggregateId getFunctionWindowId() {
+        return functionWindowId;
     }
 
-    public T getValue() {
-        return value;
-    }
-
-    public boolean windowIsComplete() {
-        return windowIsComplete;
+    public List<BaseWindowAggregate> getExpectedWindowAggregates() {
+        return expectedWindowAggregates;
     }
 
     @Override
     public String toString() {
         return "ExpectedWindow{" +
-                "value=" + value +
-                ", functionWindowAggregateId=" + functionWindowAggregateId +
-                ", childId=" + childId +
+                "childId=" + childId +
+                ", functionWindowId=" + functionWindowId +
+                ", expectedWindowAggregates=" + expectedWindowAggregates +
                 '}';
     }
 }

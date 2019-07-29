@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.github.lawben.disco.DistributedRoot;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.utils.BaseWindowMatcher;
+import com.github.lawben.disco.utils.WindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
 import com.github.lawben.disco.utils.ZMQPullMock;
 import com.github.lawben.disco.utils.ZMQPushMock;
@@ -136,7 +136,7 @@ public class DistributedRootTest {
     }
 
     void assertFunctionWindowIdStringEquals(String functionWindowString, FunctionWindowAggregateId functionWindowId) {
-        assertTrue(BaseWindowMatcher.functionWindowIdStringsMatch(functionWindowId, functionWindowString));
+        assertTrue(WindowMatcher.functionWindowIdStringsMatch(functionWindowId, functionWindowString));
     }
 
     @Test

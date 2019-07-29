@@ -71,6 +71,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
         FunctionWindowAggregateId currentFunctionWindowId = currentSessionWindowIds.get(functionWindowId);
         final long lastTimestamp = currentFunctionWindowId.getWindowId().getWindowEndTimestamp();
 
+//        SESSION DOES NOT WORK LIKE THIS WITH KEYS. REMOVE NEARLY ALL OF CHILDMERGER!
         if (lastTimestamp == -1L) {
             // There is no session for this window
             createNewSession(preAggregate, functionWindowAggId, functionWindowId, functionWindowPlaceholderId);

@@ -7,13 +7,17 @@ import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticAggregateHelper;
+import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.slicing.slice.Slice;
+import de.tub.dima.scotty.slicing.state.AggregateState;
 import de.tub.dima.scotty.slicing.state.AggregateWindowState;
+import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -68,8 +72,14 @@ public class ChildMerger {
         perKeySlicer.processElement(eventValue, eventTimestamp);
     }
 
+    public void processElement(Event event) {
+        processElement(event.getValue(), event.getTimestamp(), event.getKey());
+    }
+
     public List<DistributedAggregateWindowState> processWatermarkedWindows(long watermarkTimestamp) {
         List<DistributedAggregateWindowState> resultWindows = this.slicerPerKey.entrySet().stream()
+                // Guarantee order of processing
+                .sorted(Comparator.comparingInt(Map.Entry::getKey))
                 .flatMap(slicerWithKey -> {
                     final int key = slicerWithKey.getKey();
                     DistributedChildSlicer<Integer> slicer = slicerWithKey.getValue();
@@ -113,29 +123,55 @@ public class ChildMerger {
             FunctionWindowAggregateId functionWindowId =
                     new FunctionWindowAggregateId(windowId, functionId, this.childId, key);
 
-            final Optional<FunctionWindowAggregateId> triggerId;
-            final WindowMerger currentMerger;
+//            final Optional<FunctionWindowAggregateId> triggerId;
+//            final WindowMerger currentMerger;
+//
+//            if (aggregateFunction instanceof DistributiveAggregateFunction) {
+//                Integer partialAggregate = hasValue ? (Integer) aggValues.get(functionId) : null;
+//                triggerId = this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
+//                currentMerger = this.distributiveWindowMerger;
+//            } else if (aggregateFunction instanceof AlgebraicAggregateFunction) {
+//                AlgebraicPartial partial = hasValue ? (AlgebraicPartial) aggValues.get(functionId) : null;
+//                triggerId = this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
+//                currentMerger = this.algebraicWindowMerger;
+//            } else if (aggregateFunction instanceof HolisticAggregateHelper) {
+//                List<Slice> slices = preAggWindow.getSlices();
+//                triggerId = this.localHolisticWindowMerger.processPreAggregate(slices, functionWindowId);
+//                currentMerger = this.localHolisticWindowMerger;
+//            } else {
+//                throw new RuntimeException("Unsupported aggregate function: " + aggregateFunction);
+//            }
+//
+//            FunctionWindowAggregateId trigger = functionWindowId;
+//            if (triggerId.isPresent()) {
+//                trigger = triggerId.get();
+//            }
+//            DistributedAggregateWindowState finalPreAggregateWindow = currentMerger.triggerFinalWindow(trigger);
+//            finalPreAggregateWindows.add(finalPreAggregateWindow);
 
+
+            DistributedAggregateWindowState finalPreAggregateWindow;
+            List<AggregateFunction> stateAggFn =
+                    DistributedUtils.convertAggregateFunctions(Collections.singletonList(aggregateFunction));
             if (aggregateFunction instanceof DistributiveAggregateFunction) {
+                AggregateState<Integer> aggState = new AggregateState<>(new MemoryStateFactory(), stateAggFn);
                 Integer partialAggregate = hasValue ? (Integer) aggValues.get(functionId) : null;
-                triggerId = this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
-                currentMerger = this.distributiveWindowMerger;
+                aggState.addElement(partialAggregate);
+                finalPreAggregateWindow = new DistributedAggregateWindowState<>(functionWindowId, aggState);
             } else if (aggregateFunction instanceof AlgebraicAggregateFunction) {
+                AggregateState<AlgebraicPartial> aggState = new AggregateState<>(new MemoryStateFactory(), stateAggFn);
                 AlgebraicPartial partial = hasValue ? (AlgebraicPartial) aggValues.get(functionId) : null;
-                triggerId = this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
-                currentMerger = this.algebraicWindowMerger;
+                aggState.addElement(partial);
+                finalPreAggregateWindow = new DistributedAggregateWindowState<>(functionWindowId, aggState);
             } else if (aggregateFunction instanceof HolisticAggregateHelper) {
                 List<Slice> slices = preAggWindow.getSlices();
-                triggerId = this.localHolisticWindowMerger.processPreAggregate(slices, functionWindowId);
-                currentMerger = this.localHolisticWindowMerger;
+                this.localHolisticWindowMerger.processPreAggregate(slices, functionWindowId);
+                finalPreAggregateWindow = this.localHolisticWindowMerger.triggerFinalWindow(functionWindowId);
             } else {
                 throw new RuntimeException("Unsupported aggregate function: " + aggregateFunction);
             }
 
-            if (triggerId.isPresent()) {
-                DistributedAggregateWindowState finalPreAggregateWindow = currentMerger.triggerFinalWindow(triggerId.get());
-                finalPreAggregateWindows.add(finalPreAggregateWindow);
-            }
+            finalPreAggregateWindows.add(finalPreAggregateWindow);
         }
 
         return finalPreAggregateWindows;

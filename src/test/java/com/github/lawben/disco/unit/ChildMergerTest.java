@@ -8,11 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.lawben.disco.ChildMerger;
 import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.aggregation.BaseWindowAggregate;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateHelper;
-import com.github.lawben.disco.utils.ExpectedHolisticWindow;
+import com.github.lawben.disco.aggregation.HolisticWindowAggregate;
+import com.github.lawben.disco.utils.ExpectedWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
@@ -36,12 +38,17 @@ public class ChildMergerTest {
         assertThat(aggValues, equalTo(expectedValues));
     }
 
-    void assertWindowEquals(ExpectedHolisticWindow expected, DistributedAggregateWindowState actual) {
-        assertThat(expected.getFunctionWindowAggregateId(), equalTo(actual.getFunctionWindowId()));
+    void assertWindowEquals(ExpectedWindow expected, DistributedAggregateWindowState actual) {
+        assertThat(expected.getFunctionWindowId(), equalTo(actual.getFunctionWindowId()));
 
-        List<DistributedSlice> expectedSlices = expected.getValue();
+        List<BaseWindowAggregate> expectedWindowAggregates = expected.getExpectedWindowAggregates();
+        assertThat(expectedWindowAggregates, hasSize(1));
+
+        HolisticWindowAggregate expectedWindowAggregate = (HolisticWindowAggregate) expectedWindowAggregates.get(0);
+        List<DistributedSlice> expectedSlices = expectedWindowAggregate.getValue();
         List<Slice> actualSlices = (List<Slice>) actual.getAggValues().get(0);
         assertThat(actualSlices, hasSize(expectedSlices.size()));
+
         for (int i = 0; i < expectedSlices.size(); i++) {
             Slice actualSlice = actualSlices.get(i);
             DistributedSlice expectedSlice = expectedSlices.get(i);
@@ -51,7 +58,29 @@ public class ChildMergerTest {
             List<Integer> aggValues = (List<Integer>) actualSlice.getAggState().getValues().get(0);
             assertThat(aggValues, equalTo(expectedSlice.getValues()));
         }
+    }
 
+    @Test
+    void testAddNewKey() {
+        List<Window> windows = Arrays.asList(new TumblingWindow(WindowMeasure.Time, 10, 0));
+        List<AggregateFunction> aggFns = Arrays.asList(DistributedUtils.aggregateFunctionSum());
+
+        ChildMerger merger = new ChildMerger(windows, aggFns, 0);
+
+        merger.processElement( 1,  0L, 0);
+        merger.processElement(10,  1L, 0);
+
+        List<DistributedAggregateWindowState> result1 = merger.processWatermarkedWindows(10);
+        assertThat(result1, hasSize(1));
+        assertWindowValuesEqual(result1.get(0), 11);
+
+        merger.processElement( 4, 15L, 0);
+        merger.processElement( 5, 17L, 0);
+        merger.processElement(11, 19L, 0);
+
+        List<DistributedAggregateWindowState> result2 = merger.processWatermarkedWindows(20);
+        assertThat(result2, hasSize(1));
+        assertWindowValuesEqual(result2.get(0), 20);
     }
 
     @Test
@@ -65,16 +94,43 @@ public class ChildMergerTest {
         merger.processElement(10,  1L, 1);
 
         List<DistributedAggregateWindowState> result1 = merger.processWatermarkedWindows(10);
-        assertThat(result1, hasSize(1));
-        assertWindowValuesEqual(result1.get(0), 11);
+        assertThat(result1, hasSize(2));
+        assertWindowValuesEqual(result1.get(0),  1);
+        assertWindowValuesEqual(result1.get(1), 10);
 
         merger.processElement( 4, 15L, 0);
         merger.processElement( 5, 17L, 2);
         merger.processElement(11, 19L, 1);
 
         List<DistributedAggregateWindowState> result2 = merger.processWatermarkedWindows(20);
-        assertThat(result2, hasSize(1));
-        assertWindowValuesEqual(result2.get(0), 20);
+        assertThat(result2, hasSize(3));
+        assertWindowValuesEqual(result2.get(0),  4);
+        assertWindowValuesEqual(result2.get(1), 11);
+        assertWindowValuesEqual(result2.get(2),  5);
+    }
+
+    @Test
+    void testAddNewKeySliding() {
+        List<Window> windows = Arrays.asList(new SlidingWindow(WindowMeasure.Time, 10, 5, 0));
+        List<AggregateFunction> aggFns = Arrays.asList(DistributedUtils.aggregateFunctionSum());
+
+        ChildMerger merger = new ChildMerger(windows, aggFns, 0);
+
+        merger.processElement( 1,  0L, 0);
+        merger.processElement(10,  1L, 0);
+
+        List<DistributedAggregateWindowState> result1 = merger.processWatermarkedWindows(10);
+        assertThat(result1, hasSize(1));
+        assertWindowValuesEqual(result1.get(0), 11);
+
+        merger.processElement( 4, 15L, 0);
+        merger.processElement( 5, 17L, 0);
+        merger.processElement(11, 19L, 0);
+
+        List<DistributedAggregateWindowState> result2 = merger.processWatermarkedWindows(20);
+        assertThat(result2, hasSize(2));
+        assertWindowValuesEqual(result2.get(0));
+        assertWindowValuesEqual(result2.get(1), 20);
     }
 
     @Test
@@ -88,17 +144,22 @@ public class ChildMergerTest {
         merger.processElement(10,  1L, 1);
 
         List<DistributedAggregateWindowState> result1 = merger.processWatermarkedWindows(10);
-        assertThat(result1, hasSize(1));
-        assertWindowValuesEqual(result1.get(0), 11);
+        assertThat(result1, hasSize(2));
+        assertWindowValuesEqual(result1.get(0),  1);
+        assertWindowValuesEqual(result1.get(1), 10);
 
         merger.processElement( 4, 15L, 0);
         merger.processElement( 5, 17L, 2);
         merger.processElement(11, 19L, 1);
 
         List<DistributedAggregateWindowState> result2 = merger.processWatermarkedWindows(20);
-        assertThat(result2, hasSize(2));
+        assertThat(result2, hasSize(6));
         assertWindowValuesEqual(result2.get(0));
-        assertWindowValuesEqual(result2.get(1), 20);
+        assertWindowValuesEqual(result2.get(1),  4);
+        assertWindowValuesEqual(result2.get(2));
+        assertWindowValuesEqual(result2.get(3), 11);
+        assertWindowValuesEqual(result2.get(4));
+        assertWindowValuesEqual(result2.get(5),  5);
     }
 
     @Test
@@ -154,13 +215,13 @@ public class ChildMergerTest {
                 new DistributedSlice(700, 750, Arrays.asList(100, 0))
         );
 
-        List<ExpectedHolisticWindow> expectedWindows = Arrays.asList(
-                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 110), 0, childId, key1), Arrays.asList(stream0Slices.get(0)), childId),
-                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 130), 0, childId, key2), Arrays.asList(stream1Slices.get(0)), childId),
-                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 120, 270), 0, childId, key1), Arrays.asList(stream0Slices.get(1)), childId),
-                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 510), 0, childId, key1), Arrays.asList(stream0Slices.get(2)), childId),
-                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 550, 660), 0, childId, key1), Arrays.asList(stream0Slices.get(3)), childId),
-                new ExpectedHolisticWindow(new FunctionWindowAggregateId(new WindowAggregateId(0, 460, 690), 0, childId, key2), Arrays.asList(stream1Slices.get(1)), childId)
+        List<ExpectedWindow> expectedWindows = Arrays.asList(
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 110), 0, childId, key1), new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(0)))),
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 130), 0, childId, key2), new HolisticWindowAggregate(Arrays.asList(stream1Slices.get(0)))),
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 120, 270), 0, childId, key1), new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(1)))),
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 510), 0, childId, key1), new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(2)))),
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 550, 660), 0, childId, key1), new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(3)))),
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 460, 690), 0, childId, key2), new HolisticWindowAggregate(Arrays.asList(stream1Slices.get(1))))
         );
 
         assertThat(result1, empty());

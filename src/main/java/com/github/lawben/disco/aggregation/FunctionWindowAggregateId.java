@@ -1,11 +1,12 @@
 package com.github.lawben.disco.aggregation;
 
+import static com.github.lawben.disco.Event.NO_KEY;
+
 import de.tub.dima.scotty.core.WindowAggregateId;
 import java.util.Objects;
 
 public class FunctionWindowAggregateId {
     public final static int NO_CHILD_ID = -1;
-    public final static int NO_KEY = -2;
 
     private final WindowAggregateId windowId;
     private final int functionId;

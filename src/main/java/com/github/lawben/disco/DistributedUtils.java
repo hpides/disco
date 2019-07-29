@@ -40,7 +40,6 @@ public class DistributedUtils {
     public static final String WINDOW_PARTIAL = "P";
 
     public static final String EVENT_STRING = "E";
-    public static final int NO_KEY = Integer.MAX_VALUE;
 
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {

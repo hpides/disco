@@ -1,5 +1,7 @@
 package com.github.lawben.disco.aggregation;
 
+import static com.github.lawben.disco.Event.NO_KEY;
+
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import de.tub.dima.scotty.slicing.state.AggregateState;
@@ -14,7 +16,7 @@ public class DistributedSlice implements Slice {
     private final int streamId;
 
     public DistributedSlice(long tStart, long tEnd, List<Integer> values) {
-        this(tStart, tEnd, values, FunctionWindowAggregateId.NO_KEY);
+        this(tStart, tEnd, values, NO_KEY);
     }
 
     public DistributedSlice(long tStart, long tEnd, List<Integer> values, int streamId) {
