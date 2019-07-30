@@ -5,6 +5,8 @@ import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS
 import static com.github.lawben.disco.DistributedUtils.DISTRIBUTIVE_STRING;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.HOLISTIC_STRING;
+import static com.github.lawben.disco.Event.NO_KEY;
+import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
 
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
@@ -197,7 +199,10 @@ public class DistributedChild implements Runnable {
         Map<FunctionWindowAggregateId, List<DistributedAggregateWindowState>> keyedAggWindows =
                 preAggregatedWindows
                         .stream()
-                        .collect(Collectors.groupingBy(DistributedAggregateWindowState::getFunctionWindowId));
+                        .collect(Collectors.groupingBy(windowState ->
+                            // Remove child id and key because we want to collect those per window.
+                            new FunctionWindowAggregateId(windowState.getFunctionWindowId(), NO_CHILD_ID, NO_KEY))
+                        );
 
         List<List<DistributedAggregateWindowState>> sortedAggWindows = keyedAggWindows.values().stream()
                 .sorted(Comparator.comparingInt(y -> y.get(0).getFunctionWindowId().getFunctionId()))

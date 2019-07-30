@@ -13,17 +13,17 @@ public class DistributedSlice implements Slice {
     private final long tStart;
     private final long tEnd;
     private final List<Integer> values;
-    private final int streamId;
+    private final int key;
 
     public DistributedSlice(long tStart, long tEnd, List<Integer> values) {
         this(tStart, tEnd, values, NO_KEY);
     }
 
-    public DistributedSlice(long tStart, long tEnd, List<Integer> values, int streamId) {
+    public DistributedSlice(long tStart, long tEnd, List<Integer> values, int key) {
         this.tStart = tStart;
         this.tEnd = tEnd;
         this.values = values;
-        this.streamId = streamId;
+        this.key = key;
     }
 
     @Override
@@ -41,8 +41,8 @@ public class DistributedSlice implements Slice {
         return tEnd;
     }
 
-    public int getStreamId() {
-        return streamId;
+    public int getKey() {
+        return key;
     }
 
     @Override
@@ -63,7 +63,7 @@ public class DistributedSlice implements Slice {
                 "tStart=" + tStart +
                 ", tEnd=" + tEnd +
                 ", values=" + values +
-                ", streamId=" + streamId +
+                ", key=" + key +
                 '}';
     }
 

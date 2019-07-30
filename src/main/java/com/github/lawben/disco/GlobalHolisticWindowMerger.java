@@ -33,53 +33,45 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
         this.childSlices = new HashMap<>();
     }
 
-    public Optional<FunctionWindowAggregateId> processPreAggregateAndCheckComplete(List<DistributedSlice> preAggregate, FunctionWindowAggregateId functionWindowAggId, boolean windowIsComplete) {
-        Optional<FunctionWindowAggregateId> triggerId = this.processPreAggregate(preAggregate, functionWindowAggId);
-
-        if (triggerId.isPresent()) {
-            return triggerId;
-        }
-
-        if (!this.isSessionWindow(functionWindowAggId) && windowIsComplete) {
-            return this.checkWindowTrigger(functionWindowAggId);
-        }
-
-        return Optional.empty();
-    }
-
     @Override
-    public Optional<FunctionWindowAggregateId> processPreAggregate(List<DistributedSlice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
-        if (this.isSessionWindow(functionWindowAggId)) {
-            return this.processSessionWindow(preAggregate, functionWindowAggId);
-        }
+    public void processPreAggregate(List<DistributedSlice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
+//        if (this.isSessionWindow(functionWindowAggId)) {
+//            return this.processSessionWindow(preAggregate, functionWindowAggId);
+//        }
 
         ChildKey childKey = ChildKey.fromFunctionWindowId(functionWindowAggId);
         childSlices.putIfAbsent(childKey, new ArrayList<>());
         List<DistributedSlice> childSlices = this.childSlices.get(childKey);
         childSlices.addAll(preAggregate);
-
-        return Optional.empty();
     }
 
     @Override
-    public DistributedAggregateWindowState<List<DistributedSlice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
-        if (this.isSessionWindow(functionWindowId)) {
-            AggregateState<List<DistributedSlice>> windowAgg = this.windowAggregates.remove(functionWindowId);
-            return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
-        }
+    public List<DistributedAggregateWindowState<List<DistributedSlice>>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+//        if (this.isSessionWindow(functionWindowId)) {
+//            AggregateState<List<DistributedSlice>> windowAgg = this.windowAggregates.remove(functionWindowId);
+//            return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
+//        }
 
         WindowAggregateId windowId = functionWindowId.getWindowId();
         final long windowStart = windowId.getWindowStartTimestamp();
         final long windowEnd = windowId.getWindowEndTimestamp();
 
-        List<DistributedSlice> finalSlices = new ArrayList<>();
-        for (List<DistributedSlice> slices : childSlices.values()) {
+        List<DistributedAggregateWindowState<List<DistributedSlice>>> resultWindows = new ArrayList<>();
+
+        Map<Integer, List<DistributedSlice>> finalSlices = new HashMap<>();
+        for (Map.Entry<ChildKey, List<DistributedSlice>> keyedSlices : childSlices.entrySet()) {
+            ChildKey childKey = keyedSlices.getKey();
+            List<DistributedSlice> slices = keyedSlices.getValue();
+
+            finalSlices.putIfAbsent(childKey.getKey(), new ArrayList<>());
+            List<DistributedSlice> keyedFinalSlices = finalSlices.get(childKey.getKey());
+
             ListIterator<DistributedSlice> iterator = slices.listIterator(slices.size());
             while (iterator.hasPrevious()) {
                 DistributedSlice slice = iterator.previous();
                 if (slice.getTStart() >= windowStart) {
                     if (slice.getTEnd() <= windowEnd) {
-                        finalSlices.add(slice);
+                        keyedFinalSlices.add(slice);
                     }
                 } else {
                     break;
@@ -87,10 +79,18 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
             }
         }
 
-        List<AggregateFunction> noOpFn = Collections.singletonList(this.aggFns.get(functionWindowId.getFunctionId()));
-        AggregateState<List<DistributedSlice>> windowAgg = new AggregateState<>(this.stateFactory, noOpFn);
-        windowAgg.addElement(finalSlices);
-        return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
+        for (Map.Entry<Integer, List<DistributedSlice>> keyedSlices : finalSlices.entrySet()) {
+            List<AggregateFunction> noOpFn = Collections.singletonList(this.aggFns.get(functionWindowId.getFunctionId()));
+            AggregateState<List<DistributedSlice>> windowAgg = new AggregateState<>(this.stateFactory, noOpFn);
+            windowAgg.addElement(keyedSlices.getValue());
+
+            Integer key = keyedSlices.getKey();
+            FunctionWindowAggregateId resultId =
+                    new FunctionWindowAggregateId(functionWindowId, FunctionWindowAggregateId.NO_CHILD_ID, key);
+            resultWindows.add(new DistributedAggregateWindowState<>(resultId, windowAgg));
+        }
+
+        return resultWindows;
     }
 
     @Override

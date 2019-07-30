@@ -41,7 +41,7 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
     }
 
     @Override
-    public Optional<FunctionWindowAggregateId> processPreAggregate(List<Slice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
+    public void processPreAggregate(List<Slice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
         final int key = functionWindowAggId.getKey();
         Set<Long> seenStreamSlices = seenSlices.computeIfAbsent(key, k -> new HashSet<>());
         List<Slice> newSlices = new ArrayList<>(preAggregate.size());
@@ -60,23 +60,15 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
         windowAgg.addElement(newSlices);
 
         aggregates.put(functionWindowAggId, windowAgg);
-        return Optional.of(functionWindowAggId);
     }
 
     @Override
-    public DistributedAggregateWindowState<List<Slice>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
+    public List<DistributedAggregateWindowState<List<Slice>>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
         AggregateState<List<Slice>> aggState = aggregates.remove(functionWindowId);
         DistributedAggregateWindowState<List<Slice>> windowState =
                 new DistributedAggregateWindowState<>(functionWindowId, aggState);
 
-        long windowId = functionWindowId.getWindowId().getWindowId();
-        // Session windows are always "complete"
-        boolean windowIsComplete = this.sessionWindowIds.contains(windowId) || this.checkWindowTrigger(functionWindowId).isPresent();
-        if (windowIsComplete) {
-            windowState.setWindowComplete();
-        }
-
-        return windowState;
+        return Collections.singletonList(windowState);
     }
 
     @Override

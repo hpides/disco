@@ -3,6 +3,8 @@ package com.github.lawben.disco;
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
+import com.github.lawben.disco.aggregation.BaseWindowAggregate;
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import de.tub.dima.scotty.core.AggregateWindow;
@@ -40,6 +42,10 @@ public class RootMerger {
         this.countBasedSlicer.processElement(eventValue, eventTimestamp);
     }
 
+    public void processCountEvent(Event event) {
+        processCountEvent(event.getValue(), event.getTimestamp());
+    }
+
     public List<WindowResult> processCountWatermark(long watermarkTimestamp) {
         List<WindowResult> windowResults = new ArrayList<>();
         List<AggregateWindow> countWindows = this.countBasedSlicer.processWatermark(watermarkTimestamp);
@@ -65,41 +71,60 @@ public class RootMerger {
         return windowResults;
     }
 
-    public Optional<WindowResult> processPreAggregateWindow(FunctionWindowAggregateId functionWindowId,
-            String aggregateType, String rawPreAggregate, boolean windowIsComplete) {
-        final Optional<FunctionWindowAggregateId> triggerId;
-        final WindowMerger currentMerger;
+    public List<WindowResult> processWindowAggregates(FunctionWindowAggregateId functionWindowId, List<String> rawAggregates) {
+        assert !rawAggregates.isEmpty();
 
+        WindowMerger currentMerger = null;
+        for (String rawWindowAggregate : rawAggregates) {
+            String[] rawWindowAggregateParts = rawWindowAggregate.split(BaseWindowAggregate.DELIMITER);
+            if (rawWindowAggregateParts.length != 3) {
+                throw new IllegalArgumentException("Raw aggregate must consist of 3 parts, got: " + rawWindowAggregate);
+            }
+
+            String aggregateType = rawWindowAggregateParts[0];
+            String rawAggregate = rawWindowAggregateParts[1];
+            int key = Integer.valueOf(rawWindowAggregateParts[2]);
+
+            int childId = functionWindowId.getChildId();
+            FunctionWindowAggregateId keyedFunctionWindowId = new FunctionWindowAggregateId(functionWindowId, childId, key);
+            currentMerger = this.processPreAggregateWindow(keyedFunctionWindowId, aggregateType, rawAggregate);
+        }
+
+        // Handle window complete
+        Optional<FunctionWindowAggregateId> triggerId = currentMerger.checkWindowComplete(functionWindowId);
+        if (triggerId.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<WindowResult> windowResults = new ArrayList<>();
+        List<DistributedAggregateWindowState> finalWindows = currentMerger.triggerFinalWindow(triggerId.get());
+        for (DistributedAggregateWindowState finalWindow : finalWindows) {
+            Integer finalValue = currentMerger.lowerFinalValue(finalWindow);
+            windowResults.add(new WindowResult(finalWindow.getFunctionWindowId(), finalValue));
+        }
+
+        return windowResults;
+    }
+
+    public WindowMerger processPreAggregateWindow(FunctionWindowAggregateId functionWindowId, String aggregateType, String rawPreAggregate) {
         switch (aggregateType) {
             case DistributedUtils.DISTRIBUTIVE_STRING:
                 Integer partialAggregate = Integer.valueOf(rawPreAggregate);
-                triggerId = this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
-                currentMerger = this.distributiveWindowMerger;
-                break;
+                this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
+                return this.distributiveWindowMerger;
             case DistributedUtils.ALGEBRAIC_STRING:
                 List<AggregateFunction> algebraicFns = this.algebraicWindowMerger.getAggregateFunctions();
                 AlgebraicMergeFunction algebraicMergeFn = (AlgebraicMergeFunction) algebraicFns.get(functionWindowId.getFunctionId());
                 AlgebraicAggregateFunction algebraicFn = algebraicMergeFn.getOriginalFn();
                 AlgebraicPartial partial = algebraicFn.partialFromString(rawPreAggregate);
-                triggerId = this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
-                currentMerger = this.algebraicWindowMerger;
-                break;
+                this.algebraicWindowMerger.processPreAggregate(partial, functionWindowId);
+                return this.algebraicWindowMerger;
             case DistributedUtils.HOLISTIC_STRING:
                 List<DistributedSlice> slices = DistributedUtils.slicesFromString(rawPreAggregate);
-                triggerId = this.holisticWindowMerger.processPreAggregateAndCheckComplete(slices, functionWindowId, windowIsComplete);
-                currentMerger = this.holisticWindowMerger;
-                break;
+                this.holisticWindowMerger.processPreAggregate(slices, functionWindowId);
+                return this.holisticWindowMerger;
             default:
                 throw new IllegalArgumentException("Unknown aggregate type: " + aggregateType);
         }
-
-        if (triggerId.isEmpty()) {
-            return Optional.empty();
-        }
-
-        FunctionWindowAggregateId finalWindowId = triggerId.get();
-        AggregateWindow finalWindow = currentMerger.triggerFinalWindow(finalWindowId);
-        Integer finalValue = currentMerger.lowerFinalValue(finalWindow);
-        return Optional.of(new WindowResult(finalWindowId, finalValue));
     }
 }

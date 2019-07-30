@@ -36,6 +36,14 @@ public class FunctionWindowAggregateId {
         this(functionWindowAggregateId.getWindowId(), functionWindowAggregateId.getFunctionId(), childId, key);
     }
 
+    public FunctionWindowAggregateId keylessCopy() {
+        return new FunctionWindowAggregateId(this, NO_CHILD_ID, NO_KEY);
+    }
+
+    public FunctionWindowAggregateId withKey(int key) {
+        return new FunctionWindowAggregateId(this, NO_CHILD_ID, key);
+    }
+
     public WindowAggregateId getWindowId() {
         return windowId;
     }
@@ -62,6 +70,25 @@ public class FunctionWindowAggregateId {
                 "}";
     }
 
+//    @Override
+//    public boolean equals(Object o) {
+//        if (this == o) {
+//            return true;
+//        }
+//        if (o == null || getClass() != o.getClass()) {
+//            return false;
+//        }
+//        FunctionWindowAggregateId that = (FunctionWindowAggregateId) o;
+//        return functionId == that.functionId &&
+//                Objects.equals(windowId, that.windowId);
+//    }
+//
+//    @Override
+//    public int hashCode() {
+//        return Objects.hash(windowId, functionId);
+//    }
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -72,11 +99,12 @@ public class FunctionWindowAggregateId {
         }
         FunctionWindowAggregateId that = (FunctionWindowAggregateId) o;
         return functionId == that.functionId &&
+                key == that.key &&
                 Objects.equals(windowId, that.windowId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(windowId, functionId);
+        return Objects.hash(windowId, functionId, key);
     }
 }

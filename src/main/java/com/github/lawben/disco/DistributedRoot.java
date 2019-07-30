@@ -1,7 +1,5 @@
 package com.github.lawben.disco;
 
-import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
-
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
@@ -9,12 +7,12 @@ import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -109,13 +107,10 @@ public class DistributedRoot implements Runnable {
 
             if (messageOrStreamEnd.equals(DistributedUtils.EVENT_STRING)) {
                 String rawEvent = this.windowPuller.recvStr(ZMQ.DONTWAIT);
-                final String[] eventParts = rawEvent.split(",");
-                final int streamId = Integer.parseInt(eventParts[0]);
-                final long eventTimestamp = Long.valueOf(eventParts[1]);
-                final int eventValue = Integer.valueOf(eventParts[2]);
-                this.rootMerger.processCountEvent(eventValue, eventTimestamp);
+                Event event = Event.fromString(rawEvent);
+                this.rootMerger.processCountEvent(event);
 
-                currentEventTime = eventTimestamp;
+                currentEventTime = event.getTimestamp();
                 numEvents++;
                 final long maxLateness = this.watermarkMs;
                 final long watermarkTimestamp = lastWatermark + this.watermarkMs;
@@ -132,18 +127,18 @@ public class DistributedRoot implements Runnable {
 
             int childId = Integer.valueOf(messageOrStreamEnd);
             String rawFunctionWindowAggId = this.windowPuller.recvStr(ZMQ.DONTWAIT);
-            String aggregateType = this.windowPuller.recvStr(ZMQ.DONTWAIT);
-            boolean windowIsComplete = this.windowPuller.recvStr(ZMQ.DONTWAIT).equals(WINDOW_COMPLETE);
-            String rawPreAggregate = this.windowPuller.recvStr(ZMQ.DONTWAIT);
+            int numAggregates = Integer.valueOf(this.windowPuller.recvStr(ZMQ.DONTWAIT));
+
+            List<String> rawPreAggregates = new ArrayList<>(numAggregates);
+            for (int i = 0; i < numAggregates; i++) {
+                rawPreAggregates.add(this.windowPuller.recvStr(ZMQ.DONTWAIT));
+            }
 
             FunctionWindowAggregateId functionWindowAggId =
                     DistributedUtils.stringToFunctionWindowAggId(rawFunctionWindowAggId);
 
-            Optional<WindowResult> windowResult = this.rootMerger.processPreAggregateWindow(functionWindowAggId,
-                    aggregateType, rawPreAggregate, windowIsComplete);
-
-            windowResult.ifPresent(this::sendResult);
-
+            List<WindowResult> windowResults = this.rootMerger.processWindowAggregates(functionWindowAggId, rawPreAggregates);
+            windowResults.forEach(this::sendResult);
         }
     }
 

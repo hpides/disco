@@ -35,4 +35,9 @@ public class ZMQPushMock extends ZMQMock {
         addMessage(msgParts);
         sendNext();
     }
+
+    public void sendNext(List<String> msgParts) {
+        addMessage(msgParts);
+        sendNext();
+    }
 }

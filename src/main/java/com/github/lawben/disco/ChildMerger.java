@@ -124,7 +124,7 @@ public class ChildMerger {
             } else if (aggregateFunction instanceof HolisticAggregateHelper) {
                 List<Slice> slices = preAggWindow.getSlices();
                 this.localHolisticWindowMerger.processPreAggregate(slices, functionWindowId);
-                finalPreAggregateWindow = this.localHolisticWindowMerger.triggerFinalWindow(functionWindowId);
+                finalPreAggregateWindow = this.localHolisticWindowMerger.triggerFinalWindow(functionWindowId).get(0);
             } else {
                 throw new RuntimeException("Unsupported aggregate function: " + aggregateFunction);
             }

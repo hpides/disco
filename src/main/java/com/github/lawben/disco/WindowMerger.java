@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Optional;
 
 public interface WindowMerger<AggType> {
-    Optional<FunctionWindowAggregateId> processPreAggregate(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId);
+    void processPreAggregate(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId);
 
-    DistributedAggregateWindowState<AggType> triggerFinalWindow(FunctionWindowAggregateId functionWindowId);
+    List<DistributedAggregateWindowState<AggType>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId);
 
     Integer lowerFinalValue(AggregateWindow finalWindow);
 
     List<AggregateFunction> getAggregateFunctions();
 
-    void addKey(int key);
+    Optional<FunctionWindowAggregateId> checkWindowComplete(FunctionWindowAggregateId functionWindowAggId);
 }
