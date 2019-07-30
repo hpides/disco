@@ -4,32 +4,27 @@ import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFS
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
-import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
-import static com.github.lawben.disco.DistributedUtils.WINDOW_PARTIAL;
 import static com.github.lawben.disco.utils.WindowMatcher.equalsWindow;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.lawben.disco.DistributedChild;
 import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.aggregation.AlgebraicWindowAggregate;
 import com.github.lawben.disco.aggregation.DistributedSlice;
+import com.github.lawben.disco.aggregation.DistributiveWindowAggregate;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticWindowAggregate;
 import com.github.lawben.disco.aggregation.PartialAverage;
 import com.github.lawben.disco.utils.EventMatcher;
-import com.github.lawben.disco.aggregation.AlgebraicWindowAggregate;
-import com.github.lawben.disco.aggregation.DistributiveWindowAggregate;
 import com.github.lawben.disco.utils.ExpectedWindow;
 import com.github.lawben.disco.utils.WindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
@@ -41,7 +36,6 @@ import de.tub.dima.scotty.core.WindowAggregateId;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -323,7 +317,6 @@ public class DistributedChildTest {
     @Test
     void testFiveEventsSingleStream() throws Exception {
         DistributedChild child = defaultInit();
-        ZMQPushMock streamSender = streamSenders.get(0);
 
         String[] events = { "0,10,1", "0,20,1", "0,30,1", "0,40,1", "0,50,1" };
         sendSortedEvents(events);

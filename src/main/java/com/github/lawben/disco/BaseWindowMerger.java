@@ -1,9 +1,7 @@
 package com.github.lawben.disco;
 
-import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
-
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.FunctionWindowId;
+import com.github.lawben.disco.aggregation.WindowFunctionId;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
@@ -22,7 +20,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
     protected int numInputs;
     protected final StateFactory stateFactory;
     protected final List<AggregateFunction> aggFunctions;
-//    protected final Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds;
+    protected final Map<WindowFunctionId, FunctionWindowAggregateId> currentSessionWindowIds;
     protected final Map<FunctionWindowAggregateId, LongAdder> receivedWindows;
     protected final Map<FunctionWindowAggregateId, Map<Integer, AggregateState<AggType>>> windowAggregates;
 
@@ -31,7 +29,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
         this.stateFactory = new MemoryStateFactory();
         this.aggFunctions = aggFunctions;
         this.receivedWindows = new HashMap<>();
-//        this.currentSessionWindowIds = this.prepareSessionWindows(windows, aggFunctions);
+        this.currentSessionWindowIds = this.prepareSessionWindows(windows, aggFunctions);
         this.windowAggregates = new HashMap<>();
     }
 
@@ -46,41 +44,41 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
         receivedCounter.decrement();
         return receivedCounter.longValue() == 0 ? Optional.of(keylessId) : Optional.empty();
     }
-//
-//    protected Map<FunctionWindowId, FunctionWindowAggregateId> prepareSessionWindows(List<Window> windows, List<AggregateFunction> aggregateFunctions) {
-//        Map<FunctionWindowId, FunctionWindowAggregateId> currentSessionWindowIds = new HashMap<>();
-//        for (Window window : windows) {
-//            if (window instanceof SessionWindow) {
-//                SessionWindow sw = (SessionWindow) window;
-//                long windowId = sw.getWindowId();
-//                WindowAggregateId dummyId = new WindowAggregateId(windowId, -1L, -1L);
-//
-//                for (int functionId = 0; functionId < aggregateFunctions.size(); functionId++) {
-//                    FunctionWindowId functionWindowId = new FunctionWindowId(windowId, functionId);
-//                    currentSessionWindowIds.put(functionWindowId, new FunctionWindowAggregateId(dummyId, functionId));
-//                }
-//            }
-//        }
-//        return currentSessionWindowIds;
-//    }
 
-//    protected Optional<FunctionWindowAggregateId> processSessionWindow(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
+    protected Map<WindowFunctionId, FunctionWindowAggregateId> prepareSessionWindows(List<Window> windows, List<AggregateFunction> aggregateFunctions) {
+        Map<WindowFunctionId, FunctionWindowAggregateId> currentSessionWindowIds = new HashMap<>();
+        for (Window window : windows) {
+            if (window instanceof SessionWindow) {
+                SessionWindow sw = (SessionWindow) window;
+                long windowId = sw.getWindowId();
+                WindowAggregateId dummyId = new WindowAggregateId(windowId, -1L, -1L);
+
+                for (int functionId = 0; functionId < aggregateFunctions.size(); functionId++) {
+                    WindowFunctionId windowFunctionId = new WindowFunctionId(windowId, functionId);
+                    currentSessionWindowIds.put(windowFunctionId, new FunctionWindowAggregateId(dummyId, functionId));
+                }
+            }
+        }
+        return currentSessionWindowIds;
+    }
+
+    protected void processSessionWindow(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
 //        final WindowAggregateId windowAggId = functionWindowAggId.getWindowId();
 //        final long windowId = windowAggId.getWindowId();
 //        final int functionId = functionWindowAggId.getFunctionId();
 //
-//        FunctionWindowId functionWindowId = new FunctionWindowId(windowId, functionId);
+//        WindowFunctionId windowFunctionId = new WindowFunctionId(windowId, functionId);
 //        WindowAggregateId windowPlaceholderId = new WindowAggregateId(windowId, 0, 0);
 //        FunctionWindowAggregateId functionWindowPlaceholderId =
 //                new FunctionWindowAggregateId(windowPlaceholderId, functionId);
 //
-//        FunctionWindowAggregateId currentFunctionWindowId = currentSessionWindowIds.get(functionWindowId);
+//        FunctionWindowAggregateId currentFunctionWindowId = currentSessionWindowIds.get(windowFunctionId);
 //        final long lastTimestamp = currentFunctionWindowId.getWindowId().getWindowEndTimestamp();
 //
 ////        SESSION DOES NOT WORK LIKE THIS WITH KEYS. REMOVE NEARLY ALL OF CHILDMERGER!
 //        if (lastTimestamp == -1L) {
 //            // There is no session for this window
-//            createNewSession(preAggregate, functionWindowAggId, functionWindowId, functionWindowPlaceholderId);
+//            createNewSession(preAggregate, functionWindowAggId, windowFunctionId, functionWindowPlaceholderId);
 //            return Optional.empty();
 //        } else {
 //            // There is a current session for this window
@@ -98,38 +96,38 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
 //                WindowAggregateId newCurrentWindowId = new WindowAggregateId(windowId, newStartTime, newEndTime);
 //                FunctionWindowAggregateId newCurrentFunctionWindowId =
 //                        new FunctionWindowAggregateId(newCurrentWindowId, functionId);
-//                currentSessionWindowIds.put(functionWindowId, newCurrentFunctionWindowId);
+//                currentSessionWindowIds.put(windowFunctionId, newCurrentFunctionWindowId);
 //                return Optional.empty();
 //            } else {
 //                // This aggregate starts a new session
-//                createNewSession(preAggregate, functionWindowAggId, functionWindowId, functionWindowPlaceholderId);
+//                createNewSession(preAggregate, functionWindowAggId, windowFunctionId, functionWindowPlaceholderId);
 //
 //                // Trigger window that just finished
 //                windowAggregates.put(currentFunctionWindowId, aggWindow);
 //                return Optional.of(currentFunctionWindowId);
 //            }
 //        }
-//    }
+    }
 
-//    protected boolean isSessionWindow(FunctionWindowAggregateId functionWindowAggId) {
-//        final long windowId = functionWindowAggId.getWindowId().getWindowId();
-//        final int functionId = functionWindowAggId.getFunctionId();
-//        final FunctionWindowId functionWindowId = new FunctionWindowId(windowId, functionId);
-//        return currentSessionWindowIds.containsKey(functionWindowId);
-//    }
+    protected boolean isSessionWindow(FunctionWindowAggregateId functionWindowAggId) {
+        final long windowId = functionWindowAggId.getWindowId().getWindowId();
+        final int functionId = functionWindowAggId.getFunctionId();
+        final WindowFunctionId windowFunctionId = new WindowFunctionId(windowId, functionId);
+        return currentSessionWindowIds.containsKey(windowFunctionId);
+    }
 
     @Override
     public List<AggregateFunction> getAggregateFunctions() {
         return this.aggFunctions;
     }
 
-//    private void createNewSession(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId,
-//            FunctionWindowId functionWindowId, FunctionWindowAggregateId functionWindowPlaceholderId) {
+    private void createNewSession(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId,
+            WindowFunctionId windowFunctionId, FunctionWindowAggregateId functionWindowPlaceholderId) {
 //        AggregateFunction aggFn = this.aggFunctions.get(functionWindowAggId.getFunctionId());
 //        List<AggregateFunction> stateAggFns = Collections.singletonList(aggFn);
 //        AggregateState<AggType> newAggWindow = new AggregateState<>(this.stateFactory, stateAggFns);
 //        newAggWindow.addElement(preAggregate);
 //        windowAggregates.put(functionWindowPlaceholderId, newAggWindow);
-//        currentSessionWindowIds.put(functionWindowId, functionWindowAggId);
-//    }
+//        currentSessionWindowIds.put(windowFunctionId, functionWindowAggId);
+    }
 }

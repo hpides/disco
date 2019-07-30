@@ -41,8 +41,8 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
 
         ChildKey childKey = ChildKey.fromFunctionWindowId(functionWindowAggId);
         childSlices.putIfAbsent(childKey, new ArrayList<>());
-        List<DistributedSlice> childSlices = this.childSlices.get(childKey);
-        childSlices.addAll(preAggregate);
+        List<DistributedSlice> childSlicesPerKey = this.childSlices.get(childKey);
+        childSlicesPerKey.addAll(preAggregate);
     }
 
     @Override

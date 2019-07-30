@@ -1,12 +1,11 @@
 package com.github.lawben.disco.integration;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
-import static com.github.lawben.disco.DistributedUtils.DISTRIBUTIVE_STRING;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
-import static com.github.lawben.disco.DistributedUtils.WINDOW_COMPLETE;
 import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
+import static com.github.lawben.disco.utils.TestUtils.closeIfNotNull;
 import static com.github.lawben.disco.utils.WindowResultMatcher.equalsWindowResult;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
@@ -74,12 +73,6 @@ public class DistributedRootTest {
 
         for (ZMQMock mock : this.children) {
             closeIfNotNull(mock);
-        }
-    }
-
-    void closeIfNotNull(AutoCloseable x) throws Exception {
-        if (x != null) {
-            x.close();
         }
     }
 

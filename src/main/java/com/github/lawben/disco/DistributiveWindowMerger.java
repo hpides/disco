@@ -19,9 +19,9 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
 
     @Override
     public void processPreAggregate(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
-//        if (this.isSessionWindow(functionWindowAggId)) {
-//            return processSessionWindow(preAggregate, functionWindowAggId);
-//        }
+        if (this.isSessionWindow(functionWindowAggId)) {
+            processSessionWindow(preAggregate, functionWindowAggId);
+        }
 
         FunctionWindowAggregateId keylessId = functionWindowAggId.keylessCopy();
         AggregateFunction aggFn = this.aggFunctions.get(functionWindowAggId.getFunctionId());

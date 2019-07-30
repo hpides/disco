@@ -2,11 +2,11 @@ package com.github.lawben.disco.aggregation;
 
 import java.util.Objects;
 
-public class FunctionWindowId {
+public class WindowFunctionId {
     private final long windowId;
     private final int functionId;
 
-    public FunctionWindowId(long windowId, int functionId) {
+    public WindowFunctionId(long windowId, int functionId) {
         this.windowId = windowId;
         this.functionId = functionId;
     }
@@ -19,7 +19,7 @@ public class FunctionWindowId {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        FunctionWindowId that = (FunctionWindowId) o;
+        WindowFunctionId that = (WindowFunctionId) o;
         return windowId == that.windowId &&
                 functionId == that.functionId;
     }
