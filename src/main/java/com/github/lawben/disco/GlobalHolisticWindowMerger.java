@@ -35,9 +35,10 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
 
     @Override
     public void processPreAggregate(List<DistributedSlice> preAggregate, FunctionWindowAggregateId functionWindowAggId) {
-//        if (this.isSessionWindow(functionWindowAggId)) {
-//            return this.processSessionWindow(preAggregate, functionWindowAggId);
-//        }
+        if (this.isSessionWindow(functionWindowAggId)) {
+            processGlobalSession(preAggregate, functionWindowAggId);
+            return;
+        }
 
         ChildKey childKey = ChildKey.fromFunctionWindowId(functionWindowAggId);
         childSlices.putIfAbsent(childKey, new ArrayList<>());
@@ -47,16 +48,15 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
 
     @Override
     public List<DistributedAggregateWindowState<List<DistributedSlice>>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
-//        if (this.isSessionWindow(functionWindowId)) {
-//            AggregateState<List<DistributedSlice>> windowAgg = this.windowAggregates.remove(functionWindowId);
-//            return new DistributedAggregateWindowState<>(functionWindowId, windowAgg);
-//        }
+        List<DistributedAggregateWindowState<List<DistributedSlice>>> resultWindows = new ArrayList<>();
+
+        if (this.isSessionWindow(functionWindowId)) {
+            return super.triggerFinalWindow(functionWindowId);
+        }
 
         WindowAggregateId windowId = functionWindowId.getWindowId();
         final long windowStart = windowId.getWindowStartTimestamp();
         final long windowEnd = windowId.getWindowEndTimestamp();
-
-        List<DistributedAggregateWindowState<List<DistributedSlice>>> resultWindows = new ArrayList<>();
 
         Map<Integer, List<DistributedSlice>> finalSlices = new HashMap<>();
         for (Map.Entry<ChildKey, List<DistributedSlice>> keyedSlices : childSlices.entrySet()) {

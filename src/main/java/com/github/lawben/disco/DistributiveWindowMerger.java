@@ -20,36 +20,28 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
     @Override
     public void processPreAggregate(AggType preAggregate, FunctionWindowAggregateId functionWindowAggId) {
         if (this.isSessionWindow(functionWindowAggId)) {
-            processSessionWindow(preAggregate, functionWindowAggId);
+            processGlobalSession(preAggregate, functionWindowAggId);
+            return;
         }
 
         FunctionWindowAggregateId keylessId = functionWindowAggId.keylessCopy();
         AggregateFunction aggFn = this.aggFunctions.get(functionWindowAggId.getFunctionId());
         List<AggregateFunction> stateAggFns = Collections.singletonList(aggFn);
-        Map<Integer, AggregateState<AggType>> keyedStates =
+        Map<Integer, List<DistributedAggregateWindowState<AggType>>> keyedStates =
                 windowAggregates.computeIfAbsent(keylessId, id -> new HashMap<>());
 
         int key = functionWindowAggId.getKey();
-        AggregateState<AggType> aggWindow =
-                keyedStates.computeIfAbsent(key, k -> new AggregateState<>(this.stateFactory, stateAggFns));
-        aggWindow.addElement(preAggregate);
-    }
+        List<DistributedAggregateWindowState<AggType>> aggWindows =
+                keyedStates.computeIfAbsent(key, k -> new ArrayList<>());
 
-    @Override
-    public List<DistributedAggregateWindowState<AggType>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId) {
-        FunctionWindowAggregateId keylessId = functionWindowId.keylessCopy();
-        Map<Integer, AggregateState<AggType>> keyedStates = windowAggregates.remove(keylessId);
-
-        List<DistributedAggregateWindowState<AggType>> finalWindows = new ArrayList<>(keyedStates.size());
-        for (Map.Entry<Integer, AggregateState<AggType>> keyedState : keyedStates.entrySet()) {
-            int key = keyedState.getKey();
-            AggregateState<AggType> state = keyedState.getValue();
-            FunctionWindowAggregateId keyedId = keylessId.withKey(key);
-            finalWindows.add(new DistributedAggregateWindowState<>(keyedId, state));
+        if (aggWindows.isEmpty()) {
+            aggWindows.add(new DistributedAggregateWindowState<>(keylessId,
+                                new AggregateState<>(this.stateFactory, stateAggFns)));
         }
 
-        receivedWindows.remove(keylessId);
-        return finalWindows;
+        DistributedAggregateWindowState<AggType> aggWindow = aggWindows.get(0);
+        AggregateState<AggType> state = aggWindow.getWindowState();
+        state.addElement(preAggregate);
     }
 
     @Override

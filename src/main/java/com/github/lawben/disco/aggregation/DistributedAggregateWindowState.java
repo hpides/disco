@@ -44,6 +44,10 @@ public class DistributedAggregateWindowState<AggregateType> implements Aggregate
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
+    public AggregateState<AggregateType> getWindowState() {
+        return windowState;
+    }
+
     @Override
     public boolean hasValue() {
         return windowState.hasValues();
@@ -58,6 +62,4 @@ public class DistributedAggregateWindowState<AggregateType> implements Aggregate
     public List<AggregateFunction> getAggregateFunctions() {
         return this.windowState.getAggregateFunctions();
     }
-
-
 }

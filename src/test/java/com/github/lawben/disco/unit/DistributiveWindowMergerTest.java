@@ -1,5 +1,6 @@
 package com.github.lawben.disco.unit;
 
+import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -231,7 +232,7 @@ public class DistributiveWindowMergerTest extends WindowMergerTestBase {
     }
 
     @Test
-    void testSessionOneChild() {
+    void testSessionOneChildOneKey() {
         SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
         windows.add(sessionWindow);
         aggregateFunctions.add(sumFunction);
@@ -244,13 +245,7 @@ public class DistributiveWindowMergerTest extends WindowMergerTestBase {
 
         windowMerger.processPreAggregate(5, windowId1);
         Optional<FunctionWindowAggregateId> triggerId1 = windowMerger.checkWindowComplete(windowId1);
-        assertTrue(triggerId1.isPresent());
-        List<DistributedAggregateWindowState<Integer>> final1All = windowMerger.triggerFinalWindow(triggerId1.get());
-        assertThat(final1All, hasSize(1));
-        DistributedAggregateWindowState<Integer> final1 = final1All.get(0);
-        assertThat(final1.getFunctionWindowId(), equalTo(windowId1));
-        assertTrue(final1.hasValue());
-        assertThat(final1.getAggValues().get(0), equalTo(5));
+        assertTrue(triggerId1.isEmpty());
 
         windowMerger.processPreAggregate(20, windowId2);
         Optional<FunctionWindowAggregateId> triggerId2 = windowMerger.checkWindowComplete(windowId2);
@@ -258,85 +253,213 @@ public class DistributiveWindowMergerTest extends WindowMergerTestBase {
         List<DistributedAggregateWindowState<Integer>> final2All = windowMerger.triggerFinalWindow(triggerId2.get());
         assertThat(final2All, hasSize(1));
         DistributedAggregateWindowState<Integer> final2 = final2All.get(0);
-        assertThat(final2.getFunctionWindowId(), equalTo(windowId2));
+        assertThat(final2.getFunctionWindowId(), equalTo(windowId1));
         assertTrue(final2.hasValue());
-        assertThat(final2.getAggValues().get(0), equalTo(20));
+        assertThat(final2.getAggValues().get(0), equalTo(5));
     }
 
     @Test
-    void testSessionFourChildren() {
-//        SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
-//        windows.add(sessionWindow);
-//        aggregateFunctions.add(sumFunction);
-//        int numChildren = 4;
-//        DistributiveWindowMerger<Integer> windowMerger = new DistributiveWindowMerger<>(numChildren, windows, aggregateFunctions);
-//
-//        FunctionWindowAggregateId windowId1 = defaultFnWindowAggId(new WindowAggregateId(1,  10, 110));
-//        FunctionWindowAggregateId windowId2 = defaultFnWindowAggId(new WindowAggregateId(1,  20, 120));
-//        FunctionWindowAggregateId windowId3 = defaultFnWindowAggId(new WindowAggregateId(1, 110, 210));
-//        FunctionWindowAggregateId windowId4 = defaultFnWindowAggId(new WindowAggregateId(1, 220, 320));
-//
-//        Optional<FunctionWindowAggregateId> triggerId1 = windowMerger.processPreAggregate(5, windowId1);
-//        Optional<FunctionWindowAggregateId> triggerId2 = windowMerger.processPreAggregate(10, windowId2);
-//        Optional<FunctionWindowAggregateId> triggerId3 = windowMerger.processPreAggregate(15, windowId3);
-//        Optional<FunctionWindowAggregateId> triggerId4 = windowMerger.processPreAggregate(20, windowId4);
-//
-//        Assertions.assertFalse(triggerId1.isPresent());
-//        Assertions.assertFalse(triggerId2.isPresent());
-//        Assertions.assertFalse(triggerId3.isPresent());
-//
-//        Assertions.assertTrue(triggerId4.isPresent());
-//        FunctionWindowAggregateId expectedTriggerId = defaultFnWindowAggId(new WindowAggregateId(1, 10, 210));
-//        Assertions.assertEquals(expectedTriggerId, triggerId4.get());
-//
-//        List<DistributedAggregateWindowState<Integer>> finalAggAll = windowMerger.triggerFinalWindow(triggerId4.get());
-//        Assertions.assertEquals(finalAggAll.size(), 1);
-//        DistributedAggregateWindowState<Integer> finalAgg = finalAggAll.get(0);
-//        Assertions.assertTrue(finalAgg.hasValue());
-//        Assertions.assertEquals(30, finalAgg.getAggValues().get(0));
-        fail();
+    void testSessionFourChildrenOneKey() {
+        SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
+        windows.add(sessionWindow);
+        aggregateFunctions.add(sumFunction);
+        int numChildren = 4;
+        DistributiveWindowMerger<Integer> windowMerger = new DistributiveWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        FunctionWindowAggregateId windowId1 = defaultFnWindowAggId(new WindowAggregateId(1,  10, 110));
+        FunctionWindowAggregateId windowId2 = defaultFnWindowAggId(new WindowAggregateId(1,  20, 120));
+        FunctionWindowAggregateId windowId3 = defaultFnWindowAggId(new WindowAggregateId(1, 110, 210));
+        FunctionWindowAggregateId windowId4 = defaultFnWindowAggId(new WindowAggregateId(1, 220, 320));
+
+        windowMerger.processPreAggregate(5, windowId1);
+        assertTrue(windowMerger.checkWindowComplete(windowId1).isEmpty());
+        windowMerger.processPreAggregate(10, windowId2);
+        assertTrue(windowMerger.checkWindowComplete(windowId2).isEmpty());
+        windowMerger.processPreAggregate(15, windowId3);
+        assertTrue(windowMerger.checkWindowComplete(windowId3).isEmpty());
+
+        windowMerger.processPreAggregate(20, windowId4);
+        Optional<FunctionWindowAggregateId> triggerId4 = windowMerger.checkWindowComplete(windowId4);
+        assertTrue(triggerId4.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAggAll = windowMerger.triggerFinalWindow(triggerId4.get());
+        assertThat(finalAggAll, hasSize(1));
+        DistributedAggregateWindowState<Integer> finalAgg = finalAggAll.get(0);
+        assertTrue(finalAgg.hasValue());
+        assertThat(finalAgg.getAggValues().get(0), equalTo(30));
+        FunctionWindowAggregateId expectedFinalId = defaultFnWindowAggId(new WindowAggregateId(1, 10, 210));
+        assertThat(finalAgg.getFunctionWindowId(), equalTo(expectedFinalId));
     }
 
     @Test
     void testSessionOneChildTwoAggFns() {
-//        SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
-//        windows.add(sessionWindow);
-//        aggregateFunctions.add(sumFunction);
-//        aggregateFunctions.add(sumFunction);
-//        int numChildren = 1;
-//        DistributiveWindowMerger<Integer> windowMerger = new DistributiveWindowMerger<>(numChildren, windows, aggregateFunctions);
-//
-//        WindowAggregateId windowId1 = new WindowAggregateId(1,  10, 110);
-//        WindowAggregateId windowId2 = new WindowAggregateId(1, 120, 320);
-//
-//        FunctionWindowAggregateId functionWindowId10 = new FunctionWindowAggregateId(windowId1, 0);
-//        FunctionWindowAggregateId functionWindowId20 = new FunctionWindowAggregateId(windowId2, 0);
-//
-//        FunctionWindowAggregateId functionWindowId11 = new FunctionWindowAggregateId(windowId1, 1);
-//        FunctionWindowAggregateId functionWindowId21 = new FunctionWindowAggregateId(windowId2, 1);
-//
-//        Optional<FunctionWindowAggregateId> triggerId10 = windowMerger.processPreAggregate(5, functionWindowId10);
-//        Optional<FunctionWindowAggregateId> triggerId11 = windowMerger.processPreAggregate(10, functionWindowId11);
-//
-//        Optional<FunctionWindowAggregateId> triggerId20 = windowMerger.processPreAggregate(15, functionWindowId20);
-//        Optional<FunctionWindowAggregateId> triggerId21 = windowMerger.processPreAggregate(20, functionWindowId21);
-//
-//        FunctionWindowAggregateId expectedTriggerId0 = new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 110), 0);
-//        FunctionWindowAggregateId expectedTriggerId1 = new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 110), 1);
-//        Assertions.assertEquals(expectedTriggerId0, triggerId20.get());
-//        Assertions.assertEquals(expectedTriggerId1, triggerId21.get());
-//
-//        List<DistributedAggregateWindowState<Integer>> finalAgg0All = windowMerger.triggerFinalWindow(triggerId20.get());
-//        Assertions.assertEquals(finalAgg0All.size(), 1);
-//        DistributedAggregateWindowState<Integer> finalAgg0 = finalAgg0All.get(0);
-//        List<DistributedAggregateWindowState<Integer>> finalAgg1All = windowMerger.triggerFinalWindow(triggerId21.get());
-//        Assertions.assertEquals(finalAgg1All.size(), 1);
-//        DistributedAggregateWindowState<Integer> finalAgg1 = finalAgg1All.get(0);
-//        Assertions.assertTrue(finalAgg0.hasValue());
-//        Assertions.assertTrue(finalAgg1.hasValue());
-//        Assertions.assertEquals(5, finalAgg0.getAggValues().get(0));
-//        Assertions.assertEquals(10, finalAgg1.getAggValues().get(0));
-        fail();
+        SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
+        windows.add(sessionWindow);
+        aggregateFunctions.add(sumFunction);
+        aggregateFunctions.add(sumFunction);
+        int numChildren = 1;
+        DistributiveWindowMerger<Integer> windowMerger = new DistributiveWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        WindowAggregateId windowId1 = new WindowAggregateId(1,  10, 110);
+        WindowAggregateId windowId2 = new WindowAggregateId(1, 120, 320);
+
+        FunctionWindowAggregateId functionWindowId10 = new FunctionWindowAggregateId(windowId1, 0);
+        FunctionWindowAggregateId functionWindowId20 = new FunctionWindowAggregateId(windowId2, 0);
+
+        FunctionWindowAggregateId functionWindowId11 = new FunctionWindowAggregateId(windowId1, 1);
+        FunctionWindowAggregateId functionWindowId21 = new FunctionWindowAggregateId(windowId2, 1);
+
+        windowMerger.processPreAggregate(5, functionWindowId10);
+        assertTrue(windowMerger.checkWindowComplete(functionWindowId10).isEmpty());
+        windowMerger.processPreAggregate(10, functionWindowId11);
+        assertTrue(windowMerger.checkWindowComplete(functionWindowId11).isEmpty());
+
+        windowMerger.processPreAggregate(15, functionWindowId20);
+        Optional<FunctionWindowAggregateId> triggerId20 = windowMerger.checkWindowComplete(functionWindowId20);
+        assertTrue(triggerId20.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAgg0All = windowMerger.triggerFinalWindow(triggerId20.get());
+        assertThat(finalAgg0All, hasSize(1));
+        DistributedAggregateWindowState<Integer> finalAgg0 = finalAgg0All.get(0);
+        assertTrue(finalAgg0.hasValue());
+        assertThat(finalAgg0.getAggValues().get(0), equalTo(5));
+        FunctionWindowAggregateId expectedId0 = new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 110), 0);
+        assertThat(finalAgg0.getFunctionWindowId(), equalTo(expectedId0));
+
+        windowMerger.processPreAggregate(20, functionWindowId21);
+        Optional<FunctionWindowAggregateId> triggerId21 = windowMerger.checkWindowComplete(functionWindowId21);
+        assertTrue(triggerId21.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAgg1All = windowMerger.triggerFinalWindow(triggerId21.get());
+        assertThat(finalAgg1All, hasSize(1));
+        DistributedAggregateWindowState<Integer> finalAgg1 = finalAgg1All.get(0);
+        assertTrue(finalAgg1.hasValue());
+        assertThat(finalAgg1.getAggValues().get(0), equalTo(10));
+        FunctionWindowAggregateId expectedId1 = new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 110), 1);
+        assertThat(finalAgg1.getFunctionWindowId(), equalTo(expectedId1));
+    }
+
+    @Test
+    void testSessionOneChildTwoKeys() {
+        SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
+        windows.add(sessionWindow);
+        aggregateFunctions.add(sumFunction);
+        int numChildren = 1;
+        DistributiveWindowMerger<Integer> windowMerger = new DistributiveWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        WindowAggregateId windowId1 = new WindowAggregateId(1,  10, 110);
+        WindowAggregateId windowId2 = new WindowAggregateId(1, 120, 320);
+
+        FunctionWindowAggregateId functionWindowId10 = new FunctionWindowAggregateId(windowId1, 0, NO_CHILD_ID, 0);
+        FunctionWindowAggregateId functionWindowId11 = new FunctionWindowAggregateId(windowId1, 0, NO_CHILD_ID, 1);
+        FunctionWindowAggregateId functionWindowId20 = new FunctionWindowAggregateId(windowId2, 0, NO_CHILD_ID, 0);
+        FunctionWindowAggregateId functionWindowId21 = new FunctionWindowAggregateId(windowId2, 0, NO_CHILD_ID, 1);
+
+        windowMerger.processPreAggregate(5, functionWindowId10);
+        assertTrue(windowMerger.checkWindowComplete(functionWindowId10).isEmpty());
+        windowMerger.processPreAggregate(10, functionWindowId11);
+        assertTrue(windowMerger.checkWindowComplete(functionWindowId11).isEmpty());
+
+        windowMerger.processPreAggregate(15, functionWindowId20);
+        Optional<FunctionWindowAggregateId> triggerId20 = windowMerger.checkWindowComplete(functionWindowId20);
+        assertTrue(triggerId20.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAgg0All = windowMerger.triggerFinalWindow(triggerId20.get());
+        assertThat(finalAgg0All, hasSize(1));
+        DistributedAggregateWindowState<Integer> finalAgg0 = finalAgg0All.get(0);
+        assertTrue(finalAgg0.hasValue());
+        assertThat(finalAgg0.getAggValues().get(0), equalTo(5));
+        FunctionWindowAggregateId expectedId0 =
+                new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 110), 0, NO_CHILD_ID, 0);
+        assertThat(finalAgg0.getFunctionWindowId(), equalTo(expectedId0));
+
+        windowMerger.processPreAggregate(20, functionWindowId21);
+        Optional<FunctionWindowAggregateId> triggerId21 = windowMerger.checkWindowComplete(functionWindowId21);
+        assertTrue(triggerId21.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAgg1All = windowMerger.triggerFinalWindow(triggerId21.get());
+        assertThat(finalAgg1All, hasSize(1));
+        DistributedAggregateWindowState<Integer> finalAgg1 = finalAgg1All.get(0);
+        assertTrue(finalAgg1.hasValue());
+        assertThat(finalAgg1.getAggValues().get(0), equalTo(10));
+        FunctionWindowAggregateId expectedId1 =
+                new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 110), 0, NO_CHILD_ID, 1);
+        assertThat(finalAgg1.getFunctionWindowId(), equalTo(expectedId1));
+    }
+
+    @Test
+    void testSessionTwoChildrenTwoKeys() {
+        SessionWindow sessionWindow = new SessionWindow(WindowMeasure.Time, 100, 1);
+        windows.add(sessionWindow);
+        aggregateFunctions.add(sumFunction);
+        int numChildren = 2;
+        DistributiveWindowMerger<Integer> windowMerger = new DistributiveWindowMerger<>(numChildren, windows, aggregateFunctions);
+
+        int childId1 = 1;
+        int childId2 = 2;
+
+        WindowAggregateId child1windowId1Key0 = new WindowAggregateId(1,  10, 110);
+        WindowAggregateId child1windowId2Key1 = new WindowAggregateId(1,  40, 320);
+        WindowAggregateId child1windowId3Key0 = new WindowAggregateId(1, 400, 500);
+
+        WindowAggregateId child2windowId1Key0 = new WindowAggregateId(1,  90, 210);
+        WindowAggregateId child2windowId2Key1 = new WindowAggregateId(1, 100, 220);
+        WindowAggregateId child2windowId3Key1 = new WindowAggregateId(1, 230, 300);
+        WindowAggregateId child2windowId4Key0 = new WindowAggregateId(1, 300, 350);
+        WindowAggregateId child2windowId5Key1 = new WindowAggregateId(1, 400, 500);
+
+        FunctionWindowAggregateId windowId10 = new FunctionWindowAggregateId(child1windowId1Key0, 0, childId1, 0);
+        FunctionWindowAggregateId windowId11 = new FunctionWindowAggregateId(child1windowId2Key1, 0, childId1, 1);
+        FunctionWindowAggregateId windowId12 = new FunctionWindowAggregateId(child1windowId3Key0, 0, childId1, 0);
+
+        FunctionWindowAggregateId windowId20 = new FunctionWindowAggregateId(child2windowId1Key0, 0, childId2, 0);
+        FunctionWindowAggregateId windowId21 = new FunctionWindowAggregateId(child2windowId2Key1, 0, childId2, 1);
+        FunctionWindowAggregateId windowId22 = new FunctionWindowAggregateId(child2windowId3Key1, 0, childId2, 1);
+        FunctionWindowAggregateId windowId23 = new FunctionWindowAggregateId(child2windowId4Key0, 0, childId2, 0);
+        FunctionWindowAggregateId windowId24 = new FunctionWindowAggregateId(child2windowId5Key1, 0, childId2, 1);
+
+        windowMerger.processPreAggregate( 5, windowId10);
+        assertTrue(windowMerger.checkWindowComplete(windowId10).isEmpty());
+
+        windowMerger.processPreAggregate(10, windowId20);
+        assertTrue(windowMerger.checkWindowComplete(windowId20).isEmpty());
+
+        windowMerger.processPreAggregate(15, windowId21);
+        assertTrue(windowMerger.checkWindowComplete(windowId21).isEmpty());
+
+        windowMerger.processPreAggregate(20, windowId22);
+        assertTrue(windowMerger.checkWindowComplete(windowId22).isEmpty());
+
+        windowMerger.processPreAggregate(25, windowId11);
+        assertTrue(windowMerger.checkWindowComplete(windowId11).isEmpty());
+
+        windowMerger.processPreAggregate(30, windowId23);
+        assertTrue(windowMerger.checkWindowComplete(windowId23).isEmpty());
+
+        windowMerger.processPreAggregate(35, windowId12);
+        Optional<FunctionWindowAggregateId> triggerId12 = windowMerger.checkWindowComplete(windowId12);
+        assertTrue(triggerId12.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAgg12All = windowMerger.triggerFinalWindow(triggerId12.get());
+        assertThat(finalAgg12All, hasSize(2));
+        DistributedAggregateWindowState<Integer> finalAgg12a = finalAgg12All.get(0);
+        assertTrue(finalAgg12a.hasValue());
+        assertThat(finalAgg12a.getAggValues().get(0), equalTo(15));
+        FunctionWindowAggregateId expectedId12a =
+                new FunctionWindowAggregateId(new WindowAggregateId(1, 10, 210), 0, NO_CHILD_ID, 0);
+        assertThat(finalAgg12a.getFunctionWindowId(), equalTo(expectedId12a));
+        DistributedAggregateWindowState<Integer> finalAgg12b = finalAgg12All.get(1);
+        assertTrue(finalAgg12b.hasValue());
+        assertThat(finalAgg12b.getAggValues().get(0), equalTo(30));
+        FunctionWindowAggregateId expectedId12b =
+                new FunctionWindowAggregateId(new WindowAggregateId(1, 300, 350), 0, NO_CHILD_ID, 0);
+        assertThat(finalAgg12b.getFunctionWindowId(), equalTo(expectedId12b));
+
+        windowMerger.processPreAggregate(40, windowId24);
+        Optional<FunctionWindowAggregateId> triggerId24 = windowMerger.checkWindowComplete(windowId24);
+        assertTrue(triggerId24.isPresent());
+        List<DistributedAggregateWindowState<Integer>> finalAgg24All = windowMerger.triggerFinalWindow(triggerId24.get());
+        assertThat(finalAgg24All, hasSize(1));
+        DistributedAggregateWindowState<Integer> finalAgg24 = finalAgg24All.get(0);
+        assertTrue(finalAgg24.hasValue());
+        assertThat(finalAgg24.getAggValues().get(0), equalTo(60));
+        FunctionWindowAggregateId expectedId24 =
+                new FunctionWindowAggregateId(new WindowAggregateId(1, 40, 320), 0, NO_CHILD_ID, 1);
+        assertThat(finalAgg24.getFunctionWindowId(), equalTo(expectedId24));
     }
 }
 
