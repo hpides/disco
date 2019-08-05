@@ -62,4 +62,12 @@ public class DistributedAggregateWindowState<AggregateType> implements Aggregate
     public List<AggregateFunction> getAggregateFunctions() {
         return this.windowState.getAggregateFunctions();
     }
+
+    @Override
+    public String toString() {
+        return "DistributedAggregateWindowState{" +
+                "functionWindowId=" + functionWindowId +
+                ", windowState=" + windowState +
+                '}';
+    }
 }

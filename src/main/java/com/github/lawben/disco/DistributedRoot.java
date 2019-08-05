@@ -14,6 +14,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.zeromq.SocketType;
@@ -186,6 +188,7 @@ public class DistributedRoot implements Runnable {
 
         // Set up root the same way as the children will be set up.
         this.rootMerger = new RootMerger(windows, aggFn, this.numChildren);
+        List<Integer> childIds = new ArrayList<>(this.numChildren);
 
         String completeWindowString = String.join("\n", this.windowStrings);
         String completeAggFnString = String.join("\n", this.aggregateFnStrings);
@@ -193,12 +196,22 @@ public class DistributedRoot implements Runnable {
         while (numChildrenRegistered < numChildren) {
             String message = childReceiver.recvStr();
             System.out.println(this.rootString("Received from child: " + message));
+            Pattern childIdPattern = Pattern.compile("CHILD-(\\d+).*");
+            Matcher matcher = childIdPattern.matcher(message);
+            if (matcher.find()) {
+                Integer childId = Integer.valueOf(matcher.group(1));
+                childIds.add(childId);
+            } else {
+                throw new IllegalArgumentException("Cannot get child id from " + message);
+            }
 
             childReceiver.sendMore(String.valueOf(this.watermarkMs));
             childReceiver.sendMore(completeWindowString);
             childReceiver.send(completeAggFnString);
             numChildrenRegistered++;
         }
+
+        this.rootMerger.initializeSessionStates(childIds);
     }
 
     private String rootString(String msg) {

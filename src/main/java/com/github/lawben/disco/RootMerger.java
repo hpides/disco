@@ -38,6 +38,12 @@ public class RootMerger {
         this.countBasedSlicer = new DistributedChildSlicer<>(countWindows, aggFns);
     }
 
+    public void initializeSessionStates(List<Integer> childIds) {
+        this.distributiveWindowMerger.initializeSessionState(childIds);
+        this.algebraicWindowMerger.initializeSessionState(childIds);
+        this.holisticWindowMerger.initializeSessionState(childIds);
+    }
+
     public void processCountEvent(int eventValue, long eventTimestamp) {
         this.countBasedSlicer.processElement(eventValue, eventTimestamp);
     }
