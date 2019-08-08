@@ -23,9 +23,12 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DistributedUtils {
 
@@ -296,5 +299,59 @@ public class DistributedUtils {
                     }
                 })
                 .collect(Collectors.toList());
+    }
+
+    public static List<Window> createWindowsFromString(String windowString) {
+        List<Window> windows = new ArrayList<>();
+
+        String[] windowRows = windowString.split("\n");
+        for (String windowRow : windowRows) {
+            Window window = DistributedUtils.buildWindowFromString(windowRow);
+            windows.add(window);
+        }
+
+        return windows;
+    }
+
+    public static List<AggregateFunction> createAggFunctionsFromString(String aggFnString) {
+        List<AggregateFunction> aggFns = new ArrayList<>();
+
+        String[] aggFnRows = aggFnString.split("\n");
+        for (String aggFnRow : aggFnRows) {
+            AggregateFunction aggFn = DistributedUtils.buildAggregateFunctionFromString(aggFnRow);
+            aggFns.add(aggFn);
+        }
+
+        return aggFns;
+    }
+
+    public static long getWatermarkMsFromWindowString(String[] windowStrings) {
+        List<Window> windows = Arrays.stream(windowStrings)
+                .map(DistributedUtils::buildWindowFromString)
+                .collect(Collectors.toList());
+
+        List<Window> timedWindows = windows.stream()
+                .filter(w -> w.getWindowMeasure() == WindowMeasure.Time)
+                .collect(Collectors.toList());
+
+        List<Long> sessionWatermarkMs = timedWindows.stream()
+                .filter(w -> w instanceof SessionWindow)
+                .map(w -> ((SessionWindow) w).getGap())
+                .collect(Collectors.toList());
+
+        List<Long> tumblingWatermarkMs = timedWindows.stream()
+                .filter(w -> w instanceof TumblingWindow)
+                .map(w -> ((TumblingWindow) w).getSize())
+                .collect(Collectors.toList());
+
+        List<Long> slidingWatermarkMs = timedWindows.stream()
+                .filter(w -> w instanceof SlidingWindow)
+                .map(w -> ((SlidingWindow) w).getSlide())
+                .collect(Collectors.toList());
+
+        return Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)
+                .flatMap(Collection::stream)
+                .min(Comparator.naturalOrder())
+                .orElseThrow(() -> new IllegalArgumentException("Could not find watermark ms."));
     }
 }

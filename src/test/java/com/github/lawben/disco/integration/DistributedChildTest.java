@@ -149,7 +149,7 @@ public class DistributedChildTest {
             return null;
         }
 
-        for (int i = 0; i < Integer.valueOf(received.get(2)); i++) {
+        for (int i = 0; i < Integer.parseInt(received.get(2)); i++) {
             received.add(receiver.receiveNext().get(0));
         }
         return received;
@@ -235,7 +235,7 @@ public class DistributedChildTest {
 
         List<String> initMsg = rootRegisterResponder.respondToNext();
         assertThat(initMsg, not(empty()));
-        assertThat(initMsg.get(0), containsString("new child"));
+        assertThat(initMsg.get(0), containsString("new node"));
 
         assertNoFinalThreadException(child);
     }
@@ -250,7 +250,7 @@ public class DistributedChildTest {
 
         List<String> initMsg = rootRegisterResponder.respondToNext();
         assertThat(initMsg, not(empty()));
-        assertThat(initMsg.get(0), containsString("new child"));
+        assertThat(initMsg.get(0), containsString("new node"));
 
         assertNoFinalThreadException(child);
     }
@@ -265,7 +265,7 @@ public class DistributedChildTest {
 
         List<String> initMsg = rootRegisterResponder.respondToNext();
         assertThat(initMsg, not(empty()));
-        assertThat(initMsg.get(0), containsString("new child"));
+        assertThat(initMsg.get(0), containsString("new node"));
 
         assertNoFinalThreadException(child);
     }
@@ -280,7 +280,7 @@ public class DistributedChildTest {
 
         List<String> initMsg = rootRegisterResponder.respondToNext();
         assertThat(initMsg, not(empty()));
-        assertThat(initMsg.get(0), containsString("new child"));
+        assertThat(initMsg.get(0), containsString("new node"));
 
         assertNoFinalThreadException(child);
     }

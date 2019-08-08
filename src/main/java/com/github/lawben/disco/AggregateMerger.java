@@ -18,13 +18,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class RootMerger {
+public class AggregateMerger {
     private DistributiveWindowMerger<Integer> distributiveWindowMerger;
     private AlgebraicWindowMerger<AlgebraicPartial> algebraicWindowMerger;
     private GlobalHolisticWindowMerger holisticWindowMerger;
     private DistributedChildSlicer<Integer> countBasedSlicer;
 
-    public RootMerger(List< Window > windows, List<AggregateFunction> aggFns, int numChildren) {
+    private WindowMerger currentMerger;
+
+    public AggregateMerger(List< Window > windows, List<AggregateFunction> aggFns, int numChildren) {
         List<AggregateFunction> stateAggFunctions = DistributedUtils.convertAggregateFunctions(aggFns);
 
         this.distributiveWindowMerger = new DistributiveWindowMerger<>(numChildren, windows, stateAggFunctions);
@@ -77,10 +79,9 @@ public class RootMerger {
         return windowResults;
     }
 
-    public List<WindowResult> processWindowAggregates(FunctionWindowAggregateId functionWindowId, List<String> rawAggregates) {
+    public List<DistributedAggregateWindowState> processWindowAggregates(FunctionWindowAggregateId functionWindowId, List<String> rawAggregates) {
         assert !rawAggregates.isEmpty();
 
-        WindowMerger currentMerger = null;
         for (String rawWindowAggregate : rawAggregates) {
             String[] rawWindowAggregateParts = rawWindowAggregate.split(BaseWindowAggregate.DELIMITER);
             if (rawWindowAggregateParts.length != 3) {
@@ -89,7 +90,7 @@ public class RootMerger {
 
             String aggregateType = rawWindowAggregateParts[0];
             String rawAggregate = rawWindowAggregateParts[1];
-            int key = Integer.valueOf(rawWindowAggregateParts[2]);
+            int key = Integer.parseInt(rawWindowAggregateParts[2]);
 
             int childId = functionWindowId.getChildId();
             FunctionWindowAggregateId keyedFunctionWindowId = new FunctionWindowAggregateId(functionWindowId, childId, key);
@@ -102,17 +103,15 @@ public class RootMerger {
             return new ArrayList<>();
         }
 
-        List<WindowResult> windowResults = new ArrayList<>();
-        List<DistributedAggregateWindowState> finalWindows = currentMerger.triggerFinalWindow(triggerId.get());
-        for (DistributedAggregateWindowState finalWindow : finalWindows) {
-            Integer finalValue = currentMerger.lowerFinalValue(finalWindow);
-            windowResults.add(new WindowResult(finalWindow.getFunctionWindowId(), finalValue));
-        }
-
-        return windowResults;
+        return currentMerger.triggerFinalWindow(triggerId.get());
     }
 
-    public WindowMerger processPreAggregateWindow(FunctionWindowAggregateId functionWindowId, String aggregateType, String rawPreAggregate) {
+    public WindowResult convertAggregateToWindowResult(DistributedAggregateWindowState aggState) {
+        Integer finalValue = currentMerger.lowerFinalValue(aggState);
+        return new WindowResult(aggState.getFunctionWindowId(), finalValue);
+    }
+
+    private WindowMerger processPreAggregateWindow(FunctionWindowAggregateId functionWindowId, String aggregateType, String rawPreAggregate) {
         switch (aggregateType) {
             case DistributedUtils.DISTRIBUTIVE_STRING:
                 Integer partialAggregate = Integer.valueOf(rawPreAggregate);
