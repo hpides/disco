@@ -1,5 +1,7 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.input;
 
+import com.github.lawben.disco.DistributedChild;
+import com.github.lawben.disco.DistributedUtils;
 import java.util.Random;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;

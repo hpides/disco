@@ -1,4 +1,4 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.input;
 
 import java.util.Random;
 

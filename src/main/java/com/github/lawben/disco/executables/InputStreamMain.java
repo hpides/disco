@@ -1,10 +1,10 @@
 package com.github.lawben.disco.executables;
 
 import com.github.lawben.disco.DistributedChild;
-import com.github.lawben.disco.EventGenerator;
-import com.github.lawben.disco.InputStream;
-import com.github.lawben.disco.InputStreamConfig;
-import com.github.lawben.disco.ThroughputEventGenerator;
+import com.github.lawben.disco.input.EventGenerator;
+import com.github.lawben.disco.input.InputStream;
+import com.github.lawben.disco.input.InputStreamConfig;
+import com.github.lawben.disco.input.ThroughputEventGenerator;
 import com.github.lawben.disco.single.SingleInputStream;
 import java.util.Random;
 import java.util.function.Function;

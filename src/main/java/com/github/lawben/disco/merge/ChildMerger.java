@@ -1,5 +1,8 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.merge;
 
+import com.github.lawben.disco.DistributedChildSlicer;
+import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.Event;
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;

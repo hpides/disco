@@ -1,4 +1,4 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.merge;
 
 import com.github.lawben.disco.aggregation.ChildKey;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Optional;
 
 public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<DistributedSlice>> {
     private final StateFactory stateFactory;

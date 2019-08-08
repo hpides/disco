@@ -4,6 +4,7 @@ import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
+import com.github.lawben.disco.merge.ChildMerger;
 import java.util.Arrays;
 import java.util.List;
 import org.zeromq.SocketType;

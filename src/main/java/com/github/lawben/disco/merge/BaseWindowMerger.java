@@ -1,4 +1,4 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.merge;
 
 import static com.github.lawben.disco.Event.NO_KEY;
 

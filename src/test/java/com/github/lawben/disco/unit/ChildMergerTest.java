@@ -6,7 +6,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.github.lawben.disco.ChildMerger;
+import com.github.lawben.disco.merge.ChildMerger;
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.aggregation.BaseWindowAggregate;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;

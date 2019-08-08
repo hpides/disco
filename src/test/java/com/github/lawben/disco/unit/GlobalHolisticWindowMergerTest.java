@@ -6,7 +6,7 @@
 //import static org.junit.jupiter.api.Assertions.assertTrue;
 //
 //import com.github.lawben.disco.DistributedUtils;
-//import com.github.lawben.disco.GlobalHolisticWindowMerger;
+//import com.github.lawben.disco.merge.GlobalHolisticWindowMerger;
 //import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 //import com.github.lawben.disco.aggregation.DistributedSlice;
 //import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
