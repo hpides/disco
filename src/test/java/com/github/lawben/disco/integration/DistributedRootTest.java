@@ -7,6 +7,7 @@ import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
 import static com.github.lawben.disco.utils.TestUtils.closeIfNotNull;
 import static com.github.lawben.disco.utils.TestUtils.receiveWindows;
+import static com.github.lawben.disco.utils.TestUtils.runThread;
 import static com.github.lawben.disco.utils.WindowResultMatcher.equalsWindowResult;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
@@ -75,12 +76,6 @@ public class DistributedRootTest {
         for (ZMQMock mock : this.children) {
             closeIfNotNull(mock);
         }
-    }
-
-    void runThread(Runnable runnable) {
-        Thread thread = new Thread(runnable);
-        thread.setUncaughtExceptionHandler(threadExceptionHandler);
-        thread.start();
     }
 
     void registerChild(int childId) {

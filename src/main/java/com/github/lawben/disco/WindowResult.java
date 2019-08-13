@@ -18,4 +18,12 @@ public class WindowResult {
     public Integer getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return "WindowResult{" +
+                "finalWindowId=" + finalWindowId +
+                ", value=" + value +
+                '}';
+    }
 }

@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -39,10 +40,10 @@ public class DistributedUtils {
     public static final String ALGEBRAIC_STRING = "ALG";
     public static final String HOLISTIC_STRING = "HOL";
 
-    public static final String WINDOW_COMPLETE = "C";
-    public static final String WINDOW_PARTIAL = "P";
+    public static final long MAX_LATENESS = 0L;
 
     public static final String EVENT_STRING = "E";
+    public static final String CONTROL_STRING = "C";
 
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
@@ -157,6 +158,26 @@ public class DistributedUtils {
                 throw new IllegalArgumentException("No aggFn known for: '" + aggFnString + "'");
             }
         }
+    }
+
+    public static Optional<FunctionWindowAggregateId> getNextSessionStart(
+            List<FunctionWindowAggregateId> sessionStarts, long lastSessionEnd) {
+        sessionStarts.sort(Comparator.comparingLong(id -> id.getWindowId().getWindowStartTimestamp()));
+
+        Optional<FunctionWindowAggregateId> newSession = Optional.empty();
+        int clearIdx = sessionStarts.size();
+        for (int sessionStartIdx = 0; sessionStartIdx < sessionStarts.size(); sessionStartIdx++) {
+            FunctionWindowAggregateId session = sessionStarts.get(sessionStartIdx);
+            if (session.getWindowId().getWindowStartTimestamp() > lastSessionEnd) {
+                newSession = Optional.of(session);
+                clearIdx = sessionStartIdx + 1;
+                break;
+            }
+        }
+        if (newSession.isPresent()) {
+            sessionStarts.subList(0, clearIdx).clear();
+        }
+        return newSession;
     }
 
 

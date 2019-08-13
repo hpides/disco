@@ -2,117 +2,100 @@ package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
+import static com.github.lawben.disco.DistributedUtils.MAX_LATENESS;
 
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
+import com.github.lawben.disco.aggregation.WindowFunctionKey;
 import com.github.lawben.disco.merge.ChildMerger;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZMQ;
 
 public class DistributedChild implements Runnable {
     private final static String NODE_IDENTIFIER = "CHILD";
 
-    private final DistributedChildNode childNodeImpl;
-    private final DistributedParentNode parentNodeImpl;
+    private final DistributedNode nodeImpl;
 
     private long currentEventTime;
     private long lastWatermark;
     private long numEvents;
 
-    private ZMQ.Socket windowPusher;
     public final static int STREAM_REGISTER_PORT_OFFSET = 100;
     public final static long STREAM_REGISTER_TIMEOUT_MS = 10 * 1000;
 
-    // Slicing related
     private ChildMerger childMerger;
 
     private boolean hasCountWindow;
 
     public DistributedChild(String parentIp, int parentControllerPort, int parentWindowPort, int streamInputPort, int childId, int numStreams) {
-        this.childNodeImpl = new DistributedChildNode(childId, NODE_IDENTIFIER, parentIp, parentControllerPort, parentWindowPort);
-        this.parentNodeImpl = new DistributedParentNode(childId, NODE_IDENTIFIER,
-                streamInputPort + STREAM_REGISTER_PORT_OFFSET, streamInputPort, numStreams);
+        this.nodeImpl = new DistributedNode(childId, NODE_IDENTIFIER, streamInputPort + STREAM_REGISTER_PORT_OFFSET,
+                streamInputPort, numStreams, parentIp, parentControllerPort, parentWindowPort);
         this.hasCountWindow = false;
 
-        parentNodeImpl.createDataPuller();
-        parentNodeImpl.createWindowPusher(parentIp, parentWindowPort);
+        nodeImpl.createDataPuller();
+        nodeImpl.createWindowPusher(parentIp, parentWindowPort);
     }
 
     @Override
     public void run() {
-        System.out.println(childNodeImpl.nodeString("Starting child worker on port " + parentNodeImpl.dataPort +
-                " with " + parentNodeImpl.numChildren + " stream(s). Connecting to root at " + childNodeImpl.parentIp +
-                " with controller port " + childNodeImpl.parentControllerPort + " and window port " +
-                childNodeImpl.parentWindowPort));
+        System.out.println(nodeImpl.nodeString("Starting child worker on port " + nodeImpl.dataPort +
+                " with " + nodeImpl.numChildren + " stream(s). Connecting to parent at " +
+                nodeImpl.parentIp + " with controller port " + nodeImpl.parentControllerPort +
+                " and window port " + nodeImpl.parentWindowPort));
 
         try {
-            // 1. connect to root server
-            // 1.1. receive commands from root (i.e. windows, agg. functions, etc.)
-            WindowingConfig config = this.childNodeImpl.registerAtParent();
-
-            if (config.getTimeWindows().isEmpty() && config.getCountWindows().isEmpty()) {
-                throw new RuntimeException(childNodeImpl.nodeString("Did not receive any windows from root!"));
-            }
-
-            if (config.getAggregateFunctions().isEmpty()) {
-                throw new RuntimeException(childNodeImpl.nodeString("Did not receive any aggFns from root!"));
-            }
-
+            WindowingConfig config = this.nodeImpl.registerAtParent();
             this.hasCountWindow = !config.getCountWindows().isEmpty();
 
-            // 2. register streams
             boolean registerSuccess = this.registerStreams(config);
             if (!registerSuccess) {
                 return;
             }
 
-            // 3. process streams
-            // 4. send windows to root
             this.processStreams();
         } finally {
-            parentNodeImpl.close();
-            childNodeImpl.close();
+            nodeImpl.close();
+            nodeImpl.close();
         }
     }
 
     private void processStreams() {
-        ZMQ.Socket streamInput = parentNodeImpl.dataPuller;
-        System.out.println(childNodeImpl.nodeString("Waiting for stream data."));
+        ZMQ.Socket streamInput = nodeImpl.dataPuller;
+        System.out.println(nodeImpl.nodeString("Waiting for stream data."));
 
         currentEventTime = 0;
         lastWatermark = 0;
         numEvents = 0;
 
-        while (!parentNodeImpl.isInterrupted()) {
+        while (!nodeImpl.isInterrupted()) {
             String eventOrStreamEnd = streamInput.recvStr();
             if (eventOrStreamEnd == null) {
                 continue;
             }
 
             if (eventOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
-                if (!parentNodeImpl.isTotalStreamEnd()) {
+                if (!nodeImpl.isTotalStreamEnd()) {
                     continue;
                 }
 
-                System.out.println(parentNodeImpl.nodeString("Processed " + numEvents + " events in total."));
-                final long watermarkTimestamp = currentEventTime + childNodeImpl.watermarkMs;
-                List<DistributedAggregateWindowState> finalWindows =
-                        this.childMerger.processWatermarkedWindows(watermarkTimestamp);
-                parentNodeImpl.sendPreAggregatedWindowsToParent(finalWindows);
-                System.out.println(childNodeImpl.nodeString("No more data to come. Ending child worker..."));
-                parentNodeImpl.endChild();
+                System.out.println(nodeImpl.nodeString("Processed " + numEvents + " events in total."));
+                final long watermarkTimestamp = currentEventTime + nodeImpl.watermarkMs;
+                handleWatermark(watermarkTimestamp);
+                System.out.println(nodeImpl.nodeString("No more data to come. Ending child worker..."));
+                nodeImpl.endChild();
                 return;
             }
 
             if (this.hasCountWindow()) {
-                parentNodeImpl.sendToParent(Arrays.asList(EVENT_STRING, eventOrStreamEnd));
+                nodeImpl.forwardEvent(eventOrStreamEnd);
             }
 
             this.processEvent(eventOrStreamEnd);
         }
 
-        System.out.println(childNodeImpl.nodeString("Interrupted while processing streams."));
+        System.out.println(nodeImpl.nodeString("Interrupted while processing streams."));
     }
 
     private void processEvent(String eventString) {
@@ -123,25 +106,35 @@ public class DistributedChild implements Runnable {
 
         // If we haven't processed a watermark in watermarkMs milliseconds and waited for the maximum lateness of a
         // tuple, process it.
-        final long maxLateness = childNodeImpl.watermarkMs;
-        final long watermarkTimestamp = lastWatermark + childNodeImpl.watermarkMs;
-        if (currentEventTime >= watermarkTimestamp + maxLateness) {
-            List<DistributedAggregateWindowState> finalWindows =
-                    this.childMerger.processWatermarkedWindows(watermarkTimestamp);
-            parentNodeImpl.sendPreAggregatedWindowsToParent(finalWindows);
-            lastWatermark = watermarkTimestamp;
+        final long watermarkTimestamp = lastWatermark + nodeImpl.watermarkMs;
+        if (currentEventTime >= watermarkTimestamp + MAX_LATENESS) {
+            handleWatermark(watermarkTimestamp);
         }
+
+    }
+
+    private void handleWatermark(long watermarkTimestamp) {
+        List<DistributedAggregateWindowState> finalWindows =
+                this.childMerger.processWatermarkedWindows(watermarkTimestamp);
+
+        nodeImpl.sendPreAggregatedWindowsToParent(finalWindows);
+
+        finalWindows.stream()
+                .map(state -> childMerger.getNextSessionStart(state.getFunctionWindowId()))
+                .forEach(newSession -> newSession.ifPresent(nodeImpl::sendSessionStartToParent));
+
+        lastWatermark = watermarkTimestamp;
     }
 
     private boolean registerStreams(final WindowingConfig windowingConfig) {
-        final ZMQ.Socket streamReceiver = parentNodeImpl.context.createSocket(SocketType.REP);
+        final ZMQ.Socket streamReceiver = nodeImpl.context.createSocket(SocketType.REP);
         streamReceiver.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
-        streamReceiver.bind(DistributedUtils.buildBindingTcpUrl(parentNodeImpl.dataPort + STREAM_REGISTER_PORT_OFFSET));
+        streamReceiver.bind(DistributedUtils.buildBindingTcpUrl(nodeImpl.dataPort + STREAM_REGISTER_PORT_OFFSET));
 
         byte[] ackResponse = new byte[] {'\0'};
 
         int numRegisteredStreams = 0;
-        while (!parentNodeImpl.isInterrupted()) {
+        while (!nodeImpl.isInterrupted()) {
             final String rawStreamId = streamReceiver.recvStr();
 
             if (rawStreamId == null) {
@@ -149,20 +142,20 @@ public class DistributedChild implements Runnable {
             }
 
             final int streamId = Integer.parseInt(rawStreamId);
-            System.out.println(childNodeImpl.nodeString("Registering stream " + streamId));
+            System.out.println(nodeImpl.nodeString("Registering stream " + streamId));
             streamReceiver.send(ackResponse);
             numRegisteredStreams++;
 
-            if (numRegisteredStreams == parentNodeImpl.numChildren) {
+            if (numRegisteredStreams == nodeImpl.numChildren) {
                 // All streams registered
-                System.out.println(childNodeImpl.nodeString("Registered all streams (" + numRegisteredStreams + " in total)"));
+                System.out.println(nodeImpl.nodeString("Registered all streams (" + numRegisteredStreams + " in total)"));
                 this.childMerger = new ChildMerger(windowingConfig.getTimeWindows(),
-                        windowingConfig.getAggregateFunctions(), parentNodeImpl.nodeId);
+                        windowingConfig.getAggregateFunctions(), nodeImpl.nodeId);
                 return true;
             }
         }
 
-        System.out.println(childNodeImpl.nodeString("Interrupted while registering streams."));
+        System.out.println(nodeImpl.nodeString("Interrupted while registering streams."));
         return false;
     }
 
@@ -171,7 +164,7 @@ public class DistributedChild implements Runnable {
     }
 
     public void interrupt() {
-        parentNodeImpl.interrupt();
+        nodeImpl.interrupt();
     }
 
 

@@ -41,7 +41,11 @@ public class FunctionWindowAggregateId {
     }
 
     public FunctionWindowAggregateId withKey(int key) {
-        return new FunctionWindowAggregateId(this, NO_CHILD_ID, key);
+        return new FunctionWindowAggregateId(this, this.childId, key);
+    }
+
+    public FunctionWindowAggregateId withChildId(int childId) {
+        return new FunctionWindowAggregateId(this, childId, this.key);
     }
 
     public WindowAggregateId getWindowId() {
@@ -69,25 +73,6 @@ public class FunctionWindowAggregateId {
                 ", (key=" + key + ")" +
                 "}";
     }
-
-//    @Override
-//    public boolean equals(Object o) {
-//        if (this == o) {
-//            return true;
-//        }
-//        if (o == null || getClass() != o.getClass()) {
-//            return false;
-//        }
-//        FunctionWindowAggregateId that = (FunctionWindowAggregateId) o;
-//        return functionId == that.functionId &&
-//                Objects.equals(windowId, that.windowId);
-//    }
-//
-//    @Override
-//    public int hashCode() {
-//        return Objects.hash(windowId, functionId);
-//    }
-
 
     @Override
     public boolean equals(Object o) {

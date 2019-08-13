@@ -10,9 +10,11 @@ import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticAggregateHelper;
+import com.github.lawben.disco.aggregation.WindowFunctionKey;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
+import de.tub.dima.scotty.core.windowType.SessionWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import de.tub.dima.scotty.slicing.state.AggregateState;
@@ -22,14 +24,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ChildMerger {
     private final int childId;
     private final Map<Integer, DistributedChildSlicer<Integer>> slicerPerKey;
-    private LocalHolisticWindowMerger localHolisticWindowMerger;
+    private final Map<Long, Map<Integer, Long>> sessionLastTimestamps;
+    private final Map<Long, Long> sessionGaps;
+    private final Map<WindowFunctionKey, List<FunctionWindowAggregateId>> newSessionStarts;
+    private final Map<WindowFunctionKey, Long> latestSessionEnds;
+    private final LocalHolisticWindowMerger localHolisticWindowMerger;
 
     private final List<AggregateFunction> sliceAggFns;
     private final List<Window> windows;
@@ -52,12 +61,47 @@ public class ChildMerger {
                 .collect(Collectors.toList());
 
         this.localHolisticWindowMerger = new LocalHolisticWindowMerger(numStreams, timedWindows);
+
+        this.sessionLastTimestamps = new HashMap<>();
+        this.newSessionStarts = new HashMap<>();
+        this.sessionGaps = new HashMap<>();
+        this.latestSessionEnds = new HashMap<>();
+        for (Window window : windows) {
+            if (window instanceof SessionWindow) {
+                long windowId = window.getWindowId();
+                sessionGaps.put(windowId, ((SessionWindow) window).getGap());
+                sessionLastTimestamps.put(windowId, new HashMap<>());
+            }
+        }
     }
 
     public void processElement(int eventValue, long eventTimestamp, int key) {
+//        System.out.println(childId + " - PROCESSING: " + eventTimestamp);
         DistributedChildSlicer<Integer> perKeySlicer = this.slicerPerKey.computeIfAbsent(key,
-                x -> new DistributedChildSlicer<>(this.windows, this.sliceAggFns));
+                k -> new DistributedChildSlicer<>(this.windows, this.sliceAggFns));
         perKeySlicer.processElement(eventValue, eventTimestamp);
+
+        if (sessionGaps.isEmpty()) {
+            // There are no session windows, so we don't care about session starts
+            return;
+        }
+
+        for (var lastTimestamps : sessionLastTimestamps.entrySet()) {
+            final long windowId = lastTimestamps.getKey();
+            Map<Integer, Long> keyedSessionEnds = lastTimestamps.getValue();
+
+            final long sessionGap = sessionGaps.get(windowId);
+            final long lastEvent = keyedSessionEnds.getOrDefault(key, -1L);
+
+            if (lastEvent == -1L || lastEvent + sessionGap < eventTimestamp) {
+                WindowAggregateId windowAggId = new WindowAggregateId(windowId, eventTimestamp, eventTimestamp);
+                FunctionWindowAggregateId sessionStartId = new FunctionWindowAggregateId(windowAggId, 0, childId, key);
+                WindowFunctionKey windowKey = new WindowFunctionKey(windowId, key);
+                newSessionStarts.computeIfAbsent(windowKey, id -> new ArrayList<>()).add(sessionStartId);
+//                System.out.println(childId + " - NEW SESSION: " + eventTimestamp);
+            }
+            keyedSessionEnds.put(key, eventTimestamp);
+        }
     }
 
     public void processElement(Event event) {
@@ -111,6 +155,18 @@ public class ChildMerger {
             FunctionWindowAggregateId functionWindowId =
                     new FunctionWindowAggregateId(windowId, functionId, this.childId, key);
 
+            if (sessionGaps.containsKey(windowId.getWindowId())) {
+//                System.out.println(childId + " - SESSION END: " + windowId.getWindowEndTimestamp());
+                WindowFunctionKey windowKey = new WindowFunctionKey(windowId.getWindowId(), key);
+                this.latestSessionEnds.put(windowKey, windowId.getWindowEndTimestamp());
+            }
+
+            Map<Integer, Long> keyedSessionEnds = sessionLastTimestamps.get(windowId.getWindowId());
+            if (keyedSessionEnds != null) {
+                // Is session window, so set correct end timestamp
+                keyedSessionEnds.put(key, windowId.getWindowEndTimestamp());
+            }
+
             DistributedAggregateWindowState finalPreAggregateWindow;
             List<AggregateFunction> stateAggFn =
                     DistributedUtils.convertAggregateFunctions(Collections.singletonList(aggregateFunction));
@@ -136,5 +192,19 @@ public class ChildMerger {
         }
 
         return finalPreAggregateWindows;
+    }
+
+    public Optional<FunctionWindowAggregateId> getNextSessionStart(FunctionWindowAggregateId lastSession) {
+        long windowId = lastSession.getWindowId().getWindowId();
+        if (sessionGaps.isEmpty() || !sessionGaps.containsKey(windowId)) {
+            // There are no session windows or this isn't a session, so we don't care about session starts
+            return Optional.empty();
+        }
+
+        WindowFunctionKey windowKey = new WindowFunctionKey(windowId, lastSession.getKey());
+        long lastSessionEnd = lastSession.getWindowId().getWindowEndTimestamp();
+
+        List<FunctionWindowAggregateId> sessionStarts = newSessionStarts.get(windowKey);
+        return DistributedUtils.getNextSessionStart(sessionStarts, lastSessionEnd);
     }
 }

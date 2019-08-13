@@ -17,4 +17,10 @@ public interface WindowMerger<AggType> {
     List<AggregateFunction> getAggregateFunctions();
 
     Optional<FunctionWindowAggregateId> checkWindowComplete(FunctionWindowAggregateId functionWindowAggId);
+
+    Optional<FunctionWindowAggregateId> registerSessionStart(FunctionWindowAggregateId sessionStartId);
+
+    void initializeSessionState(List<Integer> childIds);
+
+    Optional<FunctionWindowAggregateId> getSessionStart(FunctionWindowAggregateId lastSession);
 }

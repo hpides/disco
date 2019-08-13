@@ -13,10 +13,18 @@ public class WindowFunctionKey {
         this.key = key;
     }
 
+    public WindowFunctionKey(long windowId, int key) {
+        this(windowId, 0, key);
+    }
+
     public static WindowFunctionKey fromFunctionWindowId(FunctionWindowAggregateId functionWindowId) {
         return new WindowFunctionKey(functionWindowId.getWindowId().getWindowId(),
                                      functionWindowId.getFunctionId(),
                                      functionWindowId.getKey());
+    }
+
+    public static WindowFunctionKey fromFunctionlessFunctionWindowId(FunctionWindowAggregateId functionWindowId) {
+        return new WindowFunctionKey(functionWindowId.getWindowId().getWindowId(), 0, functionWindowId.getKey());
     }
 
     public long getWindowId() {

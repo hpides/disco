@@ -1,16 +1,22 @@
 package com.github.lawben.disco;
 
+import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
+import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
+import static com.github.lawben.disco.DistributedUtils.MAX_LATENESS;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
+import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
+import com.github.lawben.disco.merge.FinalWindowsAndSessionStarts;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZMQ;
 
 public class DistributedRoot implements Runnable {
     private final static String NODE_IDENTIFIER = "ROOT";
-    private final DistributedParentNode parentNodeImpl;
+    private final DistributedNode nodeImpl;
 
     private final String resultPath;
     private final ZMQ.Socket resultPusher;
@@ -22,63 +28,79 @@ public class DistributedRoot implements Runnable {
     long lastWatermark = 0;
     long numEvents = 0;
 
-    public DistributedRoot(int controllerPort, int windowPort, String resultPath, int numChildren, String windowsString, String aggregateFunctionsString) {
-        this.parentNodeImpl = new DistributedParentNode(0, NODE_IDENTIFIER, controllerPort, windowPort, numChildren);
+    public DistributedRoot(int controllerPort, int windowPort, String resultPath, int numChildren,
+            String windowsString, String aggregateFunctionsString) {
+        this.nodeImpl = new DistributedNode(0, NODE_IDENTIFIER, controllerPort, windowPort, numChildren, "", 0, 0);
         this.resultPath = resultPath;
 
-        parentNodeImpl.windowStrings = windowsString.split(";");
-        if (parentNodeImpl.windowStrings.length == 0) {
+        nodeImpl.windowStrings = windowsString.split(";");
+        if (nodeImpl.windowStrings.length == 0) {
             throw new IllegalArgumentException("Need at least one window.");
         }
 
-        parentNodeImpl.aggregateFnStrings = aggregateFunctionsString.split(";");
-        if (parentNodeImpl.aggregateFnStrings.length == 0) {
+        nodeImpl.aggregateFnStrings = aggregateFunctionsString.split(";");
+        if (nodeImpl.aggregateFnStrings.length == 0) {
             throw new IllegalArgumentException("Need at least one aggregate function.");
         }
 
-        this.watermarkMs = DistributedUtils.getWatermarkMsFromWindowString(parentNodeImpl.windowStrings);
+        this.watermarkMs = DistributedUtils.getWatermarkMsFromWindowString(nodeImpl.windowStrings);
 
-        parentNodeImpl.createDataPuller();
-        this.resultPusher = parentNodeImpl.context.createSocket(SocketType.PUSH);
+        nodeImpl.createDataPuller();
+        this.resultPusher = nodeImpl.context.createSocket(SocketType.PUSH);
         this.resultPusher.connect(DistributedUtils.buildIpcUrl(this.resultPath));
     }
 
     @Override
     public void run() {
-        System.out.println(this.rootString("Starting root worker with controller port " + parentNodeImpl.controllerPort +
-                ", window port " + parentNodeImpl.dataPort + " and result path " + this.resultPath));
+        System.out.println(nodeImpl.nodeString("Starting root worker with controller port " +
+                nodeImpl.controllerPort + ", window port " + nodeImpl.dataPort +
+                " and result path " + this.resultPath));
 
         try {
-            parentNodeImpl.waitForChildren();
+            nodeImpl.waitForChildren();
+            nodeImpl.controlSender = null;
             this.processPreAggregatedWindows();
         } finally {
-            parentNodeImpl.close();
+            nodeImpl.close();
         }
     }
 
     private void processPreAggregatedWindows() {
-        ZMQ.Socket windowPuller = parentNodeImpl.dataPuller;
+        ZMQ.Socket windowPuller = nodeImpl.dataPuller;
 
-        while (!parentNodeImpl.isInterrupted()) {
+        while (!nodeImpl.isInterrupted()) {
             String messageOrStreamEnd = windowPuller.recvStr();
             if (messageOrStreamEnd == null) {
                 continue;
             }
 
             final List<WindowResult> windowResults;
-            if (messageOrStreamEnd.equals(STREAM_END)) {
-                if (parentNodeImpl.isTotalStreamEnd()) {
-                    System.out.println(this.rootString("Processed " + numEvents + " count-events in total."));
-                    resultPusher.send(STREAM_END);
-                    return;
+            switch (messageOrStreamEnd) {
+                case STREAM_END: {
+                    if (nodeImpl.isTotalStreamEnd()) {
+                        System.out.println(nodeImpl.nodeString("Processed " + numEvents + " count-events in total."));
+                        resultPusher.send(STREAM_END);
+                        return;
+                    }
+                    continue;
                 }
-                continue;
-            } else if (messageOrStreamEnd.equals(DistributedUtils.EVENT_STRING)) {
-                windowResults = processCountEvent();
-            } else {
-                windowResults = parentNodeImpl.processWindowAggregates().stream()
-                        .map(state -> parentNodeImpl.aggregateMerger.convertAggregateToWindowResult(state))
-                        .collect(Collectors.toList());
+                case EVENT_STRING: {
+                    windowResults = processCountEvent();
+                    break;
+                }
+                case CONTROL_STRING: {
+                    FinalWindowsAndSessionStarts controlResults = nodeImpl.handleControlInput();
+                    windowResults = controlResults.getFinalWindows().stream()
+                            .map(state -> nodeImpl.aggregateMerger.convertAggregateToWindowResult(state))
+                            .collect(Collectors.toList());
+                    break;
+                }
+                default: {
+                    FinalWindowsAndSessionStarts processingResults = nodeImpl.processWindowAggregates();
+                    windowResults = processingResults.getFinalWindows().stream()
+                            .map(state -> nodeImpl.aggregateMerger.convertAggregateToWindowResult(state))
+                            .collect(Collectors.toList());
+                }
             }
 
             windowResults.forEach(this::sendResult);
@@ -86,34 +108,30 @@ public class DistributedRoot implements Runnable {
     }
 
     private List<WindowResult> processCountEvent() {
-        ZMQ.Socket windowPuller = parentNodeImpl.dataPuller;
+        ZMQ.Socket windowPuller = nodeImpl.dataPuller;
         String rawEvent = windowPuller.recvStr(ZMQ.DONTWAIT);
         Event event = Event.fromString(rawEvent);
-        parentNodeImpl.aggregateMerger.processCountEvent(event);
+        nodeImpl.aggregateMerger.processCountEvent(event);
 
         currentEventTime = event.getTimestamp();
         numEvents++;
-        final long maxLateness = this.watermarkMs;
         final long watermarkTimestamp = lastWatermark + this.watermarkMs;
-        if (currentEventTime < watermarkTimestamp + maxLateness) {
+        if (currentEventTime < watermarkTimestamp + MAX_LATENESS) {
             return new ArrayList<>();
         }
 
         lastWatermark = watermarkTimestamp;
-        return parentNodeImpl.aggregateMerger.processCountWatermark(watermarkTimestamp);
+        return nodeImpl.aggregateMerger.processCountWatermark(watermarkTimestamp);
     }
 
     private void sendResult(WindowResult windowResult) {
+        System.out.println(nodeImpl.nodeString("Sending result: " + windowResult));
         String finalAggregateString = String.valueOf(windowResult.getValue());
         this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(windowResult.getFinalWindowId()));
         this.resultPusher.send(finalAggregateString, ZMQ.DONTWAIT);
     }
 
-    private String rootString(String msg) {
-        return "[ROOT] " + msg;
-    }
-
     public void interrupt() {
-        parentNodeImpl.interrupt();
+        nodeImpl.interrupt();
     }
 }

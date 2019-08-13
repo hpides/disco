@@ -4,6 +4,7 @@ import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFS
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
+import static com.github.lawben.disco.utils.TestUtils.runThread;
 import static com.github.lawben.disco.utils.WindowMatcher.equalsWindow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -88,12 +89,6 @@ public class DistributedChildTest {
         if (x != null) {
             x.close();
         }
-    }
-
-    void runThread(Runnable runnable) {
-        Thread thread = new Thread(runnable);
-        thread.setUncaughtExceptionHandler(threadExceptionHandler);
-        thread.start();
     }
 
     DistributedChild defaultChild(int rootInitPort, int rootWindowPort) throws IOException {
