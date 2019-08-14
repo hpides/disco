@@ -1,5 +1,7 @@
 package com.github.lawben.disco.merge;
 
+import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
+
 import com.github.lawben.disco.DistributedChildSlicer;
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.Event;
@@ -197,7 +199,7 @@ public class ChildMerger {
     public Optional<FunctionWindowAggregateId> getNextSessionStart(FunctionWindowAggregateId lastSession) {
         long windowId = lastSession.getWindowId().getWindowId();
         if (sessionGaps.isEmpty() || !sessionGaps.containsKey(windowId)) {
-            // There are no session windows or this isn't a session, so we don't care about session starts
+            // There are no session windows or this isn't a session, so we don't care about session starts.
             return Optional.empty();
         }
 

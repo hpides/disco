@@ -134,6 +134,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
             keyedStates.add(newSession);
             lastReceivedChild.put(windowFunctionKey, childId);
             newSessionStarts.computeIfAbsent(windowKey, id -> new ArrayList<>()).add(functionWindowAggId);
+            checkSessionWindowsTriggered(functionWindowAggId, keyedStates);
             return;
         }
 

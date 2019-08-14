@@ -5,7 +5,7 @@ import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
 import static com.github.lawben.disco.utils.TestUtils.closeIfNotNull;
 import static com.github.lawben.disco.utils.TestUtils.findChildPort;
-import static com.github.lawben.disco.utils.TestUtils.receiveWindows;
+import static com.github.lawben.disco.utils.TestUtils.receiveResultWindows;
 import static com.github.lawben.disco.utils.TestUtils.registerStream;
 import static com.github.lawben.disco.utils.TestUtils.runThread;
 import static com.github.lawben.disco.utils.TestUtils.sendSleepSortedEvents;
@@ -154,7 +154,7 @@ public class RootTwoMergerFourChildren {
                 equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 2),  1)
         );
 
-        List<List<String>> windowStrings = receiveWindows(windowMatchers.size(), resultListener);
+        List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
         assertRootEnd();
     }
@@ -205,7 +205,7 @@ public class RootTwoMergerFourChildren {
                 equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0),  3)
         );
 
-        List<List<String>> windowStrings = receiveWindows(windowMatchers.size(), resultListener);
+        List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
         assertRootEnd();
     }

@@ -36,6 +36,11 @@ public class FunctionWindowAggregateId {
         this(functionWindowAggregateId.getWindowId(), functionWindowAggregateId.getFunctionId(), childId, key);
     }
 
+    public static FunctionWindowAggregateId sessionStartId(long windowId, long sessionStart, int childId, int key) {
+        WindowAggregateId windowAggregateId = new WindowAggregateId(windowId, sessionStart, sessionStart);
+        return new FunctionWindowAggregateId(windowAggregateId, 0, childId, key);
+    }
+
     public FunctionWindowAggregateId keylessCopy() {
         return new FunctionWindowAggregateId(this, NO_CHILD_ID, NO_KEY);
     }

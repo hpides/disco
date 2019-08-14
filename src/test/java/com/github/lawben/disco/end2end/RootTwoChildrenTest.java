@@ -2,9 +2,11 @@ package com.github.lawben.disco.end2end;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
+import static com.github.lawben.disco.Event.NO_KEY;
+import static com.github.lawben.disco.utils.SessionControlMatcher.equalsSessionStart;
 import static com.github.lawben.disco.utils.TestUtils.closeIfNotNull;
 import static com.github.lawben.disco.utils.TestUtils.findChildPort;
-import static com.github.lawben.disco.utils.TestUtils.receiveWindows;
+import static com.github.lawben.disco.utils.TestUtils.receiveResultWindows;
 import static com.github.lawben.disco.utils.TestUtils.registerStream;
 import static com.github.lawben.disco.utils.TestUtils.runThread;
 import static com.github.lawben.disco.utils.TestUtils.sendSleepSortedEvents;
@@ -109,7 +111,7 @@ public class RootTwoChildrenTest {
                 equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0), 5)
         );
 
-        List<List<String>> windowStrings = receiveWindows(windowMatchers.size(), resultListener);
+        List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
         assertRootEnd();
     }
@@ -125,13 +127,14 @@ public class RootTwoChildrenTest {
                 "0,120,0", "0,140,5", "0,170,10",
                 "0,400,0", "0,405,5", "0,410,15",
                 "0,550,100", "0,560,0",
-                "0,730,0", "0,930,0" // needed to end previous window
+                "0,730,3",
+                "0,930,0" // needed to end previous window
         };
 
         String[] events1 = {
                 "1,0,1", "1,15,2", "1,30,3",
                 "1,460,15", "1,530,5", "1,590,20",
-                "1,700,0", "1,750,0",
+                "1,700,2", "1,750,1",
                 "1,900,0" // needed to end previous window
         };
 
@@ -139,10 +142,11 @@ public class RootTwoChildrenTest {
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
                 equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 270), 0),  3),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0),  2)
         );
 
-        List<List<String>> windowStrings = receiveWindows(windowMatchers.size(), resultListener);
+        List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
         assertRootEnd();
     }

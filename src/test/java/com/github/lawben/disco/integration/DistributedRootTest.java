@@ -6,7 +6,7 @@ import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
 import static com.github.lawben.disco.utils.TestUtils.closeIfNotNull;
-import static com.github.lawben.disco.utils.TestUtils.receiveWindows;
+import static com.github.lawben.disco.utils.TestUtils.receiveResultWindows;
 import static com.github.lawben.disco.utils.TestUtils.runThread;
 import static com.github.lawben.disco.utils.WindowResultMatcher.equalsWindowResult;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -647,7 +647,7 @@ public class DistributedRootTest {
                 equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15)
         );
 
-        List<List<String>> windowStrings = receiveWindows(windowMatchers.size(), resultListener);
+        List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
         assertThat(windowStrings, containsInAnyOrder(windowMatchers));
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -705,35 +705,55 @@ public class DistributedRootTest {
         Thread.sleep(50);
         child2.sendNext(STREAM_END, "1");
 
-        // Count 0-3
-        List<String> result1 = resultListener.receiveNext(2);
-        FunctionWindowAggregateId expectedFunctionWindowId1 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 3), 0);
-        assertFunctionWindowIdStringEquals(result1.get(0), expectedFunctionWindowId1);
-        assertThat(result1.get(1), equalTo("6"));
+        List<Matcher<? super List<String>>> windowResultMatchers = Arrays.asList(
+                // Count 0-3
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  0,  3), 0),  6),
+                // Time 0-30
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  0, 30), 0),  3),
+                // Count 3-6
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  3,  6), 0), 15),
+                // Time 30-60
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0), 12),
+                // Time 60-90
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0), 21)
+        );
 
-        // Time 0-30
-        List<String> result2 = resultListener.receiveNext(2);
-        FunctionWindowAggregateId expectedFunctionWindowId2 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 30), 0);
-        assertFunctionWindowIdStringEquals(result2.get(0), expectedFunctionWindowId2);
-        assertThat(result2.get(1), equalTo("3"));
+        List<List<String>> windowStrings = new ArrayList<>(windowResultMatchers.size());
+        for (int i = 0; i < windowResultMatchers.size(); i++) {
+            windowStrings.add(resultListener.receiveNext(2));
+        }
 
-        // Count 3-6
-        List<String> result3 = resultListener.receiveNext(2);
-        FunctionWindowAggregateId expectedFunctionWindowId3 = new FunctionWindowAggregateId(new WindowAggregateId(0, 3, 6), 0);
-        assertFunctionWindowIdStringEquals(result3.get(0), expectedFunctionWindowId3);
-        assertThat(result3.get(1), equalTo("15"));
+        assertThat(windowStrings, containsInAnyOrder(windowResultMatchers));
 
-        // Time 30-60
-        List<String> result4 = resultListener.receiveNext(2);
-        FunctionWindowAggregateId expectedFunctionWindowId4 = new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0);
-        assertFunctionWindowIdStringEquals(result4.get(0), expectedFunctionWindowId4);
-        assertThat(result4.get(1), equalTo("12"));
-
-        // Time 60-90
-        List<String> result5 = resultListener.receiveNext(2);
-        FunctionWindowAggregateId expectedFunctionWindowId5 = new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0);
-        assertFunctionWindowIdStringEquals(result5.get(0), expectedFunctionWindowId5);
-        assertThat(result5.get(1), equalTo("21"));
+//        // Count 0-3
+//        List<String> result1 = resultListener.receiveNext(2);
+//        FunctionWindowAggregateId expectedFunctionWindowId1 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 3), 0);
+//        assertFunctionWindowIdStringEquals(result1.get(0), expectedFunctionWindowId1);
+//        assertThat(result1.get(1), equalTo("6"));
+//
+//        // Time 0-30
+//        List<String> result2 = resultListener.receiveNext(2);
+//        FunctionWindowAggregateId expectedFunctionWindowId2 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 30), 0);
+//        assertFunctionWindowIdStringEquals(result2.get(0), expectedFunctionWindowId2);
+//        assertThat(result2.get(1), equalTo("3"));
+//
+//        // Count 3-6
+//        List<String> result3 = resultListener.receiveNext(2);
+//        FunctionWindowAggregateId expectedFunctionWindowId3 = new FunctionWindowAggregateId(new WindowAggregateId(0, 3, 6), 0);
+//        assertFunctionWindowIdStringEquals(result3.get(0), expectedFunctionWindowId3);
+//        assertThat(result3.get(1), equalTo("15"));
+//
+//        // Time 30-60
+//        List<String> result4 = resultListener.receiveNext(2);
+//        FunctionWindowAggregateId expectedFunctionWindowId4 = new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0);
+//        assertFunctionWindowIdStringEquals(result4.get(0), expectedFunctionWindowId4);
+//        assertThat(result4.get(1), equalTo("12"));
+//
+//        // Time 60-90
+//        List<String> result5 = resultListener.receiveNext(2);
+//        FunctionWindowAggregateId expectedFunctionWindowId5 = new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0);
+//        assertFunctionWindowIdStringEquals(result5.get(0), expectedFunctionWindowId5);
+//        assertThat(result5.get(1), equalTo("21"));
 
         assertRootEnd();
         assertNoFinalThreadException(root);

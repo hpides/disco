@@ -1,6 +1,8 @@
 package com.github.lawben.disco.utils;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
+import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
+import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
@@ -36,10 +38,40 @@ public class TestUtils {
         return resultListener.receiveNext(2);
     }
 
-    public static List<List<String>> receiveWindows(int numExpectedWindows, ZMQPullMock resultListener) {
+    public static List<String> receiveWindow(ZMQPullMock receiver) {
+        List<String> received = receiver.receiveNext();
+        String controlMsg = received.get(0);
+        if (controlMsg.equals(EVENT_STRING) || controlMsg.equals(CONTROL_STRING)) {
+            received.add(receiver.receiveNext().get(0));
+            return received;
+        }
+
+        received.add(receiver.receiveNext().get(0));
+        received.add(receiver.receiveNext().get(0));
+        if (received.get(2) == null) {
+            System.out.println("Cannot get aggregates for: " + received);
+            return null;
+        }
+
+        for (int i = 0; i < Integer.parseInt(received.get(2)); i++) {
+            received.add(receiver.receiveNext().get(0));
+        }
+        return received;
+    }
+
+    public static List<List<String>> receiveResultWindows(int numExpectedWindows, ZMQPullMock resultListener) {
         List<List<String>> windowStrings = new ArrayList<>(numExpectedWindows);
         for (int i = 0; i < numExpectedWindows; i++) {
             windowStrings.add(receiveResult(resultListener));
+        }
+        System.out.println("Received window strings: " + windowStrings);
+        return windowStrings;
+    }
+
+    public static List<List<String>> receiveWindows(int numExpectedWindows, ZMQPullMock dataPuller) {
+        List<List<String>> windowStrings = new ArrayList<>(numExpectedWindows);
+        for (int i = 0; i < numExpectedWindows; i++) {
+            windowStrings.add(receiveWindow(dataPuller));
         }
         System.out.println("Received window strings: " + windowStrings);
         return windowStrings;
