@@ -24,3 +24,5 @@ dependencies {
     implementation group: 'com.github.lawben.scotty-window-processor', name: 'state', version: scottyVersion
     implementation group: 'com.github.lawben.scotty-window-processor', name: 'slicing', version: scottyVersion
 }
+
+println "CLASSPATH: " + configurations.runtimeClasspath.asPath

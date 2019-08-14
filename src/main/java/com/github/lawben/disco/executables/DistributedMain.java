@@ -6,7 +6,8 @@ import java.util.stream.Collectors;
 
 public class DistributedMain {
     public static void main(String[] args) throws Exception {
-        if (args.length < 9) {
+        final int numExpectedArgs = 9;
+        if (args.length < numExpectedArgs) {
             System.err.println("Not enough arguments!\nUsage: java ... "
                     + "controllerPort "
                     + "windowPort "
@@ -40,7 +41,7 @@ public class DistributedMain {
         System.out.println("Running with " + numChildren + " children, " + numStreams + " streams, and " +
                 numEvents + " events per stream. Windows: " + windowsString + "; aggFns: " + aggFnsString);
 
-        final List<Long> randomSeeds = DistributedUtils.getRandomSeeds(args, numStreams, 7);
+        final List<Long> randomSeeds = DistributedUtils.getRandomSeeds(args, numStreams, numExpectedArgs);
         List<String> seedStrings = randomSeeds.stream().map(String::valueOf).collect(Collectors.toList());
         System.out.println("Using seeds: " + String.join(",", seedStrings));
 
