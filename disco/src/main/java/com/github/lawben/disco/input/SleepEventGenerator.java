@@ -1,5 +1,6 @@
 package com.github.lawben.disco.input;
 
+import com.github.lawben.disco.Event;
 import java.util.Random;
 import java.util.function.Function;
 import org.zeromq.ZMQ;
@@ -18,7 +19,7 @@ public class SleepEventGenerator<T> implements EventGenerator<T> {
     }
 
     @Override
-    public long generateAndSendEvents(Random rand, ZMQ.Socket eventSender) throws Exception {
+    public final long generateAndSendEvents(Random rand, ZMQ.Socket eventSender) throws Exception {
         long lastEventTimestamp = 0;
         final long startTime = config.startTimestamp;
         final Function<Random, T> eventGenerator = config.generatorFunction;
@@ -26,11 +27,12 @@ public class SleepEventGenerator<T> implements EventGenerator<T> {
         final int maxSleepTime = config.maxWaitTimeMillis;
 
         for (int i = 0; i < config.numEventsToSend; i++) {
-            this.doSleep(minSleepTime, maxSleepTime, rand);
+//            this.doSleep(minSleepTime, maxSleepTime, rand);
 
             final long eventTimestamp = System.currentTimeMillis() - startTime;
             final Integer eventValue = (Integer) eventGenerator.apply(rand);
-            final String msg = String.valueOf(this.streamId) + ',' + eventTimestamp + ',' + eventValue;
+            final Event event = new Event(eventValue, eventTimestamp, this.streamId);
+            final String msg = event.asString();
             eventSender.send(msg, ZMQ.DONTWAIT);
 
             lastEventTimestamp = eventTimestamp;

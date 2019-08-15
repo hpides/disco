@@ -1,1 +1,3 @@
 rootProject.name = 'distributed-scotty'
+
+include 'disco', 'benchmarks'

@@ -1,15 +1,11 @@
 package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
-import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.MAX_LATENESS;
 
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
-import com.github.lawben.disco.aggregation.WindowFunctionKey;
 import com.github.lawben.disco.merge.ChildMerger;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZMQ;
 
@@ -114,6 +110,7 @@ public class DistributedChild implements Runnable {
     }
 
     private void handleWatermark(long watermarkTimestamp) {
+        System.out.println("Processed " + numEvents + " total events at watermark " + watermarkTimestamp + ".");
         List<DistributedAggregateWindowState> finalWindows =
                 this.childMerger.processWatermarkedWindows(watermarkTimestamp);
 

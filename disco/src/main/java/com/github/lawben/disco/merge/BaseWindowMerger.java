@@ -242,7 +242,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
                 continue;
             }
 
-            // If we have never seen at session for this key by a child, we assume it is still coming.
+            // If we have never seen a session for this key by a child, we assume it is still coming.
             WindowFunctionKey windowKey = new WindowFunctionKey(session.getWindowId().getWindowId(), key);
             long lastStartForChild = childAllStarts.getValue().getOrDefault(windowKey, -1L);
             if (lastStartForChild < sessionEnd) {

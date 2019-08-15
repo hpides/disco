@@ -2,6 +2,7 @@ package com.github.lawben.disco.input;
 
 import java.util.Random;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class InputStreamConfig<T> {
     public final int numEventsToSend;

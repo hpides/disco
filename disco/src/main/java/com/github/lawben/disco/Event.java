@@ -22,9 +22,9 @@ public class Event {
     public static Event fromString(String eventString) {
         final String[] eventParts = eventString.split(",");
         final int streamId = Integer.parseInt(eventParts[0]);
-        final long eventTimestamp = Long.valueOf(eventParts[1]);
-        final int eventValue = Integer.valueOf(eventParts[2]);
-        final int key = eventParts.length == 4 ? Integer.valueOf(eventParts[3]) : NO_KEY;
+        final long eventTimestamp = Long.parseLong(eventParts[1]);
+        final int eventValue = Integer.parseInt(eventParts[2]);
+        final int key = eventParts.length == 4 ? Integer.parseInt(eventParts[3]) : NO_KEY;
         return new Event(eventValue, eventTimestamp, streamId, key);
     }
 
@@ -42,5 +42,9 @@ public class Event {
 
     public int getKey() {
         return key;
+    }
+
+    public String asString() {
+        return streamId + "," + timestamp + "," + value + "," + key;
     }
 }

@@ -320,6 +320,8 @@ public class DistributedNode {
         if (this.dataPuller == null) {
             this.dataPuller = this.context.createSocket(SocketType.PULL);
             this.dataPuller.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
+            CHECK HWM
+            this.dataPuller.setRcvHWM(10);
             this.dataPuller.bind(DistributedUtils.buildBindingTcpUrl(port));
         }
         return this.dataPuller;
