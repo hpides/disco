@@ -9,15 +9,13 @@ import static com.github.lawben.disco.DistributedUtils.createWindowsFromString;
 import static com.github.lawben.disco.Event.NO_KEY;
 import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
 
-import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
-import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
+import com.github.lawben.disco.aggregation.functions.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.AlgebraicWindowAggregate;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributiveWindowAggregate;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
-import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import com.github.lawben.disco.merge.AggregateMerger;
 import com.github.lawben.disco.merge.FinalWindowsAndSessionStarts;

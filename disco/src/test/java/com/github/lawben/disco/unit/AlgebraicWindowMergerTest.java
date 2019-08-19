@@ -1,7 +1,7 @@
 package com.github.lawben.disco.unit;
 
 import com.github.lawben.disco.merge.AlgebraicWindowMerger;
-import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
+import com.github.lawben.disco.aggregation.functions.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.PartialAverage;

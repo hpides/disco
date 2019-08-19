@@ -1,5 +1,6 @@
-package com.github.lawben.disco.aggregation;
+package com.github.lawben.disco.aggregation.functions;
 
+import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;

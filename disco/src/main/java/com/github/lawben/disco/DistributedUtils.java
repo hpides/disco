@@ -1,14 +1,16 @@
 package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
-import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
+import com.github.lawben.disco.aggregation.functions.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
+import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
-import com.github.lawben.disco.aggregation.MedianAggregateFunction;
-import com.github.lawben.disco.aggregation.SumAggregationFunction;
+import com.github.lawben.disco.aggregation.functions.MaxAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.MedianAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.SumAggregateFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.SessionWindow;
@@ -154,11 +156,15 @@ public class DistributedUtils {
             case "MEDIAN": {
                 return aggregateFunctionMedian();
             }
+            case "MAX": {
+                return aggregateFunctionMax();
+            }
             default: {
                 throw new IllegalArgumentException("No aggFn known for: '" + aggFnString + "'");
             }
         }
     }
+
 
     public static Optional<FunctionWindowAggregateId> getNextSessionStart(
             List<FunctionWindowAggregateId> sessionStarts, long lastSessionEnd) {
@@ -179,7 +185,6 @@ public class DistributedUtils {
         }
         return newSession;
     }
-
 
     public static String functionWindowIdToString(FunctionWindowAggregateId functionWindowAggId) {
         WindowAggregateId windowId = functionWindowAggId.getWindowId();
@@ -263,8 +268,8 @@ public class DistributedUtils {
             throw new IllegalArgumentException("Slice needs to have 'start,end'. Got: " + parts[0]);
         }
 
-        long start = Long.valueOf(times[0]);
-        long end = Long.valueOf(times[1]);
+        long start = Long.parseLong(times[0]);
+        long end = Long.parseLong(times[1]);
 
         if (parts.length == 1) {
             return new DistributedSlice(start, end, new ArrayList<>());
@@ -296,16 +301,20 @@ public class DistributedUtils {
         return randomSeeds;
     }
 
-    public static AggregateFunction aggregateFunctionSum() {
-        return new SumAggregationFunction();
+    public static DistributiveAggregateFunction aggregateFunctionSum() {
+        return new SumAggregateFunction();
     }
 
-    public static AggregateFunction aggregateFunctionAverage() {
+    public static AlgebraicAggregateFunction aggregateFunctionAverage() {
         return new AverageAggregateFunction();
     }
 
     public static HolisticAggregateFunction aggregateFunctionMedian() {
         return new MedianAggregateFunction();
+    }
+
+    private static DistributiveAggregateFunction aggregateFunctionMax() {
+        return new MaxAggregateFunction();
     }
 
     public static List<AggregateFunction> convertAggregateFunctions(List<AggregateFunction> aggFns) {
