@@ -29,12 +29,15 @@ public class SustainableThroughputEventGenerator {
     private final Queue<Event> eventQueue;
     private final int queueCapacity;
 
+    private boolean interrupt;
+
     public SustainableThroughputEventGenerator(int streamId, int numEventsPerSecond, long startTimestamp,
             Function<Long, Integer> dataSupplier) {
         this.streamId = streamId;
         this.numEventsPerSecond = numEventsPerSecond;
         this.startTimestamp = startTimestamp;
         this.dataSupplier = dataSupplier;
+        this.interrupt = false;
         // Allocate QUEUE_BUFFER_FACTOR times as much space as should be sent per second so we can track the
         // back pressure for QUEUE_BUFFER_FACTOR seconds.
         this.queueCapacity = numEventsPerSecond * QUEUE_BUFFER_FACTOR;
@@ -51,8 +54,8 @@ public class SustainableThroughputEventGenerator {
 
         final long currentQueueSize = eventQueue.size();
         if (currentQueueSize + numEventsPerSecond > queueCapacity) {
-            throw new IllegalStateException("Queue too full! Cannot insert " + numEventsPerSecond + "events into queue "
-                    + "with size " + currentQueueSize + " and capacity " + queueCapacity + ".");
+            throw new IllegalStateException("Queue too full! Cannot insert " + numEventsPerSecond + " events into queue"
+                    + " with size " + currentQueueSize + " and capacity " + queueCapacity + ".");
         }
 
         for (int chunkNum = 1; chunkNum <= NUM_CHUNKS; chunkNum++) {
@@ -75,7 +78,8 @@ public class SustainableThroughputEventGenerator {
 
             final long remainingInSecond = secondEnd - chunkEnd;
             final long estimatedDurationForRemainingChunks = remainingChunks * (totalGenerationTime / chunkNum);
-            final long estimatedNeededSleep = remainingInSecond - estimatedDurationForRemainingChunks;
+            // At least 0 so we don't get negative sleep times.
+            final long estimatedNeededSleep = Math.max(0, remainingInSecond - estimatedDurationForRemainingChunks);
             final long sleepForCurrentChunk = estimatedNeededSleep / remainingChunks;
 
             totalSleepTime += sleepForCurrentChunk;
@@ -101,8 +105,13 @@ public class SustainableThroughputEventGenerator {
         return eventQueue;
     }
 
-    public int getQueueCapacity() {
-        return queueCapacity;
+    public void interrupt() {
+        System.out.println("Generator was interrupted and will end soon.");
+        interrupt = true;
+    }
+
+    public boolean isInterrupted() {
+        return interrupt;
     }
 }
 

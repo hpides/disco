@@ -1,9 +1,11 @@
 package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
+import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
 import com.github.lawben.disco.input.SustainableThroughputEventGenerator;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
@@ -37,8 +39,7 @@ public class SustainableThroughputRunner {
 
         ZContext context = new ZContext();
         ZMQ.Socket dataPusher = context.createSocket(SocketType.PUSH);
-        CHECK HWM
-        dataPusher.setSndHWM(10);
+        dataPusher.setSndHWM(100);
         dataPusher.connect("tcp://" + nodeAddress);
 
         // Register at parent and wait for it to set up correctly.
@@ -65,10 +66,10 @@ public class SustainableThroughputRunner {
                 (thread, exception) -> generatorException.setException(exception);
 
         Thread generatorThread = new Thread(() -> {
-            while (System.currentTimeMillis() < startTime + totalDuration * 1000) {
+            while (!generator.isInterrupted() && System.currentTimeMillis() < startTime + totalDuration * 1000) {
                 generator.generateNextSecondEvents();
             }
-            System.err.println("ENDING GENERATOR");
+            System.out.println("ENDING GENERATOR");
         });
         generatorThread.setUncaughtExceptionHandler(generatorThreadExceptionHandler);
         generatorThread.start();
@@ -78,7 +79,6 @@ public class SustainableThroughputRunner {
 
         // Event sending
         Queue<Event> eventQueue = generator.getEventQueue();
-        final long queueCapacity = generator.getQueueCapacity();
         long queueSize = eventQueue.size();
         int currentIncreaseStreak = 0;
 
@@ -93,16 +93,23 @@ public class SustainableThroughputRunner {
                 }
             }
 
+            if (generatorException.wasThrown()) {
+                endStream(streamId, dataPusher);
+                throw new RuntimeException("Generator exception was thrown!\n" + generatorException.getException());
+            }
+
             System.out.println("Sent " + sentCounter + " events in " + SEND_PERIOD_DURATION_MS + "ms.");
 
             // Check queue size after sending for a while.
             final long currentQueueSize = eventQueue.size();
-            final long increaseSinceLastChunk = queueSize - currentQueueSize;
+            final long increaseSinceLastChunk = currentQueueSize - queueSize;
             queueSize = currentQueueSize;
             System.out.println("Current queue size: " + queueSize);
-            if (queueSize > (2 * eventsPerSec) && increaseSinceLastChunk > 0) {
+            if (queueSize > (5 * eventsPerSec) && increaseSinceLastChunk > 0) {
                 // Queue is growing in size
                 if (++currentIncreaseStreak == MAX_INCREASE_STREAK) {
+                    generator.interrupt();
+                    endStream(streamId, dataPusher);
                     throw new IllegalStateException("Unsustainable throughput! Queue size is " + queueSize +
                             " and has increased " + MAX_INCREASE_STREAK + " times in a row.");
                 }
@@ -111,6 +118,7 @@ public class SustainableThroughputRunner {
             }
         }
 
+        endStream(streamId, dataPusher);
         generatorThread.join();
     }
 
@@ -125,18 +133,22 @@ public class SustainableThroughputRunner {
                 numSleepsInSendPeriod++;
                 Thread.sleep(5);
                 if (numSleepsInSendPeriod == 10) {
-                    System.out.println("Data generation is slow. Sending slept 10 times in " +
-                            SEND_PERIOD_DURATION_MS + "ms.");
+                    // Data generation is slow. Slept 10 times in last send period.
                     return false;
                 }
                 continue;
             }
-            CHECK OUT ZMQ.DONTWAIT
+
             dataPusher.send(event.asString());
             sentCounter.increment();
         }
 
         return true;
+    }
+
+    private static void endStream(int streamId, Socket dataPusher) {
+        dataPusher.sendMore(STREAM_END);
+        dataPusher.send(String.valueOf(streamId));
     }
 }
 

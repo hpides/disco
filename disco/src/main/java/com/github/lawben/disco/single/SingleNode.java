@@ -91,7 +91,7 @@ public class SingleNode implements Runnable {
             Object finalAggregate = aggValues.isEmpty() ? null : aggValues.get(0);
             byte[] finalAggregateBytes = DistributedUtils.objectToBytes(finalAggregate);
 
-            // TODO: fix
+            // TODO: fix as we do not send bytes anymore
             FunctionWindowAggregateId functionWindowAggId = new FunctionWindowAggregateId(windowId, 0);
             resultPusher.sendMore(DistributedUtils.functionWindowIdToString(functionWindowAggId));
             resultPusher.send(finalAggregateBytes);
