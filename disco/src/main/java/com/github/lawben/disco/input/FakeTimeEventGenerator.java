@@ -43,7 +43,7 @@ public class FakeTimeEventGenerator implements EventGenerator {
         final String streamIdString = String.valueOf(this.streamId);
         for (int eventNum = 0; eventNum < numEvents; eventNum++) {
             final String msg = streamIdString + ',' + eventTimestamps[eventNum] + ',' + eventValues[eventNum];
-            eventSender.send(msg, ZMQ.DONTWAIT);
+            eventSender.send(msg);
         }
 
         return eventTimestamps[numEvents - 1];

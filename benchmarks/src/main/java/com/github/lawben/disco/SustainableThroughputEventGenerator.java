@@ -1,4 +1,4 @@
-package com.github.lawben.disco.input;
+package com.github.lawben.disco;
 
 import com.github.lawben.disco.Event;
 import java.util.ArrayDeque;
@@ -17,7 +17,7 @@ import org.zeromq.ZMQ;
  * If the back pressure becomes to high, throws an exception.
  */
 public class SustainableThroughputEventGenerator {
-    private static final int NUM_CHUNKS = 10;
+    private static final int NUM_CHUNKS = 1000;
     private static final int QUEUE_BUFFER_FACTOR = 10;
     private static final int MILLIS_IN_SECOND = 1000;
 
@@ -61,8 +61,9 @@ public class SustainableThroughputEventGenerator {
         for (int chunkNum = 1; chunkNum <= NUM_CHUNKS; chunkNum++) {
             final long chunkStart = System.currentTimeMillis();
             for (int eventNum = 0; eventNum < eventsPerChunk; eventNum++) {
-                final long eventTimestamp = System.currentTimeMillis() - startTimestamp;
-                final long eventValue = dataSupplier.apply(eventTimestamp);
+                final long realTimestamp = System.currentTimeMillis();
+                final long eventTimestamp = realTimestamp - startTimestamp;
+                final long eventValue = dataSupplier.apply(realTimestamp);
                 eventQueue.add(new Event(eventValue, eventTimestamp, this.streamId));
             }
             final long remainingChunks = NUM_CHUNKS - chunkNum;

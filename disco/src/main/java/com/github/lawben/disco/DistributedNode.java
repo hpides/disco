@@ -201,7 +201,7 @@ public class DistributedNode {
         for (int i = 0; i < serializedMessage.size() - 1; i++) {
             this.windowPusher.sendMore(serializedMessage.get(i));
         }
-        this.windowPusher.send(serializedMessage.get(serializedMessage.size() - 1), ZMQ.DONTWAIT);
+        this.windowPusher.send(serializedMessage.get(serializedMessage.size() - 1));
     }
 
     public boolean isTotalStreamEnd() {
@@ -266,7 +266,7 @@ public class DistributedNode {
 
         this.watermarkMs = Long.parseLong(controlSender.recvStr());
         String windowString = controlSender.recvStr();
-        String aggString = controlSender.recvStr(ZMQ.DONTWAIT);
+        String aggString = controlSender.recvStr();
 
         this.windowStrings = windowString.split(";");
         this.aggregateFnStrings = aggString.split(";");

@@ -53,7 +53,6 @@ public class DistributedChild implements Runnable {
             this.processStreams();
         } finally {
             nodeImpl.close();
-            nodeImpl.close();
         }
     }
 

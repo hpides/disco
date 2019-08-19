@@ -128,7 +128,7 @@ public class DistributedRoot implements Runnable {
         System.out.println(nodeImpl.nodeString("Sending result: " + windowResult));
         String finalAggregateString = String.valueOf(windowResult.getValue());
         this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(windowResult.getFinalWindowId()));
-        this.resultPusher.send(finalAggregateString, ZMQ.DONTWAIT);
+        this.resultPusher.send(finalAggregateString);
     }
 
     public void interrupt() {

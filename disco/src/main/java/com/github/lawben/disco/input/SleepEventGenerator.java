@@ -33,7 +33,7 @@ public class SleepEventGenerator implements EventGenerator {
             final Long eventValue = (Long) eventGenerator.apply(rand);
             final Event event = new Event(eventValue, eventTimestamp, this.streamId);
             final String msg = event.asString();
-            eventSender.send(msg, ZMQ.DONTWAIT);
+            eventSender.send(msg);
 
             lastEventTimestamp = eventTimestamp;
         }

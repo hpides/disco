@@ -1,9 +1,11 @@
-package com.github.lawben.disco;
+package com.github.lawben.disco.executables;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
-import com.github.lawben.disco.input.SustainableThroughputEventGenerator;
+import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.Event;
+import com.github.lawben.disco.SustainableThroughputEventGenerator;
 import java.util.Queue;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
@@ -58,7 +60,7 @@ public class SustainableThroughputRunner {
         final Function<Long, Long> onesGenerator = (eventTimestamp) -> 1L;
         final Function<Long, Long> timestampGenerator = (eventTimestamp) -> eventTimestamp;
         final SustainableThroughputEventGenerator generator =
-                new SustainableThroughputEventGenerator(0, eventsPerSec, startTime, onesGenerator);
+                new SustainableThroughputEventGenerator(0, eventsPerSec, startTime, timestampGenerator);
 
         GeneratorException generatorException = new GeneratorException();
         Thread.UncaughtExceptionHandler generatorThreadExceptionHandler =
