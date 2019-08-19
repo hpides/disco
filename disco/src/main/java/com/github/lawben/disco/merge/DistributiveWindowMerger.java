@@ -45,8 +45,8 @@ public class DistributiveWindowMerger<AggType> extends BaseWindowMerger<AggType>
     }
 
     @Override
-    public Integer lowerFinalValue(AggregateWindow finalWindow) {
+    public Long lowerFinalValue(AggregateWindow finalWindow) {
         List aggValues = finalWindow.getAggValues();
-        return aggValues.isEmpty() ? null : (Integer) aggValues.get(0);
+        return aggValues.isEmpty() ? null : (Long) aggValues.get(0);
     }
 }

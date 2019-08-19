@@ -78,7 +78,7 @@ public class ZMQTest {
                 e.printStackTrace();
             }
             while (true) {
-                Integer value = 10;
+                Long value = 10L;
                 eventSender.sendMore(String.valueOf(0));
                 eventSender.sendMore(String.valueOf(1000));
                 eventSender.send(DistributedUtils.objectToBytes(value), ZMQ.DONTWAIT);
@@ -105,7 +105,7 @@ public class ZMQTest {
     public static void benchmarkZMQPush(BMInfo info) {
         Socket sender = info.socket;
         while (!info.isStop()) {
-            Integer value = 10;
+            Long value = 10L;
 //            DON'T USE SENDMORE
             sender.send(String.valueOf(0), ZMQ.DONTWAIT);
 //            sender.send(String.valueOf(1000), ZMQ.DONTWAIT);

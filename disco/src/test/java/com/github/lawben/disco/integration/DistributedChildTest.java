@@ -341,6 +341,8 @@ public class DistributedChildTest {
         sendSleepSortedEvents(50, streamSenders, events0, events1);
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
+        final Long dummyNullValue = null;
+
         List<ExpectedWindow> expectedWindows = Arrays.asList(
                 new ExpectedWindow(childId, defaultFunctionWindowId(new WindowAggregateId(0,   0, 100)),
                         new DistributiveWindowAggregate(5, 0), new DistributiveWindowAggregate(5, 1)),
@@ -362,7 +364,7 @@ public class DistributedChildTest {
                         new DistributiveWindowAggregate(150, 1)),
                 // This only exists because of the STREAM_END logic
                 new ExpectedWindow(childId, defaultFunctionWindowId(new WindowAggregateId(2, 190, 255)),
-                        new DistributiveWindowAggregate(null, 0))
+                        new DistributiveWindowAggregate(dummyNullValue, 0))
         );
 
         List<Matcher<? super List<String>>> sessionStartMatchers = Arrays.asList(
@@ -464,16 +466,16 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<DistributedSlice> stream0Slices = Arrays.asList(
-                new DistributedSlice(  0,  30, Arrays.asList(1, 1)),
-                new DistributedSlice( 50,  90, Arrays.asList(1, 1, 1)),
-                new DistributedSlice(100, 120, Arrays.asList(10, 20, 30)),
-                new DistributedSlice(150, 195, Arrays.asList(40, 50))
+                new DistributedSlice(  0,  30, 1, 1),
+                new DistributedSlice( 50,  90, 1, 1, 1),
+                new DistributedSlice(100, 120, 10, 20, 30),
+                new DistributedSlice(150, 195, 40, 50)
         );
 
         List<DistributedSlice> stream1Slices = Arrays.asList(
-                new DistributedSlice(  0,  40, Arrays.asList(1, 1)),
-                new DistributedSlice( 50,  85, Arrays.asList(1, 1, 1)),
-                new DistributedSlice(150, 195, Arrays.asList(10, 20, 30, 40, 50))
+                new DistributedSlice(  0,  40, 1, 1),
+                new DistributedSlice( 50,  85, 1, 1, 1),
+                new DistributedSlice(150, 195, 10, 20, 30, 40, 50)
         );
 
         List<ExpectedWindow> expectedWindows = Arrays.asList(
@@ -535,13 +537,13 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<DistributedSlice> stream0Slices = Arrays.asList(
-                new DistributedSlice(  0,  90, Arrays.asList(1, 1, 1, 1, 1)),
-                new DistributedSlice(100, 195, Arrays.asList(10, 20, 30, 40, 50))
+                new DistributedSlice(  0,  90, 1, 1, 1, 1, 1),
+                new DistributedSlice(100, 195, 10, 20, 30, 40, 50)
         );
 
         List<DistributedSlice> stream1Slices = Arrays.asList(
-                new DistributedSlice(  0,  85, Arrays.asList(1, 1, 1, 1, 1)),
-                new DistributedSlice(100, 195, Arrays.asList(10, 20, 30, 40, 50))
+                new DistributedSlice(  0,  85, 1, 1, 1, 1, 1),
+                new DistributedSlice(100, 195, 10, 20, 30, 40, 50)
         );
 
         WindowAggregateId window1 = new WindowAggregateId(0,   0, 100);
@@ -623,16 +625,16 @@ public class DistributedChildTest {
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
 
         List<DistributedSlice> stream0Slices = Arrays.asList(
-                new DistributedSlice(  0,  10, Arrays.asList(1, 2, 3, 4, 5, 6)),
-                new DistributedSlice(120, 170, Arrays.asList(0, 5, 10)),
-                new DistributedSlice(400, 410, Arrays.asList(0, 5, 15)),
-                new DistributedSlice(550, 560, Arrays.asList(100, 0))
+                new DistributedSlice(  0,  10, 1, 2, 3, 4, 5, 6),
+                new DistributedSlice(120, 170, 0, 5, 10),
+                new DistributedSlice(400, 410, 0, 5, 15),
+                new DistributedSlice(550, 560, 100, 0)
         );
 
         List<DistributedSlice> stream1Slices = Arrays.asList(
-                new DistributedSlice(  0,  30, Arrays.asList( 1, 2,  3)),
-                new DistributedSlice(460, 590, Arrays.asList(15, 5, 20)),
-                new DistributedSlice(700, 750, Arrays.asList(100, 0))
+                new DistributedSlice(  0,  30,  1, 2,  3),
+                new DistributedSlice(460, 590, 15, 5, 20),
+                new DistributedSlice(700, 750, 100, 0)
         );
 
         List<ExpectedWindow> expectedWindows = Arrays.asList(

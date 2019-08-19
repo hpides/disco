@@ -90,7 +90,7 @@ public class LocalHolisticWindowMerger extends BaseWindowMerger<List<Slice>> {
     }
 
     @Override
-    public Integer lowerFinalValue(AggregateWindow finalWindow) {
+    public Long lowerFinalValue(AggregateWindow finalWindow) {
         throw new RuntimeException(this.getClass().getSimpleName() + " does not support lowerFinalValue()");
     }
 }

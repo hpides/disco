@@ -4,9 +4,9 @@ import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 
 public class WindowResult {
     private final FunctionWindowAggregateId finalWindowId;
-    private final Integer value;
+    private final Long value;
 
-    public WindowResult(FunctionWindowAggregateId finalWindowId, Integer value) {
+    public WindowResult(FunctionWindowAggregateId finalWindowId, Long value) {
         this.finalWindowId = finalWindowId;
         this.value = value;
     }
@@ -15,7 +15,7 @@ public class WindowResult {
         return finalWindowId;
     }
 
-    public Integer getValue() {
+    public Long getValue() {
         return value;
     }
 

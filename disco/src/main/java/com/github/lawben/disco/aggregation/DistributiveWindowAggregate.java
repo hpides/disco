@@ -3,13 +3,21 @@ package com.github.lawben.disco.aggregation;
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.aggregation.BaseWindowAggregate;
 
-public class DistributiveWindowAggregate extends BaseWindowAggregate<Integer> {
-    public DistributiveWindowAggregate(Integer value) {
+public class DistributiveWindowAggregate extends BaseWindowAggregate<Long> {
+    public DistributiveWindowAggregate(Long value) {
         super(DistributedUtils.DISTRIBUTIVE_STRING, value);
     }
 
-    public DistributiveWindowAggregate(Integer value, int key) {
+    public DistributiveWindowAggregate(Long value, int key) {
         super(DistributedUtils.DISTRIBUTIVE_STRING, value, key);
+    }
+
+    public DistributiveWindowAggregate(Integer value) {
+        super(DistributedUtils.DISTRIBUTIVE_STRING, (long) value);
+    }
+
+    public DistributiveWindowAggregate(Integer value, int key) {
+        super(DistributedUtils.DISTRIBUTIVE_STRING, (long) value, key);
     }
 
     @Override

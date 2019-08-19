@@ -9,11 +9,11 @@ import org.zeromq.ZMQ;
  * Uses the random function to sleep. This causes the event time to progress "normally". The sleep times are
  * deterministic under the same `rand` condition but the sleep is not.
  */
-public class SleepEventGenerator<T> implements EventGenerator<T> {
+public class SleepEventGenerator implements EventGenerator {
     private final int streamId;
-    private final InputStreamConfig<T> config;
+    private final InputStreamConfig config;
 
-    public SleepEventGenerator(int streamId, InputStreamConfig<T> config) {
+    public SleepEventGenerator(int streamId, InputStreamConfig config) {
         this.streamId = streamId;
         this.config = config;
     }
@@ -22,15 +22,15 @@ public class SleepEventGenerator<T> implements EventGenerator<T> {
     public final long generateAndSendEvents(Random rand, ZMQ.Socket eventSender) throws Exception {
         long lastEventTimestamp = 0;
         final long startTime = config.startTimestamp;
-        final Function<Random, T> eventGenerator = config.generatorFunction;
+        final Function<Random, Long> eventGenerator = config.generatorFunction;
         final int minSleepTime = config.minWaitTimeMillis;
         final int maxSleepTime = config.maxWaitTimeMillis;
 
         for (int i = 0; i < config.numEventsToSend; i++) {
-//            this.doSleep(minSleepTime, maxSleepTime, rand);
+            this.doSleep(minSleepTime, maxSleepTime, rand);
 
             final long eventTimestamp = System.currentTimeMillis() - startTime;
-            final Integer eventValue = (Integer) eventGenerator.apply(rand);
+            final Long eventValue = (Long) eventGenerator.apply(rand);
             final Event event = new Event(eventValue, eventTimestamp, this.streamId);
             final String msg = event.asString();
             eventSender.send(msg, ZMQ.DONTWAIT);

@@ -1,8 +1,8 @@
 package com.github.lawben.disco.aggregation;
 
-public class AverageAggregateFunction implements AlgebraicAggregateFunction<Integer, PartialAverage> {
+public class AverageAggregateFunction implements AlgebraicAggregateFunction<Long, PartialAverage> {
     @Override
-    public PartialAverage lift(Integer inputTuple) {
+    public PartialAverage lift(Long inputTuple) {
         return new PartialAverage(inputTuple, 1);
     }
 
@@ -18,6 +18,6 @@ public class AverageAggregateFunction implements AlgebraicAggregateFunction<Inte
 
     @Override
     public PartialAverage partialFromString(String partialString) {
-        return new PartialAverage(0, 0).fromString(partialString);
+        return new PartialAverage(0L, 0).fromString(partialString);
     }
 }

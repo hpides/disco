@@ -7,15 +7,15 @@ import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
-public class InputStream<T> implements Runnable {
+public class InputStream implements Runnable {
 
     protected final int streamId;
-    private final InputStreamConfig<T> config;
+    private final InputStreamConfig config;
     private final String nodeIp;
     private final int nodePort;
-    private EventGenerator<T> eventGenerator;
+    private EventGenerator eventGenerator;
 
-    public InputStream(int streamId, InputStreamConfig<T> config, String nodeIp, int nodePort, EventGenerator<T> eventGenerator) {
+    public InputStream(int streamId, InputStreamConfig config, String nodeIp, int nodePort, EventGenerator eventGenerator) {
         this.streamId = streamId;
         this.config = config;
         this.nodeIp = nodeIp;

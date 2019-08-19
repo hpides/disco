@@ -5,9 +5,9 @@ import java.util.Random;
 /**
  * Creates as many events as possible with natural time.
  */
-final public class ThroughputEventGenerator<T> extends SleepEventGenerator<T> {
+final public class ThroughputEventGenerator extends SleepEventGenerator {
 
-    public ThroughputEventGenerator(int streamId, InputStreamConfig<T> config) {
+    public ThroughputEventGenerator(int streamId, InputStreamConfig config) {
         super(streamId, config);
     }
 

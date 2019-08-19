@@ -23,18 +23,25 @@ import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.slicing.slice.Slice;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 public class ChildMergerTest {
 
-    void assertWindowValuesEqual(DistributedAggregateWindowState window, Integer... expectedValues) {
-        assertWindowValuesEqual(window, Arrays.asList(expectedValues));
+    void assertWindowValuesEqual(DistributedAggregateWindowState window) {
+        assertWindowValuesEqual(window, new ArrayList<>());
     }
 
-    void assertWindowValuesEqual(DistributedAggregateWindowState window, List<Integer> expectedValues) {
-        List<Integer> aggValues = window.getAggValues();
+    void assertWindowValuesEqual(DistributedAggregateWindowState window, Integer... expectedValues) {
+        List<Long> longValues = Arrays.stream(expectedValues).map(Long::valueOf).collect(Collectors.toList());
+        assertWindowValuesEqual(window, longValues);
+    }
+
+    void assertWindowValuesEqual(DistributedAggregateWindowState window, List<Long> expectedValues) {
+        List<Long> aggValues = window.getAggValues();
         assertThat(aggValues, equalTo(expectedValues));
     }
 
@@ -55,7 +62,7 @@ public class ChildMergerTest {
             assertThat(actualSlice.getTStart(), equalTo(expectedSlice.getTStart()));
             assertThat(actualSlice.getTLast(), equalTo(expectedSlice.getTLast()));
             assertTrue(actualSlice.getAggState().hasValues());
-            List<Integer> aggValues = (List<Integer>) actualSlice.getAggState().getValues().get(0);
+            List<Long> aggValues = (List<Long>) actualSlice.getAggState().getValues().get(0);
             assertThat(aggValues, equalTo(expectedSlice.getValues()));
         }
     }
@@ -203,16 +210,16 @@ public class ChildMergerTest {
         List<DistributedAggregateWindowState> result7 = merger.processWatermarkedWindows(700);
 
         List<DistributedSlice> stream0Slices = Arrays.asList(
-                new DistributedSlice(  0,  10, Arrays.asList(1, 2, 3, 4, 5, 6)),
-                new DistributedSlice(120, 170, Arrays.asList(0, 5, 10)),
-                new DistributedSlice(400, 410, Arrays.asList(0, 5, 15)),
-                new DistributedSlice(550, 560, Arrays.asList(100, 0))
+                new DistributedSlice(  0,  10, Arrays.asList(1L, 2L, 3L, 4L, 5L, 6L)),
+                new DistributedSlice(120, 170, Arrays.asList(0L, 5L, 10L)),
+                new DistributedSlice(400, 410, Arrays.asList(0L, 5L, 15L)),
+                new DistributedSlice(550, 560, Arrays.asList(100L, 0L))
         );
 
         List<DistributedSlice> stream1Slices = Arrays.asList(
-                new DistributedSlice(  0,  30, Arrays.asList( 1, 2,  3)),
-                new DistributedSlice(460, 590, Arrays.asList(15, 5, 20)),
-                new DistributedSlice(700, 750, Arrays.asList(100, 0))
+                new DistributedSlice(  0,  30, Arrays.asList(1L, 2L, 3L)),
+                new DistributedSlice(460, 590, Arrays.asList(15L, 5L, 20L)),
+                new DistributedSlice(700, 750, Arrays.asList(100L, 0L))
         );
 
         List<ExpectedWindow> expectedWindows = Arrays.asList(

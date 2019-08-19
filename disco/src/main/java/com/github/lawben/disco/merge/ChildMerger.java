@@ -35,11 +35,10 @@ import java.util.stream.Collectors;
 
 public class ChildMerger {
     private final int childId;
-    private final Map<Integer, DistributedChildSlicer<Integer>> slicerPerKey;
+    private final Map<Integer, DistributedChildSlicer<Long>> slicerPerKey;
     private final Map<Long, Map<Integer, Long>> sessionLastTimestamps;
     private final Map<Long, Long> sessionGaps;
     private final Map<WindowFunctionKey, List<FunctionWindowAggregateId>> newSessionStarts;
-    private final Map<WindowFunctionKey, Long> latestSessionEnds;
     private final LocalHolisticWindowMerger localHolisticWindowMerger;
 
     private final List<AggregateFunction> sliceAggFns;
@@ -51,7 +50,7 @@ public class ChildMerger {
         this(new HashMap<>(), timedWindows, functions, childId);
     }
 
-    public ChildMerger(Map<Integer, DistributedChildSlicer<Integer>> slicerPerKey,
+    public ChildMerger(Map<Integer, DistributedChildSlicer<Long>> slicerPerKey,
             List<Window> timedWindows, List<AggregateFunction> functions, int childId) {
         this.childId = childId;
         this.slicerPerKey = slicerPerKey;
@@ -67,7 +66,6 @@ public class ChildMerger {
         this.sessionLastTimestamps = new HashMap<>();
         this.newSessionStarts = new HashMap<>();
         this.sessionGaps = new HashMap<>();
-        this.latestSessionEnds = new HashMap<>();
         for (Window window : windows) {
             if (window instanceof SessionWindow) {
                 long windowId = window.getWindowId();
@@ -77,9 +75,9 @@ public class ChildMerger {
         }
     }
 
-    public void processElement(int eventValue, long eventTimestamp, int key) {
+    public void processElement(long eventValue, long eventTimestamp, int key) {
 //        System.out.println(childId + " - PROCESSING: " + eventTimestamp);
-        DistributedChildSlicer<Integer> perKeySlicer = this.slicerPerKey.computeIfAbsent(key,
+        DistributedChildSlicer<Long> perKeySlicer = this.slicerPerKey.computeIfAbsent(key,
                 k -> new DistributedChildSlicer<>(this.windows, this.sliceAggFns));
         perKeySlicer.processElement(eventValue, eventTimestamp);
 
@@ -116,7 +114,7 @@ public class ChildMerger {
                 .sorted(Comparator.comparingInt(Map.Entry::getKey))
                 .flatMap(slicerWithKey -> {
                     final int key = slicerWithKey.getKey();
-                    DistributedChildSlicer<Integer> slicer = slicerWithKey.getValue();
+                    DistributedChildSlicer<Long> slicer = slicerWithKey.getValue();
                     List<AggregateWindow> preAggregatedWindows = slicer.processWatermark(watermarkTimestamp);
                     List<DistributedAggregateWindowState> finalWindows =
                             this.finalizeStreamWindows(preAggregatedWindows, key);
@@ -157,12 +155,6 @@ public class ChildMerger {
             FunctionWindowAggregateId functionWindowId =
                     new FunctionWindowAggregateId(windowId, functionId, this.childId, key);
 
-            if (sessionGaps.containsKey(windowId.getWindowId())) {
-//                System.out.println(childId + " - SESSION END: " + windowId.getWindowEndTimestamp());
-                WindowFunctionKey windowKey = new WindowFunctionKey(windowId.getWindowId(), key);
-                this.latestSessionEnds.put(windowKey, windowId.getWindowEndTimestamp());
-            }
-
             Map<Integer, Long> keyedSessionEnds = sessionLastTimestamps.get(windowId.getWindowId());
             if (keyedSessionEnds != null) {
                 // Is session window, so set correct end timestamp
@@ -173,8 +165,8 @@ public class ChildMerger {
             List<AggregateFunction> stateAggFn =
                     DistributedUtils.convertAggregateFunctions(Collections.singletonList(aggregateFunction));
             if (aggregateFunction instanceof DistributiveAggregateFunction) {
-                AggregateState<Integer> aggState = new AggregateState<>(new MemoryStateFactory(), stateAggFn);
-                Integer partialAggregate = hasValue ? (Integer) aggValues.get(functionId) : null;
+                AggregateState<Long> aggState = new AggregateState<>(new MemoryStateFactory(), stateAggFn);
+                Long partialAggregate = hasValue ? (Long) aggValues.get(functionId) : null;
                 aggState.addElement(partialAggregate);
                 finalPreAggregateWindow = new DistributedAggregateWindowState<>(functionWindowId, aggState);
             } else if (aggregateFunction instanceof AlgebraicAggregateFunction) {

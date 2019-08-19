@@ -25,10 +25,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class AggregateMerger {
-    private final DistributiveWindowMerger<Integer> distributiveWindowMerger;
+    private final DistributiveWindowMerger<Long> distributiveWindowMerger;
     private final AlgebraicWindowMerger<AlgebraicPartial> algebraicWindowMerger;
     private final GlobalHolisticWindowMerger holisticWindowMerger;
-    private final DistributedChildSlicer<Integer> countBasedSlicer;
+    private final DistributedChildSlicer<Long> countBasedSlicer;
 
     private final boolean hasDistributiveAggFns;
     private final boolean hasAlgebraicAggFns;
@@ -70,7 +70,7 @@ public class AggregateMerger {
         activeMergers.forEach(merger -> merger.initializeSessionState(childIds));
     }
 
-    public void processCountEvent(int eventValue, long eventTimestamp) {
+    public void processCountEvent(long eventValue, long eventTimestamp) {
         this.countBasedSlicer.processElement(eventValue, eventTimestamp);
     }
 
@@ -95,7 +95,7 @@ public class AggregateMerger {
 
         final List aggValues = aggWindow.getAggValues();
         for (int functionId = 0; functionId < aggValues.size(); functionId++) {
-            final Integer finalValue = (Integer) aggValues.get(functionId);
+            final Long finalValue = (Long) aggValues.get(functionId);
             FunctionWindowAggregateId functionWindowId = new FunctionWindowAggregateId(windowId, functionId);
             windowResults.add(new WindowResult(functionWindowId, finalValue));
         }
@@ -131,7 +131,7 @@ public class AggregateMerger {
     }
 
     public WindowResult convertAggregateToWindowResult(DistributedAggregateWindowState aggState) {
-        Integer finalValue = currentMerger.lowerFinalValue(aggState);
+        Long finalValue = currentMerger.lowerFinalValue(aggState);
         return new WindowResult(aggState.getFunctionWindowId(), finalValue);
     }
 
@@ -139,7 +139,7 @@ public class AggregateMerger {
         switch (aggregateType) {
             case DistributedUtils.DISTRIBUTIVE_STRING:
                 assert hasDistributiveAggFns;
-                Integer partialAggregate = Integer.valueOf(rawPreAggregate);
+                Long partialAggregate = Long.valueOf(rawPreAggregate);
                 this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
                 return this.distributiveWindowMerger;
             case DistributedUtils.ALGEBRAIC_STRING:

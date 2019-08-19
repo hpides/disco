@@ -181,7 +181,7 @@ public class DistributedNode {
         AggregateFunction aggFn = aggFns.get(0);
 
         if (aggFn instanceof DistributiveAggregateFunction) {
-            Integer partialAggregate = hasValue ? (Integer) aggValues.get(0) : null;
+            Long partialAggregate = hasValue ? (Long) aggValues.get(0) : null;
             return new DistributiveWindowAggregate(partialAggregate, key).asString();
         } else if (aggFn instanceof AlgebraicMergeFunction) {
             AlgebraicPartial partial = hasValue ? (AlgebraicPartial) aggValues.get(0) : null;

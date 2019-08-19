@@ -4,17 +4,17 @@ import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class InputStreamConfig<T> {
+public class InputStreamConfig {
     public final int numEventsToSend;
     public final int minWaitTimeMillis;
     public final int maxWaitTimeMillis;
     public final long startTimestamp;
 
-    public final Function<Random, T> generatorFunction;
+    public final Function<Random, Long> generatorFunction;
     public final long randomSeed;
 
     public InputStreamConfig(int numEventsToSend, int minWaitTimeMillis, int maxWaitTimeMillis, long startTimestamp,
-            Function<Random, T> generatorFunction, long randomSeed) {
+            Function<Random, Long> generatorFunction, long randomSeed) {
         this.numEventsToSend = numEventsToSend;
         this.minWaitTimeMillis = minWaitTimeMillis;
         this.maxWaitTimeMillis = maxWaitTimeMillis;

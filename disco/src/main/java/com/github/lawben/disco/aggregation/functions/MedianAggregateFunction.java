@@ -6,20 +6,20 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class MedianAggregateFunction implements HolisticAggregateFunction<Integer, List<Integer>, Integer> {
+public class MedianAggregateFunction implements HolisticAggregateFunction<Long, List<Long>, Long> {
     @Override
-    public List<Integer> lift(Integer inputTuple) {
+    public List<Long> lift(Long inputTuple) {
         return new ArrayList<>(Collections.singletonList(inputTuple));
     }
 
     @Override
-    public List<Integer> combine(List<Integer> partialAggregate1, List<Integer> partialAggregate2) {
+    public List<Long> combine(List<Long> partialAggregate1, List<Long> partialAggregate2) {
         partialAggregate1.addAll(partialAggregate2);
         return partialAggregate1;
     }
 
     @Override
-    public Integer lower(List<Integer> aggregate) {
+    public Long lower(List<Long> aggregate) {
         if (aggregate.isEmpty()) {
             return null;
         }

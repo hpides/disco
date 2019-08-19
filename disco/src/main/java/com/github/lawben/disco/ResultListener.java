@@ -15,6 +15,7 @@ public class ResultListener implements Runnable {
     @Override
     public void run() {
         System.out.println(this.resultString("Starting on path " + this.resultPath));
+        final long startTime = System.currentTimeMillis();
 
         try (ZContext context = new ZContext()) {
             ZMQ.Socket resultListener = context.createSocket(SocketType.PULL);
@@ -29,11 +30,18 @@ public class ResultListener implements Runnable {
 
                 final String rawAggregatedResult = resultListener.recvStr(ZMQ.DONTWAIT);
 
-                final FunctionWindowAggregateId functionWindoAggId =
+                final FunctionWindowAggregateId functionWindowAggId =
                         DistributedUtils.stringToFunctionWindowAggId(rawAggIdOrStreamEnd);
 
-                final Integer finalAggregate = Integer.valueOf(rawAggregatedResult);
-                System.out.println(this.resultString("FINAL WINDOW: " + functionWindoAggId + " --> " + finalAggregate));
+                final Long finalAggregate = Long.valueOf(rawAggregatedResult);
+
+                final long currentTime = System.currentTimeMillis() - startTime;
+                final long windowEnd = functionWindowAggId.getWindowId().getWindowEndTimestamp();
+                final long windowLatency = currentTime - windowEnd;
+                System.out.println("Latency for window: " + functionWindowAggId + " --> " + windowLatency);
+
+                // System.out.println(this.resultString("FINAL WINDOW: " + functionWindowAggId + " --> " + finalAggregate));
+
             }
         }
     }

@@ -149,9 +149,9 @@ public class RootTwoMergerFourChildren {
         sendSortedEvents(streamSenders, events0, events1, events2, events3);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 0),  9),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 1), 10),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 2),  1)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 0),  9L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 1), 10L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, NO_CHILD_ID, 2),  1L)
         );
 
         List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
@@ -200,9 +200,9 @@ public class RootTwoMergerFourChildren {
         sendSleepSortedEvents(100, streamSenders, events0, events1, events2, events3);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 275), 0),  6),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0),  3)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 275), 0),  6L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0),  3L)
         );
 
         List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);

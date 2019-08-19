@@ -93,7 +93,7 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
     }
 
     @Override
-    public Integer lowerFinalValue(AggregateWindow finalWindow) {
+    public Long lowerFinalValue(AggregateWindow finalWindow) {
         List aggValues = finalWindow.getAggValues();
         if (aggValues.isEmpty()) {
             throw new IllegalStateException("Cannot have empty slice list in holistic merge");
@@ -102,14 +102,14 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
         List<DistributedSlice> slices = (List<DistributedSlice>) aggValues.get(0);
         int totalSize = slices.stream().map(slice -> slice.getValues().size()).reduce(0, Integer::sum);
 
-        List<Integer> allValues = new ArrayList<>(totalSize);
+        List<Long> allValues = new ArrayList<>(totalSize);
         for (DistributedSlice slice : slices) {
             allValues.addAll(slice.getValues());
         }
 
         HolisticMergeWrapper holisticMergeFunction = (HolisticMergeWrapper) finalWindow.getAggregateFunctions().get(0);
         HolisticAggregateFunction originalFn = holisticMergeFunction.getOriginalFn();
-        return (Integer) originalFn.lower(allValues);
+        return (Long) originalFn.lower(allValues);
     }
 
     @Override

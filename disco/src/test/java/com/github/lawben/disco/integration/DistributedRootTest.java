@@ -168,10 +168,10 @@ public class DistributedRootTest {
         child.sendNext(STREAM_END, "0");
 
         List<String> result1 = resultListener.receiveNext(2);
-        assertThat(result1, equalsWindowResult(windowId1, 5));
+        assertThat(result1, equalsWindowResult(windowId1, 5L));
 
         List<String> result2 = resultListener.receiveNext(2);
-        assertThat(result2, equalsWindowResult(windowId2, 7));
+        assertThat(result2, equalsWindowResult(windowId2, 7L));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -194,10 +194,10 @@ public class DistributedRootTest {
         child.sendNext(STREAM_END, "0");
 
         List<String> result1 = resultListener.receiveNext(2);
-        assertThat(result1, equalsWindowResult(windowId1, 3));
+        assertThat(result1, equalsWindowResult(windowId1, 3L));
 
         List<String> result2 = resultListener.receiveNext(2);
-        assertThat(result2, equalsWindowResult(windowId2, 2));
+        assertThat(result2, equalsWindowResult(windowId2, 2L));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -214,9 +214,9 @@ public class DistributedRootTest {
         FunctionWindowAggregateId windowId1 = getDefaultFunctionWindowId(new WindowAggregateId(0, 0, 100));
         FunctionWindowAggregateId windowId2 = getDefaultFunctionWindowId(new WindowAggregateId(0, 100, 200));
 
-        DistributedSlice slice1 = new DistributedSlice(  0, 100, Arrays.asList(1, 2, 3));
-        DistributedSlice slice2 = new DistributedSlice(100, 150, Arrays.asList(5, 6, 7));
-        DistributedSlice slice3 = new DistributedSlice(150, 200, Arrays.asList(0, 1, 2, 3, 4));
+        DistributedSlice slice1 = new DistributedSlice(  0, 100, 1, 2, 3);
+        DistributedSlice slice2 = new DistributedSlice(100, 150, 5, 6, 7);
+        DistributedSlice slice3 = new DistributedSlice(150, 200, 0, 1, 2, 3, 4);
 
         String windowAggregate1 = new HolisticWindowAggregate(Arrays.asList(slice1)).asString();
         String windowAggregate2 = new HolisticWindowAggregate(Arrays.asList(slice2, slice3)).asString();
@@ -225,10 +225,10 @@ public class DistributedRootTest {
         child.sendNext(STREAM_END, "0");
 
         List<String> result1 = resultListener.receiveNext(2);
-        assertThat(result1, equalsWindowResult(windowId1, 2));
+        assertThat(result1, equalsWindowResult(windowId1, 2L));
 
         List<String> result2 = resultListener.receiveNext(2);
-        assertThat(result2, equalsWindowResult(windowId2, 4));
+        assertThat(result2, equalsWindowResult(windowId2, 4L));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -261,10 +261,10 @@ public class DistributedRootTest {
         child2.sendNext(STREAM_END, child2Id);
 
         List<String> result1 = resultListener.receiveNext(2);
-        assertThat(result1, equalsWindowResult(windowId1, 8));
+        assertThat(result1, equalsWindowResult(windowId1, 8L));
 
         List<String> result2 = resultListener.receiveNext(2);
-        assertThat(result2, equalsWindowResult(windowId2, 11));
+        assertThat(result2, equalsWindowResult(windowId2, 11L));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -308,13 +308,13 @@ public class DistributedRootTest {
         FunctionWindowAggregateId med21Window2Id = new FunctionWindowAggregateId(window2, 4, 2);
         FunctionWindowAggregateId med22Window2Id = new FunctionWindowAggregateId(window2, 5, 2);
 
-        DistributedSlice slice1a = new DistributedSlice(  0,  50, Arrays.asList(1, 2, 3));
-        DistributedSlice slice1b = new DistributedSlice( 50, 100, Arrays.asList(4, 5, 6));
-        DistributedSlice slice1c = new DistributedSlice(100, 200, Arrays.asList(7, 8, 9));
+        DistributedSlice slice1a = new DistributedSlice(  0,  50, 1, 2, 3);
+        DistributedSlice slice1b = new DistributedSlice( 50, 100, 4, 5, 6);
+        DistributedSlice slice1c = new DistributedSlice(100, 200, 7, 8, 9);
 
-        DistributedSlice slice2a = new DistributedSlice(  0,  50, Arrays.asList(7, 8, 9));
-        DistributedSlice slice2b = new DistributedSlice( 50, 100, Arrays.asList(0, 9, 7));
-        DistributedSlice slice2c = new DistributedSlice(100, 200, Arrays.asList(1, 2, 3));
+        DistributedSlice slice2a = new DistributedSlice(  0,  50, 7, 8, 9);
+        DistributedSlice slice2b = new DistributedSlice( 50, 100, 0, 9, 7);
+        DistributedSlice slice2c = new DistributedSlice(100, 200, 1, 2, 3);
 
         List<List<String>> child1Messages = Arrays.asList(
                 // Window 1
@@ -375,18 +375,18 @@ public class DistributedRootTest {
         }
 
         List<Matcher<? super List<String>>> windowResultMatchers = Arrays.asList(
-                equalsWindowResult(sum1Window1Id, 15),
-                equalsWindowResult(sum2Window1Id,  4),
-                equalsWindowResult(avg1Window1Id,  3),
-                equalsWindowResult(avg2Window1Id, 22),
-                equalsWindowResult(med1Window1Id,  6),
-                equalsWindowResult(med2Window1Id,  6),
-                equalsWindowResult(sum1Window2Id, 13),
-                equalsWindowResult(sum2Window2Id, 16),
-                equalsWindowResult(avg1Window2Id,  1),
-                equalsWindowResult(avg2Window2Id, 16),
-                equalsWindowResult(med1Window2Id,  7),
-                equalsWindowResult(med2Window2Id,  7)
+                equalsWindowResult(sum1Window1Id, 15L),
+                equalsWindowResult(sum2Window1Id,  4L),
+                equalsWindowResult(avg1Window1Id,  3L),
+                equalsWindowResult(avg2Window1Id, 22L),
+                equalsWindowResult(med1Window1Id,  6L),
+                equalsWindowResult(med2Window1Id,  6L),
+                equalsWindowResult(sum1Window2Id, 13L),
+                equalsWindowResult(sum2Window2Id, 16L),
+                equalsWindowResult(avg1Window2Id,  1L),
+                equalsWindowResult(avg2Window2Id, 16L),
+                equalsWindowResult(med1Window2Id,  7L),
+                equalsWindowResult(med2Window2Id,  7L)
         );
 
         List<List<String>> windowStrings = new ArrayList<>(windowResultMatchers.size());
@@ -424,10 +424,10 @@ public class DistributedRootTest {
         child2.sendNext(STREAM_END, "1");
 
         List<String> result1 = resultListener.receiveNext(2);
-        assertThat(result1, equalsWindowResult(windowId1, 3));
+        assertThat(result1, equalsWindowResult(windowId1, 3L));
 
         List<String> result2 = resultListener.receiveNext(2);
-        assertThat(result2, equalsWindowResult(windowId2, 4));
+        assertThat(result2, equalsWindowResult(windowId2, 4L));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -454,19 +454,19 @@ public class DistributedRootTest {
         FunctionWindowAggregateId windowId22 = new FunctionWindowAggregateId(window2, 2);
         FunctionWindowAggregateId windowId32 = new FunctionWindowAggregateId(window3, 2);
 
-        DistributedSlice slice1a = new DistributedSlice(  0,  50, Arrays.asList(1, 2, 3));
-        DistributedSlice slice1b = new DistributedSlice( 50, 100, Arrays.asList(2, 3, 4));
-        DistributedSlice slice1c = new DistributedSlice(100, 150, Arrays.asList(5, 6, 7));
-        DistributedSlice slice1d = new DistributedSlice(150, 200, Arrays.asList(0, 1, 2, 3, 4));
+        DistributedSlice slice1a = new DistributedSlice(  0,  50, 1, 2, 3);
+        DistributedSlice slice1b = new DistributedSlice( 50, 100, 2, 3, 4);
+        DistributedSlice slice1c = new DistributedSlice(100, 150, 5, 6, 7);
+        DistributedSlice slice1d = new DistributedSlice(150, 200, 0, 1, 2, 3, 4);
 
         child1.sendNext("0", functionWindowIdToString(windowId11), "1", new HolisticWindowAggregate(Arrays.asList(slice1a, slice1b)).asString());
         child1.sendNext("0", functionWindowIdToString(windowId21), "1", new HolisticWindowAggregate(Arrays.asList(slice1c)).asString());
         child1.sendNext("0", functionWindowIdToString(windowId31), "1", new HolisticWindowAggregate(Arrays.asList(slice1d)).asString());
         child1.sendNext(STREAM_END, "0");
 
-        DistributedSlice slice2a = new DistributedSlice(  0,  50, Arrays.asList(4, 5, 2, 3));
-        DistributedSlice slice2b = new DistributedSlice( 50, 100, Arrays.asList(10, 20, 30));
-        DistributedSlice slice2c = new DistributedSlice(100, 150, Arrays.asList(15, 25, 35));
+        DistributedSlice slice2a = new DistributedSlice(  0,  50, 4, 5, 2, 3);
+        DistributedSlice slice2b = new DistributedSlice( 50, 100, 10, 20, 30);
+        DistributedSlice slice2c = new DistributedSlice(100, 150, 15, 25, 35);
         DistributedSlice slice2d = new DistributedSlice(150, 200, Collections.emptyList());
 
         child2.sendNext("1", functionWindowIdToString(windowId12), "1", new HolisticWindowAggregate(Arrays.asList(slice2a, slice2b)).asString());
@@ -611,16 +611,16 @@ public class DistributedRootTest {
         FunctionWindowAggregateId windowId22 = new FunctionWindowAggregateId(new WindowAggregateId(0, 460, 690), 0, childId2);
         FunctionWindowAggregateId windowId23 = new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0, childId2);
 
-        DistributedSlice slice11a = new DistributedSlice(  0,   4, Arrays.asList(1, 2,  3));
-        DistributedSlice slice11b = new DistributedSlice(  5,  10, Arrays.asList(4, 5,  6));
-        DistributedSlice slice12 =  new DistributedSlice(120, 170, Arrays.asList(0, 5, 10));
-        DistributedSlice slice13 =  new DistributedSlice(400, 410, Arrays.asList(0, 5, 15));
-        DistributedSlice slice14 =  new DistributedSlice(550, 560, Arrays.asList(100, 0));
-        DistributedSlice slice15 =  new DistributedSlice(730, 730, Arrays.asList(0));
+        DistributedSlice slice11a = new DistributedSlice(  0,   4, 1, 2,  3);
+        DistributedSlice slice11b = new DistributedSlice(  5,  10, 4, 5,  6);
+        DistributedSlice slice12 =  new DistributedSlice(120, 170, 0, 5, 10);
+        DistributedSlice slice13 =  new DistributedSlice(400, 410, 0, 5, 15);
+        DistributedSlice slice14 =  new DistributedSlice(550, 560, 100, 0);
+        DistributedSlice slice15 =  new DistributedSlice(730, 730, 0);
 
-        DistributedSlice slice21 =  new DistributedSlice(  0,  30, Arrays.asList( 1, 2,  3));
-        DistributedSlice slice22 =  new DistributedSlice(460, 590, Arrays.asList(15, 5, 20));
-        DistributedSlice slice23 =  new DistributedSlice(700, 750, Arrays.asList(100, 0));
+        DistributedSlice slice21 =  new DistributedSlice(  0,  30,  1, 2,  3);
+        DistributedSlice slice22 =  new DistributedSlice(460, 590, 15, 5, 20);
+        DistributedSlice slice23 =  new DistributedSlice(700, 750, 100, 0);
 
         child1.sendNext("0", functionWindowIdToString(windowId11), "1", new HolisticWindowAggregate(Arrays.asList(slice11a, slice11b)).asString());
         Thread.sleep(100);
@@ -643,8 +643,8 @@ public class DistributedRootTest {
         child2.sendNext(STREAM_END, "1");
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 270), 0),  3),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 270), 0),  3L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15L)
         );
 
         List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
@@ -707,15 +707,15 @@ public class DistributedRootTest {
 
         List<Matcher<? super List<String>>> windowResultMatchers = Arrays.asList(
                 // Count 0-3
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  0,  3), 0),  6),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  0,  3), 0),  6L),
                 // Time 0-30
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  0, 30), 0),  3),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  0, 30), 0),  3L),
                 // Count 3-6
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  3,  6), 0), 15),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,  3,  6), 0), 15L),
                 // Time 30-60
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0), 12),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0), 12L),
                 // Time 60-90
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0), 21)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0), 21L)
         );
 
         List<List<String>> windowStrings = new ArrayList<>(windowResultMatchers.size());
@@ -724,36 +724,6 @@ public class DistributedRootTest {
         }
 
         assertThat(windowStrings, containsInAnyOrder(windowResultMatchers));
-
-//        // Count 0-3
-//        List<String> result1 = resultListener.receiveNext(2);
-//        FunctionWindowAggregateId expectedFunctionWindowId1 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 3), 0);
-//        assertFunctionWindowIdStringEquals(result1.get(0), expectedFunctionWindowId1);
-//        assertThat(result1.get(1), equalTo("6"));
-//
-//        // Time 0-30
-//        List<String> result2 = resultListener.receiveNext(2);
-//        FunctionWindowAggregateId expectedFunctionWindowId2 = new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 30), 0);
-//        assertFunctionWindowIdStringEquals(result2.get(0), expectedFunctionWindowId2);
-//        assertThat(result2.get(1), equalTo("3"));
-//
-//        // Count 3-6
-//        List<String> result3 = resultListener.receiveNext(2);
-//        FunctionWindowAggregateId expectedFunctionWindowId3 = new FunctionWindowAggregateId(new WindowAggregateId(0, 3, 6), 0);
-//        assertFunctionWindowIdStringEquals(result3.get(0), expectedFunctionWindowId3);
-//        assertThat(result3.get(1), equalTo("15"));
-//
-//        // Time 30-60
-//        List<String> result4 = resultListener.receiveNext(2);
-//        FunctionWindowAggregateId expectedFunctionWindowId4 = new FunctionWindowAggregateId(new WindowAggregateId(0, 30, 60), 0);
-//        assertFunctionWindowIdStringEquals(result4.get(0), expectedFunctionWindowId4);
-//        assertThat(result4.get(1), equalTo("12"));
-//
-//        // Time 60-90
-//        List<String> result5 = resultListener.receiveNext(2);
-//        FunctionWindowAggregateId expectedFunctionWindowId5 = new FunctionWindowAggregateId(new WindowAggregateId(0, 60, 90), 0);
-//        assertFunctionWindowIdStringEquals(result5.get(0), expectedFunctionWindowId5);
-//        assertThat(result5.get(1), equalTo("21"));
 
         assertRootEnd();
         assertNoFinalThreadException(root);
@@ -795,20 +765,20 @@ public class DistributedRootTest {
         FunctionWindowAggregateId medChild2Window2Id = new FunctionWindowAggregateId(window2, 2, 2);
 
         // Window 1
-        DistributedSlice sliceW1C1K1a = new DistributedSlice(  0,  50, Arrays.asList(1, 2, 3), 1);
-        DistributedSlice sliceW1C1K1b = new DistributedSlice( 50, 100, Arrays.asList(4, 5, 6), 1);
-        DistributedSlice sliceW1C1K2 =  new DistributedSlice(  0, 100, Arrays.asList(1, 2, 3), 2);
+        DistributedSlice sliceW1C1K1a = new DistributedSlice(  0,  50, Arrays.asList(1L, 2L, 3L), 1);
+        DistributedSlice sliceW1C1K1b = new DistributedSlice( 50, 100, Arrays.asList(4L, 5L, 6L), 1);
+        DistributedSlice sliceW1C1K2 =  new DistributedSlice(  0, 100, Arrays.asList(1L, 2L, 3L), 2);
 
-        DistributedSlice sliceW1C2K1a = new DistributedSlice(  0,  50, Arrays.asList(7, 8, 9), 1);
-        DistributedSlice sliceW1C2K1b = new DistributedSlice( 50, 100, Arrays.asList(0, 9, 7), 1);
-        DistributedSlice sliceW1C2K2 =  new DistributedSlice(  0, 100, Arrays.asList(0, 9, 7), 2);
+        DistributedSlice sliceW1C2K1a = new DistributedSlice(  0,  50, Arrays.asList(7L, 8L, 9L), 1);
+        DistributedSlice sliceW1C2K1b = new DistributedSlice( 50, 100, Arrays.asList(0L, 9L, 7L), 1);
+        DistributedSlice sliceW1C2K2 =  new DistributedSlice(  0, 100, Arrays.asList(0L, 9L, 7L), 2);
 
         // Window 2
-        DistributedSlice sliceW2C1K1 =  new DistributedSlice(100, 200, Arrays.asList(7, 9, 0), 1);
-        DistributedSlice sliceW2C1K2 =  new DistributedSlice(100, 200, Arrays.asList(7, 8, 9), 2);
+        DistributedSlice sliceW2C1K1 =  new DistributedSlice(100, 200, Arrays.asList(7L, 9L, 0L), 1);
+        DistributedSlice sliceW2C1K2 =  new DistributedSlice(100, 200, Arrays.asList(7L, 8L, 9L), 2);
 
-        DistributedSlice sliceW2C2K1 =  new DistributedSlice(100, 200, Arrays.asList(1, 2, 3), 1);
-        DistributedSlice sliceW2C2K2 =  new DistributedSlice(100, 200, Arrays.asList(5, 6, 7), 2);
+        DistributedSlice sliceW2C2K1 =  new DistributedSlice(100, 200, Arrays.asList(1L, 2L, 3L), 1);
+        DistributedSlice sliceW2C2K2 =  new DistributedSlice(100, 200, Arrays.asList(5L, 6L, 7L), 2);
 
         List<List<String>> child1Messages = Arrays.asList(
                 // Window 1
@@ -880,24 +850,24 @@ public class DistributedRootTest {
 
         List<Matcher<? super List<String>>> windowResultMatchers = Arrays.asList(
                 // Window 1, key 1
-                equalsWindowResult(new FunctionWindowAggregateId(window1, 0, NO_CHILD_ID, 1), 61), // sum, window 1, key 1
-                equalsWindowResult(new FunctionWindowAggregateId(window1, 1, NO_CHILD_ID, 1),  5), // avg, window 1, key 1
-                equalsWindowResult(new FunctionWindowAggregateId(window1, 2, NO_CHILD_ID, 1),  6), // med, window 1, key 1
+                equalsWindowResult(new FunctionWindowAggregateId(window1, 0, NO_CHILD_ID, 1), 61L), // sum, window 1, key 1
+                equalsWindowResult(new FunctionWindowAggregateId(window1, 1, NO_CHILD_ID, 1),  5L), // avg, window 1, key 1
+                equalsWindowResult(new FunctionWindowAggregateId(window1, 2, NO_CHILD_ID, 1),  6L), // med, window 1, key 1
 
                 // Window 1, key 2
-                equalsWindowResult(new FunctionWindowAggregateId(window1, 0, NO_CHILD_ID, 2), 22), // sum, window 1, key 2
-                equalsWindowResult(new FunctionWindowAggregateId(window1, 1, NO_CHILD_ID, 2),  3), // avg, window 1, key 2
-                equalsWindowResult(new FunctionWindowAggregateId(window1, 2, NO_CHILD_ID, 2),  3), // med, window 1, key 2
+                equalsWindowResult(new FunctionWindowAggregateId(window1, 0, NO_CHILD_ID, 2), 22L), // sum, window 1, key 2
+                equalsWindowResult(new FunctionWindowAggregateId(window1, 1, NO_CHILD_ID, 2),  3L), // avg, window 1, key 2
+                equalsWindowResult(new FunctionWindowAggregateId(window1, 2, NO_CHILD_ID, 2),  3L), // med, window 1, key 2
 
                 // Window 2, key 1
-                equalsWindowResult(new FunctionWindowAggregateId(window2, 0, NO_CHILD_ID, 1), 22), // sum, window 2, key 1
-                equalsWindowResult(new FunctionWindowAggregateId(window2, 1, NO_CHILD_ID, 1),  3), // avg, window 2, key 1
-                equalsWindowResult(new FunctionWindowAggregateId(window2, 2, NO_CHILD_ID, 1),  3), // med, window 2, key 1
+                equalsWindowResult(new FunctionWindowAggregateId(window2, 0, NO_CHILD_ID, 1), 22L), // sum, window 2, key 1
+                equalsWindowResult(new FunctionWindowAggregateId(window2, 1, NO_CHILD_ID, 1),  3L), // avg, window 2, key 1
+                equalsWindowResult(new FunctionWindowAggregateId(window2, 2, NO_CHILD_ID, 1),  3L), // med, window 2, key 1
 
                 // Window 2, key 2
-                equalsWindowResult(new FunctionWindowAggregateId(window2, 0, NO_CHILD_ID, 2), 42), // sum, window 2, key 2
-                equalsWindowResult(new FunctionWindowAggregateId(window2, 1, NO_CHILD_ID, 2),  7), // avg, window 2, key 2
-                equalsWindowResult(new FunctionWindowAggregateId(window2, 2, NO_CHILD_ID, 2),  7)  // med, window 2, key 2
+                equalsWindowResult(new FunctionWindowAggregateId(window2, 0, NO_CHILD_ID, 2), 42L), // sum, window 2, key 2
+                equalsWindowResult(new FunctionWindowAggregateId(window2, 1, NO_CHILD_ID, 2),  7L), // avg, window 2, key 2
+                equalsWindowResult(new FunctionWindowAggregateId(window2, 2, NO_CHILD_ID, 2),  7L)  // med, window 2, key 2
 
         );
 

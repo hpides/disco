@@ -7,14 +7,14 @@ import org.hamcrest.TypeSafeMatcher;
 
 public class WindowResultMatcher extends TypeSafeMatcher<List<String>> {
     private final FunctionWindowAggregateId functionWindowId;
-    private final Integer aggregateValue;
+    private final Long aggregateValue;
 
-    private WindowResultMatcher(FunctionWindowAggregateId functionWindowId, Integer aggregateValue) {
+    private WindowResultMatcher(FunctionWindowAggregateId functionWindowId, Long aggregateValue) {
         this.functionWindowId = functionWindowId;
         this.aggregateValue = aggregateValue;
     }
 
-    public static WindowResultMatcher equalsWindowResult(FunctionWindowAggregateId functionWindowId, Integer value) {
+    public static WindowResultMatcher equalsWindowResult(FunctionWindowAggregateId functionWindowId, Long value) {
         return new WindowResultMatcher(functionWindowId, value);
     }
 
@@ -22,7 +22,7 @@ public class WindowResultMatcher extends TypeSafeMatcher<List<String>> {
     protected boolean matchesSafely(List<String> item) {
         if (item.size() != 2) return false;
         if (!WindowMatcher.functionWindowIdStringsMatch(functionWindowId, item.get(0))) return false;
-        return Integer.valueOf(item.get(1)).equals(aggregateValue);
+        return Long.valueOf(item.get(1)).equals(aggregateValue);
     }
 
     @Override

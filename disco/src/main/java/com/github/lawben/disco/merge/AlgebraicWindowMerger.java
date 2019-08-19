@@ -13,13 +13,13 @@ public class AlgebraicWindowMerger<AggType extends AlgebraicPartial> extends Dis
     }
 
     @Override
-    public Integer lowerFinalValue(AggregateWindow finalWindow) {
+    public Long lowerFinalValue(AggregateWindow finalWindow) {
         List aggValues = finalWindow.getAggValues();
         if (aggValues.isEmpty()) {
             return null;
         }
 
         AlgebraicPartial partial = (AlgebraicPartial) aggValues.get(0);
-        return (Integer) partial.lower();
+        return (Long) partial.lower();
     }
 }

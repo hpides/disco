@@ -32,7 +32,7 @@ public abstract class BaseWindowAggregate<T> {
         if (windowParts.length != 3) return false;
         if (!windowParts[0].equals(windowType)) return false;
         if (!valueAsString().equals(windowParts[1])) return false;
-        return key == NO_KEY || key == Integer.valueOf(windowParts[2]);
+        return key == NO_KEY || key == Integer.parseInt(windowParts[2]);
     }
 
     public String asString() {

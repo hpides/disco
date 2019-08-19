@@ -107,8 +107,8 @@ public class RootTwoChildrenTest {
         sendSortedEvents(streamSenders, events0, events1);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0), 5),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0), 5)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0), 5L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0), 5L)
         );
 
         List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);
@@ -141,9 +141,9 @@ public class RootTwoChildrenTest {
         sendSleepSortedEvents(100, streamSenders, events0, events1);
 
         List<Matcher<? super List<String>>> windowMatchers = Arrays.asList(
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 270), 0),  3),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15),
-                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0),  2)
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 270), 0),  3L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 400, 690), 0), 15L),
+                equalsWindowResult(new FunctionWindowAggregateId(new WindowAggregateId(0, 700, 850), 0),  2L)
         );
 
         List<List<String>> windowStrings = receiveResultWindows(windowMatchers.size(), resultListener);

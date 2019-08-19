@@ -24,7 +24,7 @@ public class SustainableThroughputEventGenerator {
     private final int streamId;
     private final int numEventsPerSecond;
     private final long startTimestamp;
-    private final Function<Long, Integer> dataSupplier;
+    private final Function<Long, Long> dataSupplier;
 
     private final Queue<Event> eventQueue;
     private final int queueCapacity;
@@ -32,7 +32,7 @@ public class SustainableThroughputEventGenerator {
     private boolean interrupt;
 
     public SustainableThroughputEventGenerator(int streamId, int numEventsPerSecond, long startTimestamp,
-            Function<Long, Integer> dataSupplier) {
+            Function<Long, Long> dataSupplier) {
         this.streamId = streamId;
         this.numEventsPerSecond = numEventsPerSecond;
         this.startTimestamp = startTimestamp;
@@ -62,7 +62,7 @@ public class SustainableThroughputEventGenerator {
             final long chunkStart = System.currentTimeMillis();
             for (int eventNum = 0; eventNum < eventsPerChunk; eventNum++) {
                 final long eventTimestamp = System.currentTimeMillis() - startTimestamp;
-                final Integer eventValue = dataSupplier.apply(eventTimestamp);
+                final long eventValue = dataSupplier.apply(eventTimestamp);
                 eventQueue.add(new Event(eventValue, eventTimestamp, this.streamId));
             }
             final long remainingChunks = NUM_CHUNKS - chunkNum;

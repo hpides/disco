@@ -5,8 +5,6 @@ import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
 import com.github.lawben.disco.input.SustainableThroughputEventGenerator;
 import java.util.Queue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import org.zeromq.SocketType;
@@ -57,7 +55,8 @@ public class SustainableThroughputRunner {
         final long endTime = startTime + totalDurationInMillis;
 
         // Generator
-        final Function<Long, Integer> onesGenerator = (eventTimestamp) -> 1;
+        final Function<Long, Long> onesGenerator = (eventTimestamp) -> 1L;
+        final Function<Long, Long> timestampGenerator = (eventTimestamp) -> eventTimestamp;
         final SustainableThroughputEventGenerator generator =
                 new SustainableThroughputEventGenerator(0, eventsPerSec, startTime, onesGenerator);
 

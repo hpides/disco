@@ -10,6 +10,7 @@ import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import com.github.lawben.disco.aggregation.functions.MaxAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.MedianAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.MinAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.SumAggregateFunction;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -159,6 +160,9 @@ public class DistributedUtils {
             case "MAX": {
                 return aggregateFunctionMax();
             }
+            case "MIN": {
+                return aggregateFunctionMin();
+            }
             default: {
                 throw new IllegalArgumentException("No aggFn known for: '" + aggFnString + "'");
             }
@@ -224,7 +228,7 @@ public class DistributedUtils {
         List<String> allSlices = new ArrayList<>(slices.size());
 
         for (Slice slice : slices) {
-            List<List<Integer>> aggValues = slice.getAggState().getValues();
+            List<List<Long>> aggValues = slice.getAggState().getValues();
             if (aggValues.isEmpty()) {
                 continue;
             }
@@ -235,7 +239,7 @@ public class DistributedUtils {
             sb.append(slice.getTLast());
             sb.append(';');
 
-            List<Integer> values = aggValues.get(functionId);
+            List<Long> values = aggValues.get(functionId);
             List<String> valueStrings = values.stream().map(String::valueOf).collect(Collectors.toList());
             sb.append(String.join(",", valueStrings));
             allSlices.add(sb.toString());
@@ -277,7 +281,7 @@ public class DistributedUtils {
 
         String[] rawValues = parts[1].split(",");
         List<String> valueStrings = Arrays.asList(rawValues);
-        List<Integer> values = valueStrings.stream().map(Integer::valueOf).collect(Collectors.toList());
+        List<Long> values = valueStrings.stream().map(Long::valueOf).collect(Collectors.toList());
 
         return new DistributedSlice(start, end, values);
     }
@@ -315,6 +319,10 @@ public class DistributedUtils {
 
     private static DistributiveAggregateFunction aggregateFunctionMax() {
         return new MaxAggregateFunction();
+    }
+
+    private static DistributiveAggregateFunction aggregateFunctionMin() {
+        return new MinAggregateFunction();
     }
 
     public static List<AggregateFunction> convertAggregateFunctions(List<AggregateFunction> aggFns) {

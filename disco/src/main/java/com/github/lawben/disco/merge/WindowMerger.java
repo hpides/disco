@@ -12,7 +12,7 @@ public interface WindowMerger<AggType> {
 
     List<DistributedAggregateWindowState<AggType>> triggerFinalWindow(FunctionWindowAggregateId functionWindowId);
 
-    Integer lowerFinalValue(AggregateWindow finalWindow);
+    Long lowerFinalValue(AggregateWindow finalWindow);
 
     List<AggregateFunction> getAggregateFunctions();
 

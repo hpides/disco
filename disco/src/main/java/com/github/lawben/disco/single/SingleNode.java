@@ -19,7 +19,7 @@ public class SingleNode implements Runnable {
     private final int streamPort;
     private final String resultPath;
 
-    private SlicingWindowOperator<Integer> slicer;
+    private SlicingWindowOperator<Long> slicer;
     private long watermarkMs;
 
     private final static long TIMEOUT_MS = 5 * 1000;
@@ -65,7 +65,7 @@ public class SingleNode implements Runnable {
                 long eventTimestamp = Long.parseLong(streamInput.recvStr());
                 byte[] eventValueBytes = streamInput.recv();
                 Object eventValueRaw = DistributedUtils.bytesToObject(eventValueBytes);
-                Integer eventValue = (Integer) eventValueRaw;
+                Long eventValue = (Long) eventValueRaw;
 
                 this.slicer.processElement(eventValue, eventTimestamp);
                 currentEventTime = eventTimestamp;

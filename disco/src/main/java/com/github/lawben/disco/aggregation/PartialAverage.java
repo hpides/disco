@@ -2,12 +2,17 @@ package com.github.lawben.disco.aggregation;
 
 import java.util.Objects;
 
-public class PartialAverage implements AlgebraicPartial<PartialAverage, Integer> {
-    private final Integer sum;
+public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
+    private final Long sum;
     private final int count;
 
-    public PartialAverage(Integer sum, int count) {
+    public PartialAverage(Long sum, int count) {
         this.sum = sum;
+        this.count = count;
+    }
+
+    public PartialAverage(int sum, int count) {
+        this.sum = (long) sum;
         this.count = count;
     }
 
@@ -15,7 +20,7 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Integer>
         return count;
     }
 
-    public Integer getSum() {
+    public Long getSum() {
         return sum;
     }
 
@@ -37,8 +42,8 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Integer>
         if (parts.length != 2) {
             throw new IllegalArgumentException("PartialAverage needs exactly 2 values. Got " + parts.length + " values.");
         }
-        int sum = Integer.valueOf(parts[0]);
-        int count = Integer.valueOf(parts[1]);
+        Long sum = Long.parseLong(parts[0]);
+        int count = Integer.parseInt(parts[1]);
         return new PartialAverage(sum, count);
     }
 
@@ -48,7 +53,7 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Integer>
     }
 
     @Override
-    public Integer lower() {
+    public Long lower() {
         if (sum == null) {
             return null;
         }
