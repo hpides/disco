@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-# Usage: ./create-droplets.sh numChildren numStreams [numEventsPerSecond] [totalRunDuration]
+# Usage: ./create-droplets.sh numChildren numStreams
 
 NUM_CHILDREN=${1:-0}
 NUM_STREAMS=${2:-0}
-NUM_EVENTS_PER_SECOND=${3:-1000000}
-RUN_DURATION_SECONDS=${4:-120}
 
 ROOT_TAG="root"
 CHILD_TAG="child"
@@ -25,7 +23,11 @@ function create_init_script {
     local JAVA_ARGS=${@:2}
     cat "$INIT_SCRIPT_FILE" > ${FILE_NAME}
     echo -e "\n" >> ${FILE_NAME}
-    echo "echo \"java -cp \$CLASSPATH com.github.lawben.disco.executables.$CLASS_NAME ${JAVA_ARGS} &\" > ~/run.sh" >> ${FILE_NAME}
+    echo "echo \"source benchmark_env\" >> ~/run.sh" >> ${FILE_NAME}
+    echo "echo \"echo BENCHMARK ARGS: \\\$BENCHMARK_ARGS \" >> ~/run.sh" >> ${FILE_NAME}
+    echo "echo \"java -cp \\\$CLASSPATH com.github.lawben.disco.executables.$CLASS_NAME ${JAVA_ARGS}" \
+                  "\\\$BENCHMARK_ARGS &\" >> ~/run.sh" >> ${FILE_NAME}
+#                "\\\$(sed -e 's/^\\\"//' -e 's/\\\"$//' <<< \\\"\\\$BENCHMARK_ARGS\\\") &\" > ~/run.sh" >> ${FILE_NAME}
     echo "echo \"echo \\\$! > /tmp/RUN_PID\" >> ~/run.sh" >> ${FILE_NAME}
     echo "chmod +x ~/run.sh" >> ${FILE_NAME}
     echo ${FILE_NAME}
@@ -59,8 +61,8 @@ function get_ips {
 [[ ${NUM_STREAMS} -ge ${NUM_CHILDREN} ]] || (>&2 echo "Need at least as many streams as children!" && exit 1)
 
 echo -e "Creating root node\n=================="
-ROOT_SETUP_SCRIPT=$(create_init_script DistributedRootMain ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} /tmp/scotty-res \
-                      ${NUM_CHILDREN} "TUMBLING,1000,1" "MAX")
+ROOT_SETUP_SCRIPT=$(create_init_script DistributedRootMain ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} \
+                      "/tmp/disco-res" ${NUM_CHILDREN})
 creat_droplet "$ROOT_TAG" "$ROOT_SETUP_SCRIPT" "root"
 echo
 
@@ -101,8 +103,8 @@ if [[ "$NUM_STREAMS" -gt "0" ]]; then
     for i in $(seq 0 ${stream_max_idx}); do
         let "child_idx = ${i} % ${NUM_CHILDREN}"
         let "stream_id = ${i} + 1"
-        STREAM_SETUP_SCRIPT=$(create_init_script SustainableThroughputRunner ${stream_id} ${NUM_EVENTS_PER_SECOND} \
-                                ${RUN_DURATION_SECONDS} "${CHILD_IPS[$child_idx]}:${CHILD_PORT}")
+        STREAM_SETUP_SCRIPT=$(create_init_script SustainableThroughputRunner ${stream_id} \
+                                "${CHILD_IPS[$child_idx]}:${CHILD_PORT}")
         creat_droplet "$STREAM_TAG" "$STREAM_SETUP_SCRIPT" "stream-$stream_id" ${stream_id}
     done
 fi

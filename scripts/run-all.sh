@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
 
+# Usage: ./run-all.sh numNodes numEventsPerSecond totalRunDuration windows aggFunctions [--delete]
+
 NUM_EXPECTED_DROPLETS=${1}
-DELETE_AFTER=${2:-""}
+NUM_EVENTS_PER_SECOND=${2}
+RUN_DURATION_SECONDS=${3}
+WINDOW_STRING=${4}
+AGG_STRING=${5}
+
+DELETE_AFTER=""
+if [[ "$*" =~ *--delete* ]]
+then
+    DELETE_AFTER="--delete"
+fi
 
 KNOWN_HOSTS_FILE=/tmp/known_hosts
 
 THIS_FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 BASE_DIR=$(cd "$THIS_FILE_DIR/.." && pwd)
-RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%m-%d-%H%M")-$NUM_EXPECTED_DROPLETS-nodes"
+RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%m-%d-%H%M")_$NUM_EXPECTED_DROPLETS-nodes_$NUM_EVENTS_PER_SECOND-events_$RUN_DURATION_SECONDS-seconds"
 
 function get_droplet_list {
     local FORMAT=${1}
-    doctl compute droplet list --format="$FORMAT" --no-header
+    local TAG_NAME=${2}
+    doctl compute droplet list --format="$FORMAT" --tag-name="$TAG_NAME" --no-header
 }
 
 function get_all_ips {
@@ -25,13 +37,19 @@ function get_all_names {
 function ssh_cmd {
     local ip=${1}
     local cmd=${2}
-    ssh -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} "root@$ip" "$cmd"
+    ssh -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} "root@$ip" "$cmd 2>&1"
 }
 
 function run_droplet {
     local IP=${1}
     local NAME=${2}
     ssh_cmd ${IP} "~/run.sh" &> "$RUN_FILES_DIR/$NAME.log"
+}
+
+function upload_run_params() {
+    local IP=${1}
+    local BENCHMARK_ARGS="${@:2}"
+    ssh_cmd ${IP} "echo \"export BENCHMARK_ARGS=\\\"${BENCHMARK_ARGS}\\\"\" >> ~/benchmark_env"
 }
 
 function check_ready {
@@ -101,7 +119,17 @@ done
 echo -e "\n"
 
 
-echo "Setup done. Starting \`run.sh\` on all nodes."
+echo "Setup done. Uploading benchmark arguments on all nodes."
+ROOT_IP=$(get_droplet_list "PublicIPv4" "root")
+upload_run_params $ROOT_IP $WINDOW_STRING $AGG_STRING
+
+STREAM_IPS=($(get_droplet_list "PublicIPv4" "stream"))
+for i in ${!STREAM_IPS[@]}; do
+    upload_run_params ${STREAM_IPS[$i]} ${NUM_EVENTS_PER_SECOND} ${RUN_DURATION_SECONDS}
+done
+echo
+
+echo "Starting \`run.sh\` on all nodes."
 
 ALL_NAMES=($(get_all_names))
 for i in ${!ALL_IPS[@]}; do
@@ -113,12 +141,13 @@ echo "To view root logs:"
 echo "tail -F $RUN_FILES_DIR/root.log"
 
 echo
-read -n 1 -p "Press [ENTER] to end script..." dummy
+echo "Running on nodes for $RUN_DURATION_SECONDS seconds..."
+sleep $(expr $RUN_DURATION_SECONDS + 30)
 
 echo
 echo "Ending script by killing all PIDs..."
 for ip in ${ALL_IPS[@]}; do
-    ssh_cmd ${ip} "kill -9 \$(cat /tmp/RUN_PID)"
+    ssh_cmd ${ip} "kill -9 \$(cat /tmp/RUN_PID) 2>/dev/null"
 done
 
 echo "Killed all PIDs."

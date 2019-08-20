@@ -16,4 +16,4 @@ git checkout benchmark
 
 CLASSPATH=$(cat gradle-build-output.txt | grep "^CLASSPATH: " | tail -n 1 | cut -c12-)
 export CLASSPATH=${CLASSPATH}
-echo "export CLASSPATH=$CLASSPATH" >> ${HOME_DIR}/.bashrc
+echo "export CLASSPATH=$CLASSPATH" >> "${HOME_DIR}/benchmark_env"

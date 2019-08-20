@@ -22,17 +22,17 @@ public class SustainableThroughputRunner {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 4) {
-            System.err.println("Required args: streamId eventsPerSecond totalRunTimeInSeconds nodeAddress\n" +
-                    "e.g. java SustainableThroughputRunner 0 100000 60 127.0.0.1:4060\n" +
+            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds\n" +
+                    "e.g. java SustainableThroughputRunner 0 127.0.0.1:4060 100000 60\n" +
                     "This will generate 100.000 events per second for 60 seconds (6 mio. events in total) "
                     + "and send them to localhost on port 4060 from stream with id 0.");
             System.exit(1);
         }
 
         final int streamId = Integer.parseInt(args[0]);
-        final int eventsPerSec = Integer.parseInt(args[1]);
-        final long totalDuration = Long.parseLong(args[2]);
-        final String nodeAddress = args[3];
+        final String nodeAddress = args[1];
+        final int eventsPerSec = Integer.parseInt(args[2]);
+        final long totalDuration = Long.parseLong(args[3]);
 
         System.out.println("Running sustainable throughput generator for " + totalDuration + " seconds with " +
                 eventsPerSec + " events/s to " + nodeAddress);
