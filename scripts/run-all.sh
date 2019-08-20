@@ -7,7 +7,7 @@ KNOWN_HOSTS_FILE=/tmp/known_hosts
 
 THIS_FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 BASE_DIR=$(cd "$THIS_FILE_DIR/.." && pwd)
-RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%d-%m-%H%M")-$NUM_EXPECTED_DROPLETS-nodes"
+RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%m-%d-%H%M")-$NUM_EXPECTED_DROPLETS-nodes"
 
 function get_droplet_list {
     local FORMAT=${1}
@@ -25,13 +25,13 @@ function get_all_names {
 function ssh_cmd {
     local ip=${1}
     local cmd=${2}
-    ssh -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} "root@$ip" "$cmd" 2>/dev/null
+    ssh -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} "root@$ip" "$cmd"
 }
 
 function run_droplet {
     local IP=${1}
     local NAME=${2}
-    ssh_cmd ${IP} "~/run.sh" > "$RUN_FILES_DIR/$NAME.log"
+    ssh_cmd ${IP} "~/run.sh" &> "$RUN_FILES_DIR/$NAME.log"
 }
 
 function check_ready {
@@ -124,13 +124,13 @@ done
 echo "Killed all PIDs."
 
 if [[ ${DELETE_AFTER} == "" ]]; then
-    read -p "Delete all droplets? (y/n) " delete_droplets
+    read -p "Delete all droplets? (y/N) " delete_droplets
     if [[ ${delete_droplets} == "y" ]]; then
-        DELETE_AFTER="delete"
+        DELETE_AFTER="--delete"
     fi
 fi
 
-if [[ ${DELETE_AFTER} == "delete" ]]; then
+if [[ ${DELETE_AFTER} == "--delete" ]]; then
     echo "Deleting all droplets..."
     doctl compute droplet delete --force $(doctl compute droplet list --format="ID" --no-header)
 fi

@@ -59,7 +59,8 @@ function get_ips {
 [[ ${NUM_STREAMS} -ge ${NUM_CHILDREN} ]] || (>&2 echo "Need at least as many streams as children!" && exit 1)
 
 echo -e "Creating root node\n=================="
-ROOT_SETUP_SCRIPT=$(create_init_script DistributedRootMain ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} /tmp/scotty-res ${NUM_CHILDREN})
+ROOT_SETUP_SCRIPT=$(create_init_script DistributedRootMain ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} /tmp/scotty-res \
+                      ${NUM_CHILDREN} "TUMBLING,1000,1" "MAX")
 creat_droplet "$ROOT_TAG" "$ROOT_SETUP_SCRIPT" "root"
 echo
 
@@ -75,7 +76,8 @@ if [[ "$NUM_CHILDREN" -gt "0" ]]; then
     echo
 
     for i in $(seq ${NUM_CHILDREN}); do
-        CHILD_SETUP_SCRIPT=$(create_init_script DistributedChildMain ${ROOT_IP} ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} ${CHILD_PORT} "$i")
+        CHILD_SETUP_SCRIPT=$(create_init_script DistributedChildMain ${ROOT_IP} ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} \
+                                ${CHILD_PORT} "$i" "1")
         creat_droplet "$CHILD_TAG" "$CHILD_SETUP_SCRIPT" "child-$i" ${i}
     done
     echo
