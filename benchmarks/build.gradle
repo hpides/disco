@@ -9,8 +9,11 @@ sourceCompatibility = 11
 
 repositories {
     mavenCentral()
+    maven { url "https://jitpack.io" }
 }
 
 dependencies {
-    compile project(':disco')
+    implementation project(':disco')
 }
+
+println "CLASSPATH: " + (configurations.runtimeClasspath + sourceSets.main.runtimeClasspath).asPath

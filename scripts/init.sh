@@ -10,9 +10,10 @@ cd ~
 HOME_DIR=${PWD}
 git clone https://github.com/lawben/distributed-scotty.git
 cd distributed-scotty
+git checkout benchmark
 
 ./gradlew build > gradle-build-output.txt
 
-CLASSPATH=$(cat gradle-build-output.txt | grep "^CLASSPATH: " | cut -c12-)
+CLASSPATH=$(cat gradle-build-output.txt | grep "^CLASSPATH: " | tail -n 1 | cut -c12-)
 export CLASSPATH=${CLASSPATH}
 echo "export CLASSPATH=$CLASSPATH" >> ${HOME_DIR}/.bashrc

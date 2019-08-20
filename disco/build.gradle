@@ -20,9 +20,9 @@ dependencies {
     compile group: 'org.zeromq', name: 'jeromq', version: '0.5.0'
 
     def scottyVersion = '9dc636534a425601f084278c12fe62f06c3ba070'
-    compile group: 'com.github.lawben.scotty-window-processor', name: 'core', version: scottyVersion
-    compile group: 'com.github.lawben.scotty-window-processor', name: 'state', version: scottyVersion
-    compile group: 'com.github.lawben.scotty-window-processor', name: 'slicing', version: scottyVersion
+    implementation group: 'com.github.lawben.scotty-window-processor', name: 'core', version: scottyVersion
+    implementation group: 'com.github.lawben.scotty-window-processor', name: 'state', version: scottyVersion
+    implementation group: 'com.github.lawben.scotty-window-processor', name: 'slicing', version: scottyVersion
 }
 
-println "CLASSPATH: " + configurations.runtimeClasspath.asPath
+println "CLASSPATH: " + (configurations.runtimeClasspath + sourceSets.main.runtimeClasspath).asPath
