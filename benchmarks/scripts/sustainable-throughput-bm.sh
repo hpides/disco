@@ -87,6 +87,3 @@ python3 -u "$PYTON_SCRIPT" --num-children 4 --num-streams 4  --no-create
 #
 ## Run 8 child, 8 streams and delete afterwards
 #python3 -u "$PYTON_SCRIPT" --num-children 8 --num-streams 8 --no-create
-
-
-
