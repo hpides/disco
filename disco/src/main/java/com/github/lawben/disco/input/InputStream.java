@@ -69,7 +69,7 @@ public class InputStream implements Runnable {
         nodeRegistrar.connect(DistributedUtils.buildTcpUrl(this.nodeIp, this.nodePort + DistributedChild.STREAM_REGISTER_PORT_OFFSET));
 
         nodeRegistrar.send(String.valueOf(this.streamId));
-        nodeRegistrar.recv();
+        nodeRegistrar.recvStr();
         System.out.println(this.streamIdString("Registering successful."));
     }
 

@@ -6,6 +6,7 @@ import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -90,8 +91,7 @@ public class TestUtils {
 
             List<String> registerResult = streamRegister.requestNext();
             assertThat(registerResult, not(empty()));
-            assertThat(registerResult.get(0), hasLength(1));
-            assertEquals('\0', registerResult.get(0).charAt(0));
+            assertThat(registerResult.get(0), equalTo("ack"));
         }
 
         return new ZMQPushMock(childPort);

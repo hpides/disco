@@ -49,7 +49,7 @@ public class SustainableThroughputRunner {
         nodeRegistrar.setReceiveTimeOut(60);
         nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
         nodeRegistrar.send(String.valueOf(streamId));
-        if (nodeRegistrar.recv() == null) {
+        if (nodeRegistrar.recvStr() == null) {
             throw new RuntimeException("Could not register at child node.");
         }
         Thread.sleep(1000);

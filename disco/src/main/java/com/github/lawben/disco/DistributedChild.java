@@ -127,7 +127,7 @@ public class DistributedChild implements Runnable {
         streamReceiver.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
         streamReceiver.bind(DistributedUtils.buildBindingTcpUrl(nodeImpl.dataPort + STREAM_REGISTER_PORT_OFFSET));
 
-        byte[] ackResponse = new byte[] {'\0'};
+        String ackResponse = "ack";
 
         int numRegisteredStreams = 0;
         while (!nodeImpl.isInterrupted()) {

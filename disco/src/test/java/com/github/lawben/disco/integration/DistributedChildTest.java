@@ -13,6 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
@@ -150,8 +151,7 @@ public class DistributedChildTest {
 
             List<String> registerResult = streamRegister.requestNext();
             assertThat(registerResult, not(empty()));
-            assertThat(registerResult.get(0), hasLength(1));
-            assertEquals('\0', registerResult.get(0).charAt(0));
+            assertThat(registerResult.get(0), equalTo("ack"));
         }
 
         ZMQPushMock stream = new ZMQPushMock(childPort);
