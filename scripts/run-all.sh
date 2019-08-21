@@ -2,7 +2,7 @@
 
 # Usage: ./run-all.sh numNodes numEventsPerSecond runDuration windows aggFunctions [--delete | --no-delete]
 
-NUM_EXPECTED_DROPLETS=${1}
+NUM_DROPLETS=${1}
 NUM_EVENTS_PER_SECOND=${2}
 RUN_DURATION_SECONDS=${3}
 WINDOW_STRING=${4}
@@ -22,7 +22,7 @@ KNOWN_HOSTS_FILE=/tmp/known_hosts
 
 THIS_FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 BASE_DIR=$(cd "$THIS_FILE_DIR/.." && pwd)
-RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%m-%d-%H%M")_$NUM_EXPECTED_DROPLETS-nodes_$NUM_EVENTS_PER_SECOND-events_$RUN_DURATION_SECONDS-seconds"
+RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%m-%d-%H%M")_$NUM_DROPLETS-nodes_$NUM_EVENTS_PER_SECOND-events_$RUN_DURATION_SECONDS-seconds"
 
 function get_droplet_list {
     local FORMAT=${1}
@@ -67,8 +67,8 @@ function check_ready {
 # ACTUAL CODE THAT IS RUN
 #########################
 
-if [[ -z "$NUM_EXPECTED_DROPLETS" ]] || ! [[ ${NUM_EXPECTED_DROPLETS} =~ ^[0-9]+$ ]]; then
-    echo "Need to specify expected number of nodes. Got: '$NUM_EXPECTED_DROPLETS'"
+if [[ -z "$NUM_DROPLETS" ]] || ! [[ ${NUM_DROPLETS} =~ ^[0-9]+$ ]]; then
+    echo "Need to specify expected number of nodes. Got: '$NUM_DROPLETS'"
     exit 1
 fi
 
@@ -78,8 +78,8 @@ echo
 
 echo "Getting IPs..."
 ALL_IPS=($(get_all_ips))
-while [[ ${#ALL_IPS[@]} -lt ${NUM_EXPECTED_DROPLETS} ]]; do
-    let "difference = ${NUM_EXPECTED_DROPLETS} - ${#ALL_IPS[@]}"
+while [[ ${#ALL_IPS[@]} -lt ${NUM_DROPLETS} ]]; do
+    let "difference = ${NUM_DROPLETS} - ${#ALL_IPS[@]}"
     echo -ne "\rWaiting for $difference more node(s) to get an IP..."
     sleep 5
     ALL_IPS=($(get_all_ips))
@@ -106,7 +106,7 @@ echo
 
 echo "Waiting for node setup to complete..."
 READY_IPS=()
-while [[ ${#READY_IPS[@]} -lt ${NUM_EXPECTED_DROPLETS} ]]; do
+while [[ ${#READY_IPS[@]} -lt ${NUM_DROPLETS} ]]; do
     UNREADY_IPS=($(echo ${ALL_IPS[@]} ${READY_IPS[@]} | tr ' ' '\n' | sort | uniq -u | tr '\n' ' '))
     echo -ne "\rWaiting for ${#UNREADY_IPS[@]} more node(s) to become ready..."
 
@@ -116,7 +116,7 @@ while [[ ${#READY_IPS[@]} -lt ${NUM_EXPECTED_DROPLETS} ]]; do
             READY_IPS+=(${ip})
         fi
     done
-    if [[ ${#READY_IPS[@]} -lt ${NUM_EXPECTED_DROPLETS} ]]; then
+    if [[ ${#READY_IPS[@]} -lt ${NUM_DROPLETS} ]]; then
         sleep 10
     fi
 done
@@ -128,10 +128,18 @@ echo "Setup done. Uploading benchmark arguments on all nodes."
 CHILD_IPS=($(get_droplet_list "PublicIPv4" "child"))
 NUM_CHILDREN=${#CHILD_IPS[@]}
 
+STREAM_IPS=($(get_droplet_list "PublicIPv4" "stream"))
+NUM_STREAMS=${#STREAM_IPS[@]}
+
+NUM_STREAMS_PER_CHILD=$(expr $NUM_STREAMS / $NUM_CHILDREN)
+
 ROOT_IP=$(get_droplet_list "PublicIPv4" "root")
 upload_run_params $ROOT_IP $NUM_CHILDREN $WINDOW_STRING $AGG_STRING
 
-STREAM_IPS=($(get_droplet_list "PublicIPv4" "stream"))
+for i in ${!CHILD_IPS[@]}; do
+    upload_run_params ${CHILD_IPS[$i]} ${NUM_STREAMS_PER_CHILD}
+done
+
 for i in ${!STREAM_IPS[@]}; do
     upload_run_params ${STREAM_IPS[$i]} ${NUM_EVENTS_PER_SECOND} ${RUN_DURATION_SECONDS}
 done

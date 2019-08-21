@@ -63,3 +63,25 @@ function creat_droplet {
                                       --format="ID,Name" \
                                       --no-header=${NO_HEADER}
 }
+
+function create_child() {
+    local ROOT_IP=${1}
+    local CHILD_ID=${2}
+    local ITERATION=${3:-0}
+
+    local CHILD_SETUP_SCRIPT=$(create_init_script DistributedChildMain ${ROOT_IP} ${ROOT_CONTROL_PORT} \
+                                ${ROOT_WINDOW_PORT} ${CHILD_PORT} $CHILD_ID)
+
+    creat_droplet "$CHILD_TAG" "$CHILD_SETUP_SCRIPT" "$CHILD_TAG-$CHILD_ID" "$ITERATION"
+}
+
+function create_stream() {
+    local CHILD_IP=${1}
+    local STREAM_ID=${2}
+    local ITERATION=${3:-0}
+
+    local STREAM_SETUP_SCRIPT=$(create_init_script SustainableThroughputRunner ${STREAM_ID} \
+                                "$CHILD_IP:${CHILD_PORT}")
+    creat_droplet "$STREAM_TAG" "$STREAM_SETUP_SCRIPT" "$STREAM_TAG-$STREAM_ID" "$ITERATION"
+
+}

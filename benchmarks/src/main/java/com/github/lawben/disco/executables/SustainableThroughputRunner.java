@@ -46,9 +46,12 @@ public class SustainableThroughputRunner {
         final String nodeIP = nodeAddress.split(":")[0];
         final int dataPort = Integer.parseInt(nodeAddress.split(":")[1]);
         final ZMQ.Socket nodeRegistrar = context.createSocket(SocketType.REQ);
+        nodeRegistrar.setReceiveTimeOut(60);
         nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
         nodeRegistrar.send(String.valueOf(streamId));
-        nodeRegistrar.recv();
+        if (nodeRegistrar.recv() == null) {
+            throw new RuntimeException("Could not register at child node.");
+        }
         Thread.sleep(1000);
 
         // Time

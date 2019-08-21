@@ -15,6 +15,5 @@ echo "===================="
 wait_for_ips 1 "$CHILD_NAME"
 CHILD_IP=$(get_ips ${CHILD_NAME})
 
-STREAM_SETUP_SCRIPT=$(create_init_script SustainableThroughputRunner ${STREAM_ID} \
-                        "$CHILD_IP:${CHILD_PORT}")
-creat_droplet "$STREAM_TAG" "$STREAM_SETUP_SCRIPT" "stream-$STREAM_ID"
+create_stream "$CHILD_IP" "$STREAM_ID"
+echo

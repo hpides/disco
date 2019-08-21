@@ -27,10 +27,8 @@ if [[ "$NUM_CHILDREN" -gt "0" ]]; then
     wait_for_ips 1 "$ROOT_TAG"
     ROOT_IP=$(get_ips ${ROOT_TAG})
 
-    for i in $(seq ${NUM_CHILDREN}); do
-        CHILD_SETUP_SCRIPT=$(create_init_script DistributedChildMain ${ROOT_IP} ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} \
-                                ${CHILD_PORT} "$i" "1")
-        creat_droplet "$CHILD_TAG" "$CHILD_SETUP_SCRIPT" "child-$i" ${i}
+    for child_id in $(seq ${NUM_CHILDREN}); do
+        create_child "$ROOT_IP" "$child_id" "$child_id"
     done
     echo
 fi
@@ -45,9 +43,7 @@ if [[ "$NUM_STREAMS" -gt "0" ]]; then
     for i in $(seq 0 ${stream_max_idx}); do
         let "child_idx = ${i} % ${NUM_CHILDREN}"
         let "stream_id = ${i} + 1"
-        STREAM_SETUP_SCRIPT=$(create_init_script SustainableThroughputRunner ${stream_id} \
-                                "${CHILD_IPS[$child_idx]}:${CHILD_PORT}")
-        creat_droplet "$STREAM_TAG" "$STREAM_SETUP_SCRIPT" "stream-$stream_id" ${stream_id}
+        create_stream ${CHILD_IPS[$child_idx]} "$stream_id" "$stream_id"
     done
 fi
 

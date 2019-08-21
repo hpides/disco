@@ -10,15 +10,11 @@ CREATE_SCRIPT_FILE="$FILE_DIR/create-droplet.sh"
 ADD_STREAM_SCRIPT="$FILE_DIR/add-stream.sh"
 source $CREATE_SCRIPT_FILE
 
-### Create child and stream
-CHILD_NAME="child-$CHILD_ID"
-
 echo "Creating child node"
 echo "==================="
 
-CHILD_SETUP_SCRIPT=$(create_init_script DistributedChildMain ${ROOT_IP} ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} \
-                        ${CHILD_PORT} $CHILD_ID "1")
-creat_droplet "$CHILD_TAG" "$CHILD_SETUP_SCRIPT" "$CHILD_NAME"
+create_child "$ROOT_IP" "$CHILD_ID"
 echo
 
-$ADD_STREAM_SCRIPT $CHILD_NAME $CHILD_ID
+CHILD_NAME="$CHILD_TAG-$CHILD_ID"
+$ADD_STREAM_SCRIPT "$CHILD_NAME" "$CHILD_ID"
