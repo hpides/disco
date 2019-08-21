@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Usage: ./run-all.sh numNodes numEventsPerSecond totalRunDuration windows aggFunctions [--delete]
+# Usage: ./run-all.sh numNodes numEventsPerSecond runDuration windows aggFunctions [--delete | --no-delete]
 
 NUM_EXPECTED_DROPLETS=${1}
 NUM_EVENTS_PER_SECOND=${2}
@@ -9,9 +9,13 @@ WINDOW_STRING=${4}
 AGG_STRING=${5}
 
 DELETE_AFTER=""
-if [[ "$*" =~ *--delete* ]]
+if [[ "$*" == *delete* ]]
 then
     DELETE_AFTER="--delete"
+fi
+if [[ "$*" == *--no-delete* ]]
+then
+    DELETE_AFTER="--no-delete"
 fi
 
 KNOWN_HOSTS_FILE=/tmp/known_hosts
@@ -120,8 +124,12 @@ echo -e "\n"
 
 
 echo "Setup done. Uploading benchmark arguments on all nodes."
+
+CHILD_IPS=($(get_droplet_list "PublicIPv4" "child"))
+NUM_CHILDREN=${#CHILD_IPS[@]}
+
 ROOT_IP=$(get_droplet_list "PublicIPv4" "root")
-upload_run_params $ROOT_IP $WINDOW_STRING $AGG_STRING
+upload_run_params $ROOT_IP $NUM_CHILDREN $WINDOW_STRING $AGG_STRING
 
 STREAM_IPS=($(get_droplet_list "PublicIPv4" "stream"))
 for i in ${!STREAM_IPS[@]}; do
@@ -147,7 +155,7 @@ sleep $(expr $RUN_DURATION_SECONDS + 30)
 echo
 echo "Ending script by killing all PIDs..."
 for ip in ${ALL_IPS[@]}; do
-    ssh_cmd ${ip} "kill -9 \$(cat /tmp/RUN_PID) 2>/dev/null"
+    ssh_cmd ${ip} "kill -9 \$(cat /tmp/RUN_PID) > /dev/null"
 done
 
 echo "Killed all PIDs."

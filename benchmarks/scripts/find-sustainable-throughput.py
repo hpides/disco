@@ -9,7 +9,7 @@ import shutil
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPTS_PATH = os.path.join(THIS_FILE_DIR, "..", "..", "scripts")
-LOG_PATH = os.path.join(THIS_FILE_DIR, "..", "..", "benchmark-runs")
+LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "benchmark-runs"))
 CREATE_DROPLETS_SCRIPT = os.path.join(SCRIPTS_PATH, "create-droplets.sh")
 RUN_SCRIPT = os.path.join(SCRIPTS_PATH, "run-all.sh")
 
@@ -105,7 +105,7 @@ def find_sustainable_throughput(args):
             # Try to go higher
             min_events = num_sustainable_events
             num_sustainable_events = (num_sustainable_events + max_events) // 2
-            print(f" '--> {min_events} events/s is sustainable.")
+            print(f" '--> {min_events} events/s are sustainable.")
         else:
             # Try a lower number of events
             max_events = num_sustainable_events
