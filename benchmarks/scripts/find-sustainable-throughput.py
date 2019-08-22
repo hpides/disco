@@ -2,7 +2,6 @@ from argparse import ArgumentParser
 import subprocess
 import os
 import re
-import time
 from datetime import datetime
 import shutil
 
@@ -11,6 +10,8 @@ THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPTS_PATH = os.path.join(THIS_FILE_DIR, "..", "..", "scripts")
 LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "benchmark-runs"))
 CREATE_DROPLETS_SCRIPT = os.path.join(SCRIPTS_PATH, "create-droplets.sh")
+READY_CHECK_SCRIPT = os.path.join(SCRIPTS_PATH, "ready-check.sh")
+ADD_HOSTS_SCRIPT = os.path.join(SCRIPTS_PATH, "add-hosts.sh")
 RUN_SCRIPT = os.path.join(SCRIPTS_PATH, "run-all.sh")
 
 RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
@@ -51,9 +52,8 @@ def move_logs(num_children, num_streams):
     print(f"All logs can be found in {run_log_path}.")
 
 
-def single_sustainability_run(num_events_per_second, num_children, num_streams, delete=False):
+def single_sustainability_run(num_events_per_second, num_children, num_streams, run_duration, delete=False):
     num_nodes = num_children + num_streams + 1  # + 1 for root
-    run_duration = 60
     windows = "TUMBLING,1000"
     agg_fn = "MAX"
 
@@ -61,9 +61,16 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams, 
     timeout = (2 * run_duration) + 30
     print(f"Running sustainability test with {num_events_per_second} events/s.")
     run_command = (RUN_SCRIPT, f"{num_nodes}", f"{num_events_per_second}", f"{run_duration}",
-                   windows, agg_fn, delete_option)
-    run_process = subprocess.run(run_command, check=True, timeout=timeout,
-                                 capture_output=True)
+                   windows, agg_fn, delete_option, "--short")
+
+    try:
+        run_process = subprocess.run(run_command, check=True, timeout=timeout, capture_output=True)
+    except subprocess.TimeoutExpired as e:
+        print("Current run failed. See logs for more details.")
+        print(f"COMMAND: {e.cmd}")
+        print(f"STDOUT: {e.stdout}")
+        print(f"STDERR: {e.stderr}")
+        raise e
 
     run_output = str(run_process.stdout, UTF8)
     log_match = RUN_LOG_RE.search(run_output)
@@ -80,6 +87,7 @@ def find_sustainable_throughput(args):
     num_streams = args.num_streams
     should_create_nodes = args.create
     should_delete_nodes = args.delete
+    duration = args.duration
 
     if should_create_nodes:
         print("Creating nodes...")
@@ -88,7 +96,13 @@ def find_sustainable_throughput(args):
 
         # Wait for nodes to set up. Otherwise the time out of the runs will kill the setup.
         print("Waiting for node setup to complete...")
-        time.sleep(180)
+        num_nodes = 1 + num_children + num_streams
+
+        add_hosts_command = (ADD_HOSTS_SCRIPT, f"{num_nodes}")
+        subprocess.run(add_hosts_command, check=True, capture_output=True)
+
+        ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
+        subprocess.run(ready_check_command, check=True)
     else:
         print("Using existing node setup.")
 
@@ -99,7 +113,7 @@ def find_sustainable_throughput(args):
     print("Trying to find sustainable throughput...")
     while max_events - min_events > SUSTAINABLE_THRESHOLD:
         is_sustainable = single_sustainability_run(num_sustainable_events,
-                                                   num_children, num_streams)
+                                                   num_children, num_streams, duration)
 
         if is_sustainable:
             # Try to go higher
@@ -115,12 +129,10 @@ def find_sustainable_throughput(args):
     # Min and max are nearly equal --> min events is sustainable throughput
     # Verify once again that min_event is sustainable.
     print(f"Found sustainable candidate ({min_events} events/s). Verifying once more.")
-    if single_sustainability_run(min_events, num_children, num_streams, delete=should_delete_nodes):
+    if single_sustainability_run(min_events, num_children, num_streams, duration, delete=should_delete_nodes):
         print(f"Sustainable throughput: {min_events} events/s.")
     else:
         print(f"Final check with {min_events} was not sustainable. Check logs for more details.")
-
-    move_logs(num_children, num_streams)
 
 
 def main(args):
@@ -132,7 +144,7 @@ def main(args):
     try:
         find_sustainable_throughput(parser_args)
     except Exception as e:
-        move_logs(args.num_children, args.num_streams)
+        print(f"Got exception: {e}")
 
         if not args.delete:
             return
@@ -145,7 +157,8 @@ def main(args):
         droplet_ids = droplet_id_process_output.split("\n")
         droplet_ids = [d_id for d_id in droplet_ids if len(d_id) == 9]
         subprocess.run(("doctl", "compute", "droplet", "delete", "--force", *droplet_ids))
-        print(f"Got exception: {e}")
+    finally:
+        move_logs(args.num_children, args.num_streams)
 
 
 if __name__ == "__main__":
@@ -159,6 +172,8 @@ if __name__ == "__main__":
     parser.add_argument("--no-delete", dest='delete', action='store_false',
                         help="Indicate whether the nodes should be deleted after "
                              "the run or not.")
+    parser.add_argument("--duration", dest='duration', required=False,
+                        type=int, default="60", help="Duration of run in seconds.")
     parser.set_defaults(create=True)
     parser.set_defaults(delete=True)
 

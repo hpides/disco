@@ -18,31 +18,23 @@ then
     DELETE_AFTER="--no-delete"
 fi
 
-KNOWN_HOSTS_FILE=/tmp/known_hosts
+RUN_TYPE="long"
+if [[ "$*" == *--short* ]]
+then
+    RUN_TYPE="short"
+fi
 
-THIS_FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-BASE_DIR=$(cd "$THIS_FILE_DIR/.." && pwd)
+FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+READY_CHECK="$FILE_DIR/ready-check.sh"
+COMPLETE_CHECK="$FILE_DIR/complete-check.sh"
+ADD_HOSTS="$FILE_DIR/add-hosts.sh"
+
+COMMON_FILE="$FILE_DIR/common.sh"
+source $COMMON_FILE
+
+
+BASE_DIR=$(cd "$FILE_DIR/.." && pwd)
 RUN_FILES_DIR="$BASE_DIR/benchmark-runs/$(date +"%Y-%m-%d-%H%M")_$NUM_DROPLETS-nodes_$NUM_EVENTS_PER_SECOND-events_$RUN_DURATION_SECONDS-seconds"
-
-function get_droplet_list {
-    local FORMAT=${1}
-    local TAG_NAME=${2}
-    doctl compute droplet list --format="$FORMAT" --tag-name="$TAG_NAME" --no-header
-}
-
-function get_all_ips {
-    get_droplet_list "PublicIPv4"
-}
-
-function get_all_names {
-    get_droplet_list "Name"
-}
-
-function ssh_cmd {
-    local ip=${1}
-    local cmd=${2}
-    ssh -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} "root@$ip" "$cmd 2>&1"
-}
 
 function run_droplet {
     local IP=${1}
@@ -54,13 +46,6 @@ function upload_run_params() {
     local IP=${1}
     local BENCHMARK_ARGS="${@:2}"
     ssh_cmd ${IP} "echo \"export BENCHMARK_ARGS=\\\"${BENCHMARK_ARGS}\\\"\" >> ~/benchmark_env"
-}
-
-function check_ready {
-    local result=$(ssh_cmd ${1} "ls")
-    if [[ ${result} == *"run.sh"* ]]; then
-        echo "ready"
-    fi
 }
 
 #########################
@@ -77,51 +62,25 @@ echo "Writing logs to $RUN_FILES_DIR"
 echo
 
 echo "Getting IPs..."
+wait_for_ips $NUM_DROPLETS ""
 ALL_IPS=($(get_all_ips))
-while [[ ${#ALL_IPS[@]} -lt ${NUM_DROPLETS} ]]; do
-    let "difference = ${NUM_DROPLETS} - ${#ALL_IPS[@]}"
-    echo -ne "\rWaiting for $difference more node(s) to get an IP..."
-    sleep 5
-    ALL_IPS=($(get_all_ips))
-done
-echo
+
+if [[ ${#ALL_IPS[@]} -ne $NUM_DROPLETS ]]; then
+    echo "Did not get enough IPs while waiting."
+    exit 1
+fi
+
 echo "All IPs (${#ALL_IPS[@]}): ${ALL_IPS[@]}"
 echo
 
-echo "Adding IPs to $KNOWN_HOSTS_FILE"
-echo "This may take a while if the nodes were just created."
-> ${KNOWN_HOSTS_FILE}
-for ip in ${ALL_IPS[@]}; do
-    SCAN_OUTPUT=""
-    echo "Adding $ip"
-    while [[ ${SCAN_OUTPUT} == "" ]]; do
-        SCAN_OUTPUT=$(ssh-keyscan -H -t ecdsa-sha2-nistp256 ${ip} 2>/dev/null)
-        if [[ ${SCAN_OUTPUT} == "" ]]; then
-            sleep 5
-        fi
-    done
-    echo ${SCAN_OUTPUT} >> ${KNOWN_HOSTS_FILE}
-done
-echo
+if [[ $RUN_TYPE == "long" ]]; then
+  echo "Adding IPs to $KNOWN_HOSTS_FILE"
+  echo "This may take a while if the nodes were just created."
+  $ADD_HOSTS
 
-echo "Waiting for node setup to complete..."
-READY_IPS=()
-while [[ ${#READY_IPS[@]} -lt ${NUM_DROPLETS} ]]; do
-    UNREADY_IPS=($(echo ${ALL_IPS[@]} ${READY_IPS[@]} | tr ' ' '\n' | sort | uniq -u | tr '\n' ' '))
-    echo -ne "\rWaiting for ${#UNREADY_IPS[@]} more node(s) to become ready..."
-
-    for ip in ${UNREADY_IPS[@]}; do
-        READY_STATUS=$(check_ready ${ip})
-        if [[ ${READY_STATUS} == "ready" ]]; then
-            READY_IPS+=(${ip})
-        fi
-    done
-    if [[ ${#READY_IPS[@]} -lt ${NUM_DROPLETS} ]]; then
-        sleep 10
-    fi
-done
-echo -e "\n"
-
+  echo "Waiting for node setup to complete..."
+  $READY_CHECK
+fi
 
 echo "Setup done. Uploading benchmark arguments on all nodes."
 
@@ -157,11 +116,12 @@ echo "To view root logs:"
 echo "tail -F $RUN_FILES_DIR/root.log"
 
 echo
-echo "Running on nodes for $RUN_DURATION_SECONDS seconds..."
-sleep $(expr $RUN_DURATION_SECONDS + 30)
+MAX_RUN_DURATION=$(expr $RUN_DURATION_SECONDS + 30)
+echo "Running on nodes for a maximum of $MAX_RUN_DURATION seconds..."
+$COMPLETE_CHECK $MAX_RUN_DURATION
 
 echo
-echo "Ending script by killing all PIDs..."
+echo "Ending script by killing all PIDs (if they are still running)"
 for ip in ${ALL_IPS[@]}; do
     ssh_cmd ${ip} "kill -9 \$(cat /tmp/RUN_PID) > /dev/null"
 done

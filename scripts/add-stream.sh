@@ -6,6 +6,9 @@ CHILD_NAME=${1}
 STREAM_ID=${2}
 
 FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+COMMON_FILE="$FILE_DIR/common.sh"
+source $COMMON_FILE
+
 CREATE_SCRIPT_FILE="$FILE_DIR/create-droplet.sh"
 source $CREATE_SCRIPT_FILE
 

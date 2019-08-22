@@ -6,15 +6,11 @@ NUM_CHILDREN=${1:-0}
 NUM_STREAMS=${2:-0}
 
 FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+COMMON_FILE="$FILE_DIR/common.sh"
+source $COMMON_FILE
+
 CREATE_SCRIPT_FILE="$FILE_DIR/create-droplet.sh"
 source $CREATE_SCRIPT_FILE
-
-function get_ips {
-    local TAG_NAME="$1"
-    doctl compute droplet list --format="PublicIPv4" --no-header --tag-name="$TAG_NAME"
-}
-
-[[ ${NUM_STREAMS} -ge ${NUM_CHILDREN} ]] || (>&2 echo "Need at least as many streams as children!" && exit 1)
 
 echo -e "Creating root node\n=================="
 ROOT_SETUP_SCRIPT=$(create_init_script DistributedRootMain ${ROOT_CONTROL_PORT} ${ROOT_WINDOW_PORT} "/tmp/disco-res")

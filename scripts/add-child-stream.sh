@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-# Usage: ./add-child-stream.sh rootIp childId
+# Usage: ./add-child-stream.sh childId
 
-ROOT_IP=${1}
-CHILD_ID=${2}
+CHILD_ID=${1}
 
 FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CREATE_SCRIPT_FILE="$FILE_DIR/create-droplet.sh"
@@ -13,6 +12,7 @@ source $CREATE_SCRIPT_FILE
 echo "Creating child node"
 echo "==================="
 
+ROOT_IP=$(get_ips "$ROOT_TAG")
 create_child "$ROOT_IP" "$CHILD_ID"
 echo
 
