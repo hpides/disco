@@ -36,7 +36,7 @@ while [[ ${#READY_IPS[@]} -lt ${NUM_DROPLETS} ]]; do
         fi
     done
     if [[ ${#READY_IPS[@]} -lt ${NUM_DROPLETS} ]]; then
-        sleep 10
+        sleep 5
     fi
 done
 echo

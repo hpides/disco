@@ -2,6 +2,9 @@ from argparse import ArgumentParser
 import subprocess
 import os
 import re
+from multiprocessing import Process, Pipe
+
+from lib.run import run as run_all_main
 from datetime import datetime
 import shutil
 
@@ -12,13 +15,12 @@ LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "benchmark-ru
 CREATE_DROPLETS_SCRIPT = os.path.join(SCRIPTS_PATH, "create-droplets.sh")
 READY_CHECK_SCRIPT = os.path.join(SCRIPTS_PATH, "ready-check.sh")
 ADD_HOSTS_SCRIPT = os.path.join(SCRIPTS_PATH, "add-hosts.sh")
-RUN_SCRIPT = os.path.join(SCRIPTS_PATH, "run-all.sh")
 
 RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
 STREAM_LOG_PREFIX = "stream"
 GENERATOR_ERROR_MSG = "Exception in thread"
 
-SUSTAINABLE_THRESHOLD = 50_000
+SUSTAINABLE_THRESHOLD = 10_000
 
 RUN_LOGS = []
 
@@ -56,29 +58,26 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams, 
     num_nodes = num_children + num_streams + 1  # + 1 for root
     windows = "TUMBLING,1000"
     agg_fn = "MAX"
+    short = True
 
-    delete_option = "--delete" if delete else "--no-delete"
-    timeout = (2 * run_duration) + 30
+    timeout = 2 * run_duration
     print(f"Running sustainability test with {num_events_per_second} events/s.")
-    run_command = (RUN_SCRIPT, f"{num_nodes}", f"{num_events_per_second}", f"{run_duration}",
-                   windows, agg_fn, delete_option, "--short")
+
+    process_recv_pipe, process_send_pipe = Pipe(False)
+    run_process = Process(target=run_all_main,
+                          args=(num_nodes, num_events_per_second,
+                                run_duration, windows,
+                                agg_fn, delete, short, process_send_pipe),
+                          name=f"process-run-{num_nodes}-{num_events_per_second}")
+    run_process.start()
 
     try:
-        run_process = subprocess.run(run_command, check=True, timeout=timeout, capture_output=True)
-    except subprocess.TimeoutExpired as e:
+        run_process.join(timeout)
+    except TimeoutError:
         print("Current run failed. See logs for more details.")
-        print(f"COMMAND: {e.cmd}")
-        print(f"STDOUT: {e.stdout}")
-        print(f"STDERR: {e.stderr}")
-        raise e
+        raise
 
-    run_output = str(run_process.stdout, UTF8)
-    log_match = RUN_LOG_RE.search(run_output)
-    if log_match is None:
-        raise RuntimeError("Run output does not contain log location. "
-                           "Something has gone wrong.")
-
-    log_directory = log_match.group("log_location")
+    log_directory = process_recv_pipe.recv()
     return not is_error_in_generator(log_directory)
 
 
@@ -89,22 +88,24 @@ def find_sustainable_throughput(args):
     should_delete_nodes = args.delete
     duration = args.duration
 
+    num_nodes = 1 + num_children + num_streams
+
     if should_create_nodes:
         print("Creating nodes...")
         create_command = (CREATE_DROPLETS_SCRIPT, f"{num_children}", f"{num_streams}")
-        subprocess.run(create_command, check=True, timeout=30, capture_output=True)
-
-        # Wait for nodes to set up. Otherwise the time out of the runs will kill the setup.
-        print("Waiting for node setup to complete...")
-        num_nodes = 1 + num_children + num_streams
-
-        add_hosts_command = (ADD_HOSTS_SCRIPT, f"{num_nodes}")
-        subprocess.run(add_hosts_command, check=True, capture_output=True)
-
-        ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
-        subprocess.run(ready_check_command, check=True)
+        subprocess.run(create_command, check=True, timeout=180)
     else:
         print("Using existing node setup.")
+
+    # Wait for nodes to set up. Otherwise the time out of the runs will kill the setup.
+    print("Waiting for node setup to complete...")
+    print("Adding IPs to known_hosts...")
+    add_hosts_command = (ADD_HOSTS_SCRIPT, f"{num_nodes}")
+    subprocess.run(add_hosts_command, check=True, capture_output=True)
+
+    print("Checking setup status...")
+    ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
+    subprocess.run(ready_check_command, check=True)
 
     max_events = 1_500_000
     min_events = 0

@@ -22,6 +22,7 @@ NUM_DROPLETS=${#ALL_IPS[@]}
 
 SLEEP_DURATION=10
 MAX_NUM_SLEEPS=$(expr $TIMEOUT / $SLEEP_DURATION)
+echo "MAX SLEEPS: $MAX_NUM_SLEEPS ($TIMEOUT / $SLEEP_DURATION)"
 NUM_SLEEPS=0
 
 COMPLETE_IPS=()
@@ -42,13 +43,18 @@ while [[ ${#COMPLETE_IPS[@]} -lt ${NUM_DROPLETS} ]]; do
             echo
             echo "$difference application(s) still running after timeout. They will be terminated."
             echo "This most likely indicates an error or a missing stream/child end message."
-            return
+            break
         fi
         sleep $SLEEP_DURATION
+        echo "Sleeping..."
         NUM_SLEEPS=$(expr $NUM_SLEEPS + 1)
+        echo "Slept $NUM_SLEEPS times..."
     fi
 done
 
-echo
-echo "All applications terminated before the timeout."
+if [[ ${#COMPLETE_IPS[@]} -eq ${NUM_DROPLETS} ]]; then
+    echo
+    echo "All applications terminated before the timeout."
+fi
+
 echo
