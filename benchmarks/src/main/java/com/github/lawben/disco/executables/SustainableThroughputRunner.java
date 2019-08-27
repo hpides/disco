@@ -100,6 +100,7 @@ public class SustainableThroughputRunner {
             }
 
             if (generatorException.wasThrown()) {
+                System.out.println("Ending stream because of generator exception.");
                 endStream(streamId, dataPusher);
                 throw new RuntimeException("Generator exception was thrown!\n" + generatorException.getException());
             }
@@ -115,6 +116,7 @@ public class SustainableThroughputRunner {
                 // Queue is growing in size
                 if (++currentIncreaseStreak == MAX_INCREASE_STREAK) {
                     generator.interrupt();
+                    System.out.println("Ending stream because of unsustainable throughput.");
                     endStream(streamId, dataPusher);
                     throw new IllegalStateException("Unsustainable throughput! Queue size is " + queueSize +
                             " and has increased " + MAX_INCREASE_STREAK + " times in a row.");
@@ -124,8 +126,7 @@ public class SustainableThroughputRunner {
             }
         }
 
-        System.out.println("Ended sending after " + totalDuration + " seconds.");
-
+        System.out.println("Ending stream after " + totalDuration + " seconds.");
         endStream(streamId, dataPusher);
         generatorThread.join();
     }
