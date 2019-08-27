@@ -70,6 +70,11 @@ public class SustainableThroughputRunner {
                 (thread, exception) -> generatorException.setException(exception);
 
         Thread generatorThread = new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             while (!generator.isInterrupted() && System.currentTimeMillis() < startTime + totalDuration * 1000) {
                 generator.generateNextSecondEvents();
             }
@@ -77,9 +82,6 @@ public class SustainableThroughputRunner {
         });
         generatorThread.setUncaughtExceptionHandler(generatorThreadExceptionHandler);
         generatorThread.start();
-
-        // Wait for event generator to start
-        Thread.sleep(1000);
 
         // Event sending
         Queue<Event> eventQueue = generator.getEventQueue();
@@ -150,9 +152,11 @@ public class SustainableThroughputRunner {
         return true;
     }
 
-    private static void endStream(int streamId, Socket dataPusher) {
+    private static void endStream(int streamId, Socket dataPusher) throws InterruptedException {
         dataPusher.sendMore(STREAM_END);
         dataPusher.send(String.valueOf(streamId));
+        // Wait for child to receive stream end before killing connection.
+        Thread.sleep(10000);
     }
 }
 
