@@ -319,7 +319,22 @@ public class DistributedNode {
             this.dataPuller = this.context.createSocket(SocketType.PULL);
             this.dataPuller.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
             this.dataPuller.setRcvHWM(100);
-            this.dataPuller.bind(DistributedUtils.buildBindingTcpUrl(port));
+
+            int retries = 0;
+            while (true) {
+                try {
+                    this.dataPuller.bind(DistributedUtils.buildBindingTcpUrl(port));
+                    break;
+                } catch (ZMQException e) {
+                    if (++retries == 100) {
+                        throw e;
+                    }
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException ex) {}
+                }
+
+            }
         }
         return this.dataPuller;
     }

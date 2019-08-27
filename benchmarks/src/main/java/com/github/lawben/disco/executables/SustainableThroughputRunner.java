@@ -124,6 +124,8 @@ public class SustainableThroughputRunner {
             }
         }
 
+        System.out.println("Ended sending after " + totalDuration + " seconds.");
+
         endStream(streamId, dataPusher);
         generatorThread.join();
     }
@@ -153,10 +155,12 @@ public class SustainableThroughputRunner {
     }
 
     private static void endStream(int streamId, Socket dataPusher) throws InterruptedException {
+        System.out.println("Ending stream...");
         dataPusher.sendMore(STREAM_END);
         dataPusher.send(String.valueOf(streamId));
         // Wait for child to receive stream end before killing connection.
-        Thread.sleep(10000);
+        Thread.sleep(5000);
+        System.out.println("Ending runner...");
     }
 }
 
