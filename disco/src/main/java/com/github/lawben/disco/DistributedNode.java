@@ -326,11 +326,11 @@ public class DistributedNode {
                     this.dataPuller.bind(DistributedUtils.buildBindingTcpUrl(port));
                     break;
                 } catch (ZMQException e) {
-                    if (++retries == 100) {
-                        throw e;
+                    if (++retries == 50) {
+                        throw new RuntimeException("Still fails after 100 retries. ", e);
                     }
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(100);
                     } catch (InterruptedException ex) {}
                 }
 
