@@ -4,7 +4,7 @@ import random
 import string
 import sys
 from datetime import datetime
-from multiprocessing import Process
+from threading import Thread
 
 from .common import *
 
@@ -22,15 +22,19 @@ def get_log_dir(num_nodes, num_events, duration):
 def upload_benchmark_params(ip, *args):
     string_args = [str(arg) for arg in args]
     args_str = " ".join(string_args)
-    silent_ssh_command(ip, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> ~/benchmark_env')
+    ssh_command(ip, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> ~/benchmark_env')
 
 
 def run_droplet(droplet, log_dir, timeout=None):
     ip = get_ip_of_droplet(droplet)
     name = droplet['name']
+    ssh_command(ip, "~/run.sh &> logs", timeout=timeout, verbose=True)
+
     out_file_path = os.path.join(log_dir, f"{name}.log")
+    output = ssh_command(ip, "cat logs >> all_logs && cat logs")
     with open(out_file_path, "w") as out_file:
-        streamed_ssh_command(ip, "~/run.sh 2>&1", out_file, timeout=timeout)
+        print(output)
+        out_file.write(output)
 
 
 def run(num_nodes, num_events, duration, windows, agg_functions,
@@ -82,34 +86,38 @@ def run(num_nodes, num_events, duration, windows, agg_functions,
 
     print("Starting `run.sh` on all nodes.\n")
     max_run_duration = duration + 30
-    processes = []
+    threads = []
     for droplet in all_droplets:
         droplet_name = droplet['name']
 
-        process = Process(target=run_droplet,
-                          args=(droplet, log_dir, max_run_duration),
-                          name=f"process-{droplet_name}")
-        process.start()
-        processes.append(process)
+        thread = Thread(target=run_droplet,
+                        args=(droplet, log_dir, max_run_duration),
+                        name=f"thread-{droplet_name}")
+        thread.start()
+        threads.append(thread)
 
     print("To view root logs:")
     print(f"tail -F {os.path.join(log_dir, 'root.log')}\n")
 
     uncompleted_ips = check_complete(max_run_duration, all_ips)
     if uncompleted_ips:
-        kill_command = "kill -9 $(cat /tmp/RUN_PID) > /dev/null"
+        kill_command = "pkill -9 java &> /dev/null"
         print("Ending script by killing all PIDs...")
         for ip in uncompleted_ips:
-            silent_ssh_command(ip, kill_command)
+            ssh_command(ip, kill_command)
 
         print(f"Killed remaining {len(uncompleted_ips)} jobs.")
+        uncompleted_ips = check_complete(30, uncompleted_ips)
+        if uncompleted_ips:
+            raise RuntimeError(f"Could not terminate IPs: {uncompleted_ips}")
 
-    for process in processes:
-        process.join(timeout=5)
-        if process.is_alive():
-            print(f"Could not join process {process.name}.")
+    for thread in threads:
+        thread.join()
+        # thread.join(timeout=5)
+        # if thread.is_alive():
+        #     print(f"Could not join thread {thread.name}.")
 
-    print("Joined all run processes.")
+    print("Joined all run threads.")
 
     if delete:
         print("Deleting droplets...")

@@ -20,11 +20,14 @@ function create_init_script {
     local JAVA_ARGS=${@:2}
     cat "$INIT_SCRIPT_FILE" > ${FILE_NAME}
     echo -e "\n" >> ${FILE_NAME}
+    echo "echo \"pkill -9 java\" >> ~/run.sh"  >> ${FILE_NAME}
+    echo "echo \"sleep 3\" >> ~/run.sh"  >> ${FILE_NAME}
+    echo "echo \"echo -e \\\"\nNEW RUN\n=======\\\"\" >> ~/run.sh"  >> ${FILE_NAME}
     echo "echo \"source benchmark_env\" >> ~/run.sh" >> ${FILE_NAME}
     echo "echo \"echo BENCHMARK ARGS: \\\$BENCHMARK_ARGS \" >> ~/run.sh" >> ${FILE_NAME}
+    echo "echo \"echo \\\$\\\$ > /tmp/RUN_PID\" >> ~/run.sh" >> ${FILE_NAME}
     echo "echo \"java -cp \\\$CLASSPATH com.github.lawben.disco.executables.$CLASS_NAME ${JAVA_ARGS}" \
-                  "\\\$BENCHMARK_ARGS &\" >> ~/run.sh" >> ${FILE_NAME}
-    echo "echo \"echo \\\$! > /tmp/RUN_PID\" >> ~/run.sh" >> ${FILE_NAME}
+                  "\\\$BENCHMARK_ARGS\" >> ~/run.sh" >> ${FILE_NAME}
     echo "chmod +x ~/run.sh" >> ${FILE_NAME}
     echo ${FILE_NAME}
 }
@@ -39,13 +42,18 @@ function creat_droplet {
         NO_HEADER=true
     fi
 
+    local instance="s-1vcpu-1gb"
+#    if [[ $DROPLET_NAME == *stream* ]]; then
+#        instance="s-4vcpu-8gb"
+#    fi
+
     doctl compute droplet create ${DROPLET_NAME} --image ubuntu-18-04-x64 \
-                                      --size s-1vcpu-1gb \
+                                      --size "$instance" \
                                       --region fra1 \
                                       --tag-names "$TAG_NAMES,$DROPLET_NAME" \
                                       --ssh-keys "$SSH_KEY" \
                                       --user-data-file "$SCRIPT" \
-                                      --format="ID,Name" \
+                                      --format="ID,Name,Image" \
                                       --no-header=${NO_HEADER}
 }
 

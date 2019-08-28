@@ -1,10 +1,8 @@
-import io
 import socket
 import time
 
 import doctl
 import paramiko
-from paramiko.buffered_pipe import PipeTimeout
 
 KNOWN_HOSTS_FILE = "/tmp/known_hosts"
 SSH_PORT = 22
@@ -20,35 +18,42 @@ ROOT_WINDOW_PORT = 4056
 UTF8 = "utf-8"
 
 
-def silent_ssh_command(ip, command, timeout=None):
+def ssh_command(ip, command, timeout=None, verbose=False):
     ssh = None
     try:
-        ssh, stdout, stderr = _ssh_command(ip, command, timeout)
+        ssh, stdout, stderr = _ssh_command(ip, command, timeout=timeout)
         # Wait for command to finish
-        _ = stdout.readlines()
-    finally:
-        if ssh is not None:
-            ssh.close()
-
-
-def streamed_ssh_command(ip, command, out_file, timeout=None):
-    ssh = None
-    try:
-        ssh, stdout, stderr = _ssh_command(ip, command, timeout)
-        while not stdout.channel.exit_status_ready():
-            character = stdout.read(1).decode(UTF8)
-            out_file.write(character)
-            if character == '\n':
-                out_file.flush()
-        if not stdout.channel.closed:
-            remaining_out = str(stdout.read(), UTF8)
-            out_file.write(remaining_out)
-            out_file.flush()
+        output = str(stdout.read(), UTF8)
+        status = stdout.channel.recv_exit_status()
+        if verbose:
+            print(f"Channel return code for command {command} is {status}")
+        return output
+    except paramiko.SSHException as e:
+        print(f"SSHException {e}")
+        raise
     except socket.timeout:
         print("SSH Pipe timed out...")
     finally:
         if ssh is not None:
             ssh.close()
+
+
+# def streamed_ssh_command(ip, command, out_file, timeout=None):
+#     ssh = None
+#     try:
+#         ssh, stdout, _ = _ssh_command(ip, command, timeout)
+#         for line in stdout:
+#             out_file.write(line)
+#             out_file.flush()
+#         print(f"Channel return code for command {command} is {stdout.channel.recv_exit_status()}")
+#     except paramiko.SSHException as e:
+#         print(f"SSHException {e}")
+#         raise
+#     except socket.timeout:
+#         print("SSH Pipe timed out...")
+#     finally:
+#         if ssh is not None:
+#             ssh.close()
 
 
 def _ssh_command(ip, command, timeout):
@@ -143,9 +148,8 @@ def ready_check(num_nodes=0):
         print(f"\rWaiting for {len(unready_ips)} more node(s) to become ready...", end="")
 
         for ip in unready_ips:
-            ready_output = io.StringIO()
-            streamed_ssh_command(ip, ready_command, ready_output)
-            if "run.sh" in ready_output.getvalue():
+            ready_output = ssh_command(ip, ready_command)
+            if "run.sh" in ready_output:
                 ready_ips.append(ip)
 
         if len(ready_ips) < num_nodes:
@@ -169,9 +173,8 @@ def check_complete(timeout, ips):
         print(f"\rWaiting for {len(incomplete_ips)} more node(s) to complete...", end="")
 
         for ip in incomplete_ips:
-            complete_output = io.StringIO()
-            streamed_ssh_command(ip, complete_command, complete_output)
-            if "No such process" in complete_output.getvalue():
+            complete_output = ssh_command(ip, complete_command)
+            if "No such process" in complete_output:
                 complete_ips.append(ip)
 
         if len(complete_ips) < num_nodes:

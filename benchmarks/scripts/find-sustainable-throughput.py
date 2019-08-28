@@ -18,7 +18,8 @@ ADD_HOSTS_SCRIPT = os.path.join(SCRIPTS_PATH, "add-hosts.sh")
 
 RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
 STREAM_LOG_PREFIX = "stream"
-GENERATOR_ERROR_MSG = "Exception in thread"
+GENERIC_ERROR_MSG = "Exception in thread"
+NODE_REGISTRATION_FAIL = "Could not register at child node"
 
 SUSTAINABLE_THRESHOLD = 10_000
 
@@ -28,14 +29,20 @@ RUN_LOGS = []
 def is_error_in_generator(log_directory):
     RUN_LOGS.append(log_directory)
     for log_file in os.listdir(log_directory):
-        if not log_file.startswith(STREAM_LOG_PREFIX):
-            # Not a stream file, irrelevant here
-            continue
-
         log_file_path = os.path.join(log_directory, log_file)
         with open(log_file_path) as f:
-            if GENERATOR_ERROR_MSG in f.read():
+            log_contents = f.read()
+
+            if not log_file.startswith(STREAM_LOG_PREFIX):
+                # Not a stream file, error here is bad
+                if GENERIC_ERROR_MSG in log_contents:
+                    raise RuntimeError(f"Error in file {log_file_path}")
+
+            if GENERIC_ERROR_MSG in log_contents:
                 # Found an error while generating
+                if NODE_REGISTRATION_FAIL in log_contents:
+                    raise RuntimeError(NODE_REGISTRATION_FAIL)
+
                 return True
 
     return False
@@ -107,12 +114,16 @@ def find_sustainable_throughput(args):
     ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
     subprocess.run(ready_check_command, check=True)
 
-    max_events = 1_500_000
+    total_max_events = 1_500_000
+    expected_max_events = 1_000_000
+
+    max_events = total_max_events // num_streams
     min_events = 0
-    num_sustainable_events = max_events // 2
+    num_sustainable_events = expected_max_events // num_streams
 
     print("Trying to find sustainable throughput...")
-    while max_events - min_events > SUSTAINABLE_THRESHOLD:
+    while (max_events - min_events > SUSTAINABLE_THRESHOLD
+           and num_sustainable_events < max_events):
         is_sustainable = single_sustainability_run(num_sustainable_events,
                                                    num_children, num_streams, duration)
 
@@ -128,12 +139,7 @@ def find_sustainable_throughput(args):
             print(f" '--> {max_events} events/s are too many.")
 
     # Min and max are nearly equal --> min events is sustainable throughput
-    # Verify once again that min_event is sustainable.
-    print(f"Found sustainable candidate ({min_events} events/s). Verifying once more.")
-    if single_sustainability_run(min_events, num_children, num_streams, duration, delete=should_delete_nodes):
-        print(f"Sustainable throughput: {min_events} events/s.")
-    else:
-        print(f"Final check with {min_events} was not sustainable. Check logs for more details.")
+    print(f"Found sustainable candidate ({min_events} events/s).")
 
 
 def main(args):

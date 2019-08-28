@@ -1,7 +1,5 @@
 package com.github.lawben.disco.merge;
 
-import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_CHILD_ID;
-
 import com.github.lawben.disco.DistributedChildSlicer;
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.Event;
@@ -26,10 +24,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
