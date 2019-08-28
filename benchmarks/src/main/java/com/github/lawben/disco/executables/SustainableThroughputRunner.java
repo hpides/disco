@@ -18,9 +18,7 @@ import org.zeromq.ZMQ.Socket;
 public class SustainableThroughputRunner {
     private static final int SEND_CHUNK_SIZE = 1000;
     private static final long SEND_PERIOD_DURATION_MS = 500;
-
-    // 10 seconds of sending time
-    private static final long MAX_INCREASE_STREAK = 10_000 / SEND_PERIOD_DURATION_MS;
+    private static final long MAX_INCREASE_STREAK = 10;
 
     public static void main(String[] args) throws Exception {
         if (args.length != 4) {
