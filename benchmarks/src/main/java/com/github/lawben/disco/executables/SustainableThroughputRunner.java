@@ -7,6 +7,7 @@ import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.Event;
 import com.github.lawben.disco.SustainableThroughputEventGenerator;
 import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import org.zeromq.SocketType;
@@ -19,6 +20,7 @@ public class SustainableThroughputRunner {
     private static final int SEND_CHUNK_SIZE = 1000;
     private static final long SEND_PERIOD_DURATION_MS = 500;
     private static final long MAX_INCREASE_STREAK = 10;
+    private static final long WARM_UP_TIME_MS = 15_000;
 
     public static void main(String[] args) throws Exception {
         if (args.length != 4) {
@@ -58,6 +60,7 @@ public class SustainableThroughputRunner {
         final long startTime = System.currentTimeMillis();
         final long totalDurationInMillis = 1000 * totalDuration;
         final long endTime = startTime + totalDurationInMillis;
+        final long warmUpEndTime = startTime + WARM_UP_TIME_MS;
 
         // Generator
         final Function<Long, Long> onesGenerator = (eventTimestamp) -> 1L;
@@ -84,9 +87,10 @@ public class SustainableThroughputRunner {
         generatorThread.start();
 
         // Event sending
-        Queue<Event> eventQueue = generator.getEventQueue();
+        ArrayBlockingQueue<Event> eventQueue = generator.getEventQueue();
         long queueSize = eventQueue.size();
         int currentIncreaseStreak = 0;
+        boolean warmedUp = false;
 
         while (System.currentTimeMillis() < endTime) {
             long nextSendPeriodEnd = System.currentTimeMillis() + SEND_PERIOD_DURATION_MS;
@@ -94,9 +98,18 @@ public class SustainableThroughputRunner {
             // Send data for SEND_PERIOD_DURATION_MS
             while (System.currentTimeMillis() < nextSendPeriodEnd) {
                 if (!sendDataChunk(dataPusher, eventQueue, sentCounter)) {
-                    // Generation too slow, skip period and check duration.ß
+                    // Generation too slow, skip period and check duration.
                     break;
                 }
+            }
+
+            if (!warmedUp && System.currentTimeMillis() > warmUpEndTime) {
+                System.out.println("Clearing event queue after warm up time");
+                warmedUp = true;
+                final long emptyStart = System.currentTimeMillis();
+                eventQueue.clear();
+                System.out.println("Clearing took " + (System.currentTimeMillis() - emptyStart) + " ms.");
+                queueSize = 0;
             }
 
             if (generatorException.wasThrown()) {
@@ -112,7 +125,7 @@ public class SustainableThroughputRunner {
             final long increaseSinceLastChunk = currentQueueSize - queueSize;
             queueSize = currentQueueSize;
             System.out.println("Current queue size: " + queueSize);
-            if (queueSize > (5 * eventsPerSec) && increaseSinceLastChunk > 0) {
+            if (queueSize > (2 * eventsPerSec) && increaseSinceLastChunk > 0) {
                 // Queue is growing in size
                 if (++currentIncreaseStreak == MAX_INCREASE_STREAK) {
                     generator.interrupt();

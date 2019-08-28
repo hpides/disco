@@ -26,7 +26,7 @@ public class SustainableThroughputEventGenerator {
     private final long startTimestamp;
     private final Function<Long, Long> dataSupplier;
 
-    private final Queue<Event> eventQueue;
+    private final ArrayBlockingQueue<Event> eventQueue;
     private final int queueCapacity;
 
     private boolean interrupt;
@@ -102,7 +102,7 @@ public class SustainableThroughputEventGenerator {
 
     }
 
-    public Queue<Event> getEventQueue() {
+    public ArrayBlockingQueue<Event> getEventQueue() {
         return eventQueue;
     }
 
