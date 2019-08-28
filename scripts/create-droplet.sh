@@ -53,7 +53,7 @@ function creat_droplet {
                                       --tag-names "$TAG_NAMES,$DROPLET_NAME" \
                                       --ssh-keys "$SSH_KEY" \
                                       --user-data-file "$SCRIPT" \
-                                      --format="ID,Name,Image" \
+                                      --format="PublicIPv4,Name,ID,VCPUs,Memory" \
                                       --no-header=${NO_HEADER}
 }
 
