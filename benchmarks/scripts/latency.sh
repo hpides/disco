@@ -7,8 +7,10 @@ RUN_DURATION=${2}
 WINDOW_STRING=${3}
 AGG_STRING=${4}
 
-BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd ../.. && pwd )"
-RUN_SCRIPT="$BASE_DIR/scripts/run-all.sh"
+BM_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+BASE_DIR="$( cd "$BM_DIR/../.." && pwd )"
+
+RUN_SCRIPT="$BM_DIR/lib/run.py"
 STREAM_ADD_SCRIPT="$BASE_DIR/scripts/add-stream.sh"
 CREATE_DROPLETS_SCRIPT="$BASE_DIR/scripts/create-droplets.sh"
 CHILD_ADD_SCRIPT="$BASE_DIR/scripts/add-child-stream.sh"

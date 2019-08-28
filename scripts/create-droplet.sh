@@ -43,9 +43,9 @@ function creat_droplet {
     fi
 
     local instance="s-1vcpu-1gb"
-#    if [[ $DROPLET_NAME == *stream* ]]; then
-#        instance="s-4vcpu-8gb"
-#    fi
+    if [[ $DROPLET_NAME == *stream* ]]; then
+        instance="s-2vcpu-2gb"
+    fi
 
     doctl compute droplet create ${DROPLET_NAME} --image ubuntu-18-04-x64 \
                                       --size "$instance" \
@@ -53,7 +53,7 @@ function creat_droplet {
                                       --tag-names "$TAG_NAMES,$DROPLET_NAME" \
                                       --ssh-keys "$SSH_KEY" \
                                       --user-data-file "$SCRIPT" \
-                                      --format="PublicIPv4,Name,ID,VCPUs,Memory" \
+                                      --format="Name,VCPUs,Memory,ID" \
                                       --no-header=${NO_HEADER}
 }
 

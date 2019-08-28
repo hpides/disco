@@ -92,7 +92,6 @@ def find_sustainable_throughput(args):
     num_children = args.num_children
     num_streams = args.num_streams
     should_create_nodes = args.create
-    should_delete_nodes = args.delete
     duration = args.duration
 
     num_nodes = 1 + num_children + num_streams
