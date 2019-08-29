@@ -22,6 +22,7 @@ function create_init_script {
     echo -e "\n" >> ${FILE_NAME}
     echo "echo \"pkill -9 java\" >> ~/run.sh"  >> ${FILE_NAME}
     echo "echo \"sleep 3\" >> ~/run.sh"  >> ${FILE_NAME}
+    echo "echo \"sar -u 1 60 > util.log &\" >> ~/run.sh"  >> ${FILE_NAME}
     echo "echo \"echo -e \\\"\nNEW RUN\n=======\\\"\" >> ~/run.sh"  >> ${FILE_NAME}
     echo "echo \"source benchmark_env\" >> ~/run.sh" >> ${FILE_NAME}
     echo "echo \"echo BENCHMARK ARGS: \\\$BENCHMARK_ARGS \" >> ~/run.sh" >> ${FILE_NAME}
@@ -42,10 +43,10 @@ function creat_droplet {
         NO_HEADER=true
     fi
 
-    local instance="s-1vcpu-1gb"
-    if [[ $DROPLET_NAME == *stream* ]]; then
-        instance="s-2vcpu-2gb"
-    fi
+    local instance="s-2vcpu-2gb"
+#    if [[ $DROPLET_NAME == *stream* ]]; then
+#        instance="s-2vcpu-2gb"
+#    fi
 
     doctl compute droplet create ${DROPLET_NAME} --image ubuntu-18-04-x64 \
                                       --size "$instance" \

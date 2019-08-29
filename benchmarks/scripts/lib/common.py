@@ -38,24 +38,6 @@ def ssh_command(ip, command, timeout=None, verbose=False):
             ssh.close()
 
 
-# def streamed_ssh_command(ip, command, out_file, timeout=None):
-#     ssh = None
-#     try:
-#         ssh, stdout, _ = _ssh_command(ip, command, timeout)
-#         for line in stdout:
-#             out_file.write(line)
-#             out_file.flush()
-#         print(f"Channel return code for command {command} is {stdout.channel.recv_exit_status()}")
-#     except paramiko.SSHException as e:
-#         print(f"SSHException {e}")
-#         raise
-#     except socket.timeout:
-#         print("SSH Pipe timed out...")
-#     finally:
-#         if ssh is not None:
-#             ssh.close()
-
-
 def _ssh_command(ip, command, timeout):
     ssh = paramiko.SSHClient()
     ssh.load_host_keys(KNOWN_HOSTS_FILE)

@@ -1,3 +1,4 @@
+import sys
 from argparse import ArgumentParser
 import subprocess
 import os
@@ -20,6 +21,7 @@ RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
 STREAM_LOG_PREFIX = "stream"
 GENERIC_ERROR_MSG = "Exception in thread"
 NODE_REGISTRATION_FAIL = "Could not register at child node"
+QUEUE_SIZE_RE = re.compile(r"Current queue size: (\d+)")
 
 SUSTAINABLE_THRESHOLD = 10_000
 
@@ -27,24 +29,51 @@ RUN_LOGS = []
 
 
 def is_error_in_generator(log_directory):
+    num_streams = 0
+    num_stream_with_error = 0
+    num_streams_at_min_queue = 0
+
     RUN_LOGS.append(log_directory)
     for log_file in os.listdir(log_directory):
         log_file_path = os.path.join(log_directory, log_file)
         with open(log_file_path) as f:
             log_contents = f.read()
 
+            if log_file.startswith("main"):
+                continue
+
             if not log_file.startswith(STREAM_LOG_PREFIX):
                 # Not a stream file, error here is bad
                 if GENERIC_ERROR_MSG in log_contents:
-                    raise RuntimeError(f"Error in file {log_file_path}")
+                    print(f" '--> Error in file {log_file_path}. Retry.")
+                    return None
+                continue
 
+            num_streams += 1
             if GENERIC_ERROR_MSG in log_contents:
                 # Found an error while generating
                 if NODE_REGISTRATION_FAIL in log_contents:
                     raise RuntimeError(NODE_REGISTRATION_FAIL)
+                num_stream_with_error += 1
+            else:
+                queue_size_matches = QUEUE_SIZE_RE.findall(log_contents)
+                if not queue_size_matches:
+                    raise RuntimeError("Bad log file. No queue sizes.")
+                queue_size = int(queue_size_matches[-1][0])
+                if queue_size < 10_000:
+                    num_streams_at_min_queue += 1
 
-                return True
+    # print(f"Scanned {num_streams} streams. {num_stream_with_error} with an error, "
+    #       f"{num_streams_at_min_queue} at min queue.")
+    if num_stream_with_error == num_streams or num_stream_with_error > 2:
+        # Multiple streams are bad
+        return True
 
+    if 0 < num_stream_with_error <= num_streams_at_min_queue:
+        # Rerun as result is not conclusive
+        return None
+
+    # Run was sustainable
     return False
 
 
@@ -61,10 +90,9 @@ def move_logs(num_children, num_streams):
     print(f"All logs can be found in {run_log_path}.")
 
 
-def single_sustainability_run(num_events_per_second, num_children, num_streams, run_duration, delete=False):
+def single_sustainability_run(num_events_per_second, num_children, num_streams,
+                              windows, agg_functions, run_duration, delete=False):
     num_nodes = num_children + num_streams + 1  # + 1 for root
-    windows = "TUMBLING,1000"
-    agg_fn = "MAX"
     short = True
 
     timeout = 2 * run_duration
@@ -74,7 +102,7 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams, 
     run_process = Process(target=run_all_main,
                           args=(num_nodes, num_events_per_second,
                                 run_duration, windows,
-                                agg_fn, delete, short, process_send_pipe),
+                                agg_functions, delete, short, process_send_pipe),
                           name=f"process-run-{num_nodes}-{num_events_per_second}")
     run_process.start()
 
@@ -85,7 +113,28 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams, 
         raise
 
     log_directory = process_recv_pipe.recv()
-    return not is_error_in_generator(log_directory)
+    return is_error_in_generator(log_directory)
+
+
+def sustainability_run(num_events_per_second, num_children, num_streams,
+                       windows, agg_functions, run_duration, delete=False):
+    is_unsustainable = None
+    tries = 0
+    while is_unsustainable is None and tries < 5:
+        is_unsustainable = single_sustainability_run(num_events_per_second,
+                                                     num_children, num_streams,
+                                                     windows, agg_functions,
+                                                     run_duration, delete)
+        tries += 1
+        if is_unsustainable is None:
+            # Error was very different to rest of nodes.
+            print(" '--> Result inconclusive, running again...")
+
+    if is_unsustainable is None:
+        print(" '--> Result inconclusive again, counting as unsustainable.")
+        is_unsustainable = True
+
+    return not is_unsustainable
 
 
 def find_sustainable_throughput(args):
@@ -93,6 +142,8 @@ def find_sustainable_throughput(args):
     num_streams = args.num_streams
     should_create_nodes = args.create
     duration = args.duration
+    windows = args.windows
+    agg_functions = args.agg_functions
 
     num_nodes = 1 + num_children + num_streams
 
@@ -113,18 +164,20 @@ def find_sustainable_throughput(args):
     ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
     subprocess.run(ready_check_command, check=True)
 
-    total_max_events = 1_500_000
-    expected_max_events = 1_000_000
+    total_max_events = 2_000_000
+    expected_max_events_per_stream = 1_000_000
 
-    max_events = total_max_events // num_streams
+    max_events = total_max_events
     min_events = 0
-    num_sustainable_events = expected_max_events // num_streams
+    num_sustainable_events = expected_max_events_per_stream
 
     print("Trying to find sustainable throughput...")
     while (max_events - min_events > SUSTAINABLE_THRESHOLD
            and num_sustainable_events < max_events):
-        is_sustainable = single_sustainability_run(num_sustainable_events,
-                                                   num_children, num_streams, duration)
+        is_sustainable = sustainability_run(num_sustainable_events,
+                                            num_children, num_streams,
+                                            windows, agg_functions,
+                                            duration)
 
         if is_sustainable:
             # Try to go higher
@@ -173,11 +226,10 @@ if __name__ == "__main__":
                         type=int, help="Number of total children.")
     parser.add_argument("--num-streams", dest='num_streams', required=True,
                         type=int, help="Number of stream per child.")
-    parser.add_argument("--no-create", dest='create', action='store_false',
-                        help="Indicate whether the nodes should be created or not.")
-    parser.add_argument("--no-delete", dest='delete', action='store_false',
-                        help="Indicate whether the nodes should be deleted after "
-                             "the run or not.")
+    parser.add_argument("--windows", type=str, required=True, dest="windows")
+    parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
+    parser.add_argument("--no-create", dest='create', action='store_false')
+    parser.add_argument("--no-delete", dest='delete', action='store_false')
     parser.add_argument("--duration", dest='duration', required=False,
                         type=int, default="60", help="Duration of run in seconds.")
     parser.set_defaults(create=True)

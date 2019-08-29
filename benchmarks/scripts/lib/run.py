@@ -31,10 +31,16 @@ def run_droplet(droplet, log_dir, timeout=None):
     ssh_command(ip, "~/run.sh &> logs", timeout=timeout, verbose=True)
 
     out_file_path = os.path.join(log_dir, f"{name}.log")
+    util_file_path = os.path.join(log_dir, f"util_{name}.log")
     output = ssh_command(ip, "cat logs >> all_logs && cat logs")
     with open(out_file_path, "w") as out_file:
         print(output)
         out_file.write(output)
+
+    util_output = ssh_command(ip, "cat util.log")
+    with open(util_file_path, "w") as out_file:
+        print(util_output)
+        out_file.write(util_output)
 
 
 def run(num_nodes, num_events, duration, windows, agg_functions,
@@ -113,9 +119,6 @@ def run(num_nodes, num_events, duration, windows, agg_functions,
 
     for thread in threads:
         thread.join()
-        # thread.join(timeout=5)
-        # if thread.is_alive():
-        #     print(f"Could not join thread {thread.name}.")
 
     print("Joined all run threads.")
 

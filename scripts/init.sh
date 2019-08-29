@@ -4,7 +4,7 @@
 # bash -c "$(curl -sL https://raw.githubusercontent.com/lawben/distributed-scotty/master/scripts/init.sh)"
 
 sudo apt update
-sudo apt install -y git openjdk-11-jdk
+sudo apt install -y git htop sysstat openjdk-11-jdk
 
 cd ~
 git clone https://github.com/lawben/distributed-scotty.git
