@@ -5,6 +5,7 @@ import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.Event;
 import com.github.lawben.disco.WindowResult;
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
+import com.github.lawben.disco.aggregation.PartialAverage;
 import com.github.lawben.disco.aggregation.functions.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.BaseWindowAggregate;
@@ -139,7 +140,9 @@ public class AggregateMerger {
         switch (aggregateType) {
             case DistributedUtils.DISTRIBUTIVE_STRING:
                 assert hasDistributiveAggFns;
-                Long partialAggregate = Long.valueOf(rawPreAggregate);
+                Long partialAggregate = (rawPreAggregate == null || rawPreAggregate.equals("null"))
+                        ? null
+                        : Long.valueOf(rawPreAggregate);
                 this.distributiveWindowMerger.processPreAggregate(partialAggregate, functionWindowId);
                 return this.distributiveWindowMerger;
             case DistributedUtils.ALGEBRAIC_STRING:

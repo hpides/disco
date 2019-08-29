@@ -38,6 +38,9 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
 
     @Override
     public PartialAverage fromString(String s) {
+        if (s == null || s.equals("null")) {
+            return new PartialAverage(null, 0);
+        }
         String[] parts = s.split(",");
         if (parts.length != 2) {
             throw new IllegalArgumentException("PartialAverage needs exactly 2 values. Got " + parts.length + " values.");

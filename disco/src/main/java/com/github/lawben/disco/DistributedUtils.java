@@ -43,7 +43,7 @@ public class DistributedUtils {
     public static final String ALGEBRAIC_STRING = "ALG";
     public static final String HOLISTIC_STRING = "HOL";
 
-    public static final long MAX_LATENESS = 100L;
+    public static final long MAX_LATENESS = 10L;
 
     public static final String EVENT_STRING = "E";
     public static final String CONTROL_STRING = "C";
