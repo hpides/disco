@@ -32,8 +32,12 @@ public class ResultListener implements Runnable {
                 final FunctionWindowAggregateId functionWindowAggId =
                         DistributedUtils.stringToFunctionWindowAggId(rawAggIdOrStreamEnd);
 
-                final Long finalAggregate = Long.valueOf(rawAggregatedResult);
+                 if (rawAggregatedResult == null || rawAggregatedResult.equals("null")) {
+                     System.out.println("Null latency: " + functionWindowAggId);
+                     continue;
+                 }
 
+                final Long finalAggregate = Long.valueOf(rawAggregatedResult);
                 final long currentTime = System.currentTimeMillis();
 //                final long windowEnd = functionWindowAggId.getWindowId().getWindowEndTimestamp();
                 final long windowEnd = finalAggregate;

@@ -255,7 +255,7 @@ public class DistributedUtils {
 
     public static List<DistributedSlice> slicesFromString(String slicesString) {
         List<DistributedSlice> slices = new ArrayList<>();
-        if (slicesString.isEmpty()) {
+        if (slicesString == null || slicesString.isEmpty() || slicesString.equals("null")) {
             return slices;
         }
 
