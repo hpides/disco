@@ -108,7 +108,7 @@ public class SustainableThroughputRunner {
                 warmedUp = true;
                 final long emptyStart = System.currentTimeMillis();
                 eventQueue.clear();
-                System.out.println("Clearing took " + (System.currentTimeMillis() - emptyStart) + " ms.");
+                System.out.println("Clearing took " + (System.currentTimeMillis() - emptyStart) + " ms.q");
                 queueSize = 0;
             }
 
@@ -125,7 +125,7 @@ public class SustainableThroughputRunner {
             final long increaseSinceLastChunk = currentQueueSize - queueSize;
             queueSize = currentQueueSize;
             System.out.println("Current queue size: " + queueSize);
-            if (queueSize > (2 * eventsPerSec) && increaseSinceLastChunk > 0) {
+            if (warmedUp && queueSize > (2 * eventsPerSec) && increaseSinceLastChunk > 0) {
                 // Queue is growing in size
                 if (++currentIncreaseStreak == MAX_INCREASE_STREAK) {
                     generator.interrupt();
