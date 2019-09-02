@@ -44,9 +44,6 @@ function creat_droplet {
     fi
 
     local instance="s-2vcpu-2gb"
-#    if [[ $DROPLET_NAME == *stream* ]]; then
-#        instance="s-2vcpu-2gb"
-#    fi
 
     doctl compute droplet create ${DROPLET_NAME} --image ubuntu-18-04-x64 \
                                       --size "$instance" \

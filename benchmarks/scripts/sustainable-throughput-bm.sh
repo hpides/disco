@@ -75,7 +75,7 @@ single_run 2 2 --no-delete
 
 echo "Adding third and fourth stream"
 $STREAM_ADD_SCRIPT "child-1" "3"
-$STREAM_ADD_SCRIPT "child-2" "4"
+#$STREAM_ADD_SCRIPT "child-2" "4"
 
 # Run 2 children, 4 streams
 echo "Running 2 children, 4 streams"
