@@ -18,7 +18,8 @@ import org.zeromq.ZMQ;
  */
 public class SustainableThroughputEventGenerator {
     private static final int NUM_CHUNKS = 1000;
-    private static final int QUEUE_BUFFER_FACTOR = 20;
+    // Worst case, buffer first 30 seconds.
+    private static final int QUEUE_BUFFER_FACTOR = 30;
     private static final int MILLIS_IN_SECOND = 1000;
 
     private final int streamId;

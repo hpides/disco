@@ -20,7 +20,7 @@ public class SustainableThroughputRunner {
     private static final int SEND_CHUNK_SIZE = 1000;
     private static final long SEND_PERIOD_DURATION_MS = 500;
     private static final long MAX_INCREASE_STREAK = 10;
-    private static final long WARM_UP_TIME_MS = 15_000;
+    private static final long WARM_UP_PART = 4;
 
     public static void main(String[] args) throws Exception {
         if (args.length != 4) {
@@ -57,10 +57,11 @@ public class SustainableThroughputRunner {
         Thread.sleep(1000);
 
         // Time
+        final long warmUpTime = totalDuration / WARM_UP_PART;
         final long startTime = System.currentTimeMillis();
         final long totalDurationInMillis = 1000 * totalDuration;
         final long endTime = startTime + totalDurationInMillis;
-        final long warmUpEndTime = startTime + WARM_UP_TIME_MS;
+        final long warmUpEndTime = startTime + warmUpTime;
 
         // Generator
         final Function<Long, Long> onesGenerator = (eventTimestamp) -> 1L;
@@ -108,7 +109,7 @@ public class SustainableThroughputRunner {
                 warmedUp = true;
                 final long emptyStart = System.currentTimeMillis();
                 eventQueue.clear();
-                System.out.println("Clearing took " + (System.currentTimeMillis() - emptyStart) + " ms.q");
+                System.out.println("Clearing took " + (System.currentTimeMillis() - emptyStart) + " ms.");
                 queueSize = 0;
             }
 
