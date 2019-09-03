@@ -57,9 +57,9 @@ public class SustainableThroughputRunner {
         Thread.sleep(1000);
 
         // Time
-        final long warmUpTime = totalDuration / WARM_UP_PART;
         final long startTime = System.currentTimeMillis();
         final long totalDurationInMillis = 1000 * totalDuration;
+        final long warmUpTime = totalDurationInMillis / WARM_UP_PART;
         final long endTime = startTime + totalDurationInMillis;
         final long warmUpEndTime = startTime + warmUpTime;
 
