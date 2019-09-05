@@ -1,12 +1,11 @@
 import argparse
-import os
 import random
 import string
 import sys
 from datetime import datetime
 from threading import Thread
 
-from .common import *
+from lib.common import *
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", ".."))
@@ -63,7 +62,8 @@ def run(num_nodes, num_events, duration, windows, agg_functions,
 
     all_droplets = get_droplets()
     if len(all_droplets) != num_nodes:
-        print("Did not get enough IPs while waiting.")
+        print(f"Did not get enough IPs while waiting. "
+              f"Got: {len(all_droplets)}, expected: {num_nodes}.")
         sys.exit(1)
 
     all_ips = [get_ip_of_droplet(droplet) for droplet in all_droplets]

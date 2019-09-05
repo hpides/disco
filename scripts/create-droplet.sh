@@ -15,21 +15,12 @@ ROOT_CONTROL_PORT=4055
 ROOT_WINDOW_PORT=4056
 
 function create_init_script {
-    local CLASS_NAME="$1"
-    local FILE_NAME=`mktemp`
+    local CLASS_NAME=${1}
     local JAVA_ARGS=${@:2}
+    local FILE_NAME=`mktemp`
     cat "$INIT_SCRIPT_FILE" > ${FILE_NAME}
-    echo -e "\n" >> ${FILE_NAME}
-    echo "echo \"pkill -9 java\" >> ~/run.sh"  >> ${FILE_NAME}
-    echo "echo \"sleep 3\" >> ~/run.sh"  >> ${FILE_NAME}
-    echo "echo \"sar -u 1 60 > util.log &\" >> ~/run.sh"  >> ${FILE_NAME}
-    echo "echo \"echo -e \\\"\nNEW RUN\n=======\\\"\" >> ~/run.sh"  >> ${FILE_NAME}
-    echo "echo \"source benchmark_env\" >> ~/run.sh" >> ${FILE_NAME}
-    echo "echo \"echo BENCHMARK ARGS: \\\$BENCHMARK_ARGS \" >> ~/run.sh" >> ${FILE_NAME}
-    echo "echo \"echo \\\$\\\$ > /tmp/RUN_PID\" >> ~/run.sh" >> ${FILE_NAME}
     echo "echo \"java -cp \\\$CLASSPATH com.github.lawben.disco.executables.$CLASS_NAME ${JAVA_ARGS}" \
                   "\\\$BENCHMARK_ARGS\" >> ~/run.sh" >> ${FILE_NAME}
-    echo "chmod +x ~/run.sh" >> ${FILE_NAME}
     echo ${FILE_NAME}
 }
 

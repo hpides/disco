@@ -12,6 +12,7 @@ source $CREATE_SCRIPT_FILE
 echo "Creating child node"
 echo "==================="
 
+wait_for_ips 1 "$ROOT_TAG"
 ROOT_IP=$(get_ips "$ROOT_TAG")
 create_child "$ROOT_IP" "$CHILD_ID"
 echo

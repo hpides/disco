@@ -1,21 +1,19 @@
-import sys
-from argparse import ArgumentParser
-import subprocess
 import os
 import re
+import shutil
+import subprocess
+from argparse import ArgumentParser
+from datetime import datetime
 from multiprocessing import Process, Pipe
 
 from lib.run import run as run_all_main
-from datetime import datetime
-import shutil
+from lib.common import wait_for_setup, logs_are_unsustainable
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPTS_PATH = os.path.join(THIS_FILE_DIR, "..", "..", "scripts")
 LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "benchmark-runs"))
 CREATE_DROPLETS_SCRIPT = os.path.join(SCRIPTS_PATH, "create-droplets.sh")
-READY_CHECK_SCRIPT = os.path.join(SCRIPTS_PATH, "ready-check.sh")
-ADD_HOSTS_SCRIPT = os.path.join(SCRIPTS_PATH, "add-hosts.sh")
 
 RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
 STREAM_LOG_PREFIX = "stream"
@@ -26,55 +24,6 @@ QUEUE_SIZE_RE = re.compile(r"Current queue size: (\d+)")
 SUSTAINABLE_THRESHOLD = 10_000
 
 RUN_LOGS = []
-
-
-def is_error_in_generator(log_directory):
-    num_streams = 0
-    num_stream_with_error = 0
-    num_streams_at_min_queue = 0
-
-    RUN_LOGS.append(log_directory)
-    for log_file in os.listdir(log_directory):
-        log_file_path = os.path.join(log_directory, log_file)
-        with open(log_file_path) as f:
-            log_contents = f.read()
-
-            if log_file.startswith("main"):
-                continue
-
-            if not log_file.startswith(STREAM_LOG_PREFIX):
-                # Not a stream file, error here is bad
-                if GENERIC_ERROR_MSG in log_contents:
-                    print(f" '--> Error in file {log_file_path}. Retry.")
-                    return None
-                continue
-
-            num_streams += 1
-            if GENERIC_ERROR_MSG in log_contents:
-                # Found an error while generating
-                if NODE_REGISTRATION_FAIL in log_contents:
-                    raise RuntimeError(NODE_REGISTRATION_FAIL)
-                num_stream_with_error += 1
-            else:
-                queue_size_matches = QUEUE_SIZE_RE.findall(log_contents)
-                if not queue_size_matches:
-                    raise RuntimeError("Bad log file. No queue sizes.")
-                queue_size = int(queue_size_matches[-1][0])
-                if queue_size < 10_000:
-                    num_streams_at_min_queue += 1
-
-    # print(f"Scanned {num_streams} streams. {num_stream_with_error} with an error, "
-    #       f"{num_streams_at_min_queue} at min queue.")
-    if num_stream_with_error == num_streams or num_stream_with_error > 2:
-        # Multiple streams are bad
-        return True
-
-    if 0 < num_stream_with_error <= num_streams_at_min_queue:
-        # Rerun as result is not conclusive
-        return None
-
-    # Run was sustainable
-    return False
 
 
 def move_logs(num_children, num_streams):
@@ -113,14 +62,16 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams,
         raise
 
     log_directory = process_recv_pipe.recv()
-    return is_error_in_generator(log_directory)
+    if log_directory not in RUN_LOGS:
+        RUN_LOGS.append(log_directory)
+    return logs_are_unsustainable(log_directory)
 
 
 def sustainability_run(num_events_per_second, num_children, num_streams,
                        windows, agg_functions, run_duration, delete=False):
     is_unsustainable = None
     tries = 0
-    while is_unsustainable is None and tries < 5:
+    while is_unsustainable is None and tries < 3:
         is_unsustainable = single_sustainability_run(num_events_per_second,
                                                      num_children, num_streams,
                                                      windows, agg_functions,
@@ -155,14 +106,7 @@ def find_sustainable_throughput(args):
         print("Using existing node setup.")
 
     # Wait for nodes to set up. Otherwise the time out of the runs will kill the setup.
-    print("Waiting for node setup to complete...")
-    print("Adding IPs to known_hosts...")
-    add_hosts_command = (ADD_HOSTS_SCRIPT, f"{num_nodes}")
-    subprocess.run(add_hosts_command, check=True, capture_output=True)
-
-    print("Checking setup status...")
-    ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
-    subprocess.run(ready_check_command, check=True)
+    wait_for_setup(num_nodes)
 
     total_max_events = 2_000_000
     expected_max_events_per_stream = 1_000_000
@@ -231,7 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("--no-create", dest='create', action='store_false')
     parser.add_argument("--no-delete", dest='delete', action='store_false')
     parser.add_argument("--duration", dest='duration', required=False,
-                        type=int, default="60", help="Duration of run in seconds.")
+                        type=int, default="120", help="Duration of run in seconds.")
     parser.set_defaults(create=True)
     parser.set_defaults(delete=True)
 

@@ -1,4 +1,7 @@
+import os
+import re
 import socket
+import subprocess
 import time
 
 import doctl
@@ -16,6 +19,16 @@ ROOT_CONTROL_PORT = 4055
 ROOT_WINDOW_PORT = 4056
 
 UTF8 = "utf-8"
+
+STREAM_LOG_PREFIX = "stream"
+GENERIC_ERROR_MSG = "Exception"
+NODE_REGISTRATION_FAIL = "Could not register at child node"
+QUEUE_SIZE_RE = re.compile(r"Current queue size: (\d+)")
+
+THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
+SCRIPTS_PATH = os.path.join(THIS_FILE_DIR, "..", "..", "..", "scripts")
+READY_CHECK_SCRIPT = os.path.join(SCRIPTS_PATH, "ready-check.sh")
+ADD_HOSTS_SCRIPT = os.path.join(SCRIPTS_PATH, "add-hosts.sh")
 
 
 def ssh_command(ip, command, timeout=None, verbose=False):
@@ -47,7 +60,10 @@ def _ssh_command(ip, command, timeout):
 
 
 def get_ip_of_droplet(droplet):
-    return droplet['networks']['v4'][0]['ip_address']
+    networks = droplet['networks']
+    if 'v4' not in networks:
+        return None
+    return networks['v4'][0]['ip_address']
 
 
 def get_droplets(tag_name=None):
@@ -75,7 +91,8 @@ def wait_for_ips(num_nodes, parent_tag=None):
 
     while num_ready_parents < num_nodes:
         difference = num_nodes - num_ready_parents
-        print(f"\rWaiting for {difference} more {parent_tag} node(s) to get an IP...", end="")
+        parent_tag_str = "" if parent_tag is None else f"'{parent_tag}'"
+        print(f"\rWaiting for {difference} more {parent_tag_str} node(s) to get an IP...", end="")
         time.sleep(3)
         ready_parents = get_ips(parent_tag)
         num_ready_parents = len(ready_parents)
@@ -98,8 +115,8 @@ def add_hosts(num_nodes=0):
 
         connected = False
         while not connected:
-            transport = paramiko.Transport(ip, SSH_PORT)
             try:
+                transport = paramiko.Transport(ip, SSH_PORT)
                 transport.connect()
             except paramiko.SSHException:
                 time.sleep(5)
@@ -173,3 +190,62 @@ def check_complete(timeout, ips):
     print()
     print("All applications terminated before the timeout.")
     return []
+
+
+def wait_for_setup(num_nodes):
+    print("Waiting for node setup to complete...")
+    print("Adding IPs to known_hosts...")
+    add_hosts_command = (ADD_HOSTS_SCRIPT, f"{num_nodes}")
+    subprocess.run(add_hosts_command, check=True, capture_output=True)
+
+    print("Checking setup status...")
+    ready_check_command = (READY_CHECK_SCRIPT, f"{num_nodes}")
+    subprocess.run(ready_check_command, check=True)
+
+
+def logs_are_unsustainable(log_directory):
+    num_streams = 0
+    num_stream_with_error = 0
+    num_streams_at_min_queue = 0
+
+    for log_file in os.listdir(log_directory):
+        log_file_path = os.path.join(log_directory, log_file)
+        with open(log_file_path) as f:
+            log_contents = f.read()
+
+            if log_file.startswith("main"):
+                continue
+
+            if not log_file.startswith(STREAM_LOG_PREFIX):
+                # Not a stream file, error here is bad
+                if GENERIC_ERROR_MSG in log_contents:
+                    print(f" '--> Error in file {log_file_path}. Retry.")
+                    return None
+                continue
+
+            num_streams += 1
+            if GENERIC_ERROR_MSG in log_contents:
+                # Found an error while generating
+                if NODE_REGISTRATION_FAIL in log_contents:
+                    raise RuntimeError(NODE_REGISTRATION_FAIL)
+                num_stream_with_error += 1
+            else:
+                queue_size_matches = QUEUE_SIZE_RE.findall(log_contents)
+                if not queue_size_matches:
+                    raise RuntimeError("Bad log file. No queue sizes.")
+                queue_size = int(queue_size_matches[-1][0])
+                if queue_size < 10_000:
+                    num_streams_at_min_queue += 1
+
+    # print(f"Scanned {num_streams} streams. {num_stream_with_error} with an error, "
+    #       f"{num_streams_at_min_queue} at min queue.")
+    if num_stream_with_error == num_streams or num_stream_with_error > 2:
+        # Multiple streams are bad
+        return True
+
+    if 0 < num_stream_with_error <= num_streams_at_min_queue:
+        # Rerun as result is not conclusive
+        return None
+
+    # Run was sustainable
+    return False
