@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 from threading import Thread
 
-from lib.common import *
+from .common import *
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", ".."))

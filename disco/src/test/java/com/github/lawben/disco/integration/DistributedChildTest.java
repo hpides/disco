@@ -506,6 +506,89 @@ public class DistributedChildTest {
     }
 
     @Test
+    void testMedianTumblingAndSessionTwoStreams() throws Exception {
+        int rootInitPort = Utils.findOpenPort();
+        rootRegisterResponder = new ZMQRespondMock(rootInitPort);
+        rootRegisterResponder.addMessage("100", "SLIDING,100,50,0\nSESSION,60,1", "MEDIAN");
+
+        int rootWindowPort = Utils.findOpenPort();
+        rootWindowReceiver = new ZMQPullMock(rootWindowPort);
+
+        runDefaultChild(rootInitPort, rootWindowPort, 2);
+        rootRegisterResponder.respondToNext();
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        registerStream(0);
+        registerStream(1);
+
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        String[] events0 = {
+                "0,10,1,0", "0,30,1,0", "0,50,1,0", "0,70,1,0", "0,90,1,0",  // window 1
+                "0,110,10,0", "0,115,20,0", "0,120,30,0", "0,190,40,0", "0,195,50,0",  // window 2
+        };
+
+        String[] events1 = {
+                "1,20,1,1", "1,40,1,1", "1,60,1,1", "1,80,1,1", "1,85,1,1",  // window 1
+                "1,185,10,1", "1,186,20,1", "1,187,30,1", "1,190,40,1", "1,195,50,1",  // window 2
+        };
+
+        sendSleepSortedEvents(50, streamSenders, events0, events1);
+        Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+
+        List<DistributedSlice> stream0Slices = Arrays.asList(
+                new DistributedSlice( 10,  30, 1, 1),
+                new DistributedSlice( 50,  90, 1, 1, 1),
+                new DistributedSlice(100, 120, 10, 20, 30),
+                new DistributedSlice(150, 195, 40, 50)
+        );
+
+        List<DistributedSlice> stream1Slices = Arrays.asList(
+                new DistributedSlice( 20,  40, 1, 1),
+                new DistributedSlice( 50,  85, 1, 1, 1),
+                new DistributedSlice(150, 195, 10, 20, 30, 40, 50)
+        );
+
+        List<ExpectedWindow> expectedWindows = Arrays.asList(
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0,   0, 100), 0, childId),
+                        new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(0), stream0Slices.get(1)), 0),
+                        new HolisticWindowAggregate(Arrays.asList(stream1Slices.get(0), stream1Slices.get(1)), 1)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(1,  20, 145), 0, childId),
+                        new HolisticWindowAggregate(Collections.emptyList(), 1)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(1,  10, 180), 0, childId),
+                        new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(2)), 0)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0,  50, 150), 0, childId),
+                        new HolisticWindowAggregate(Collections.emptyList(), 0),
+                        new HolisticWindowAggregate(Collections.emptyList(), 1)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 100, 200), 0, childId),
+                        new HolisticWindowAggregate(Arrays.asList(stream0Slices.get(3)), 0),
+                        new HolisticWindowAggregate(Arrays.asList(stream1Slices.get(2)), 1)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 150, 250), 0, childId),
+                        new HolisticWindowAggregate(Collections.emptyList(), 0),
+                        new HolisticWindowAggregate(Collections.emptyList(), 1)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(1, 185, 255), 0, childId),
+                        new HolisticWindowAggregate(Collections.emptyList(), 1)),
+
+                new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(1, 190, 255), 0, childId),
+                        new HolisticWindowAggregate(Collections.emptyList(), 0))
+        );
+
+        List<Matcher<? super List<String>>> windowMatchers = expectedWindows.stream()
+                .map(WindowMatcher::equalsWindow).collect(Collectors.toList());
+
+        List<List<String>> windowStrings = receiveWindows(windowMatchers.size(), rootWindowReceiver);
+        assertThat(windowStrings, containsInAnyOrder(windowMatchers));
+
+        assertChildEnd();
+    }
+
+    @Test
     void testTwoStreamsSumAvgMedianAggregatesTwice() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);

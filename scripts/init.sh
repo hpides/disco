@@ -1,32 +1,39 @@
 #!/usr/bin/env bash
 
 # Use this by calling:
-# bash -c "$(curl -sL https://raw.githubusercontent.com/lawben/distributed-scotty/master/scripts/init.sh)"
+# bash -c "$(curl -sL https://raw.githubusercontent.com/lawben/distributed-scotty/benchmark/scripts/init.sh)"
 
-sudo apt update
-sudo apt install -y git htop sysstat openjdk-11-jdk ntp
+BASE_DIR="~/benson"
+BM_ENV_FILE="$BASE_DIR/benchmark_env"
+BM_RUN_FILE="$BASE_DIR/run.sh"
 
-cd ~
-git clone https://github.com/lawben/distributed-scotty.git
+mkdir -p "$BASE_DIR"
+cd "$BASE_DIR"
+
+if [ ! -d distributed-scotty ]; then
+  git clone https://github.com/lawben/distributed-scotty.git
+fi
+
 cd distributed-scotty
 
 # TODO: change this when needed
 git checkout benchmark
 
-./gradlew build > ~/gradle-build-output.txt
+GRADLE_FILE="$BASE_DIR/gradle-build-output.txt"
+./gradlew build > "$GRADLE_FILE"
 
-CLASSPATH=$(cat ~/gradle-build-output.txt | grep "^CLASSPATH: " | tail -n 1 | cut -c12-)
+CLASSPATH=$(cat "$GRADLE_FILE" | grep "^CLASSPATH: " | tail -n 1 | cut -c12-)
 export CLASSPATH=${CLASSPATH}
-echo "export CLASSPATH=$CLASSPATH" >> ~/benchmark_env
+echo "export CLASSPATH=$CLASSPATH" > "$BM_ENV_FILE"
 
-service ntp reload
+# Clear run script
+> "$BM_RUN_FILE"
+chmod +x "$BM_RUN_FILE"
 
-echo "pkill -9 java" >> ~/run.sh
-echo "sleep 3" >> ~/run.sh
-echo "sar -u 1 120 > util.log &" >> ~/run.sh
-echo "echo -e \"\nNEW RUN\n=======\"" >> ~/run.sh
-echo "source benchmark_env" >> ~/run.sh
-echo "echo BENCHMARK ARGS: \$BENCHMARK_ARGS" >> ~/run.sh
-echo "echo \$\$ > /tmp/RUN_PID" >> ~/run.sh
-
-chmod +x ~/run.sh
+echo "kill -9 \$(cat /tmp/RUN_PID 2> /dev/null) &> dev/null" >> "$BM_RUN_FILE"
+echo "sleep 2" >> "$BM_RUN_FILE"
+echo "sar -u 1 120 > "$BASE_DIR/cpu-util.log" &" >> "$BM_RUN_FILE"
+echo "echo -e \"\nNEW RUN\n=======\"" >> "$BM_RUN_FILE"
+echo "source benchmark_env" >> "$BM_RUN_FILE"
+echo "echo BENCHMARK ARGS: \$BENCHMARK_ARGS" >> "$BM_RUN_FILE"
+echo "echo \$\$ > /tmp/RUN_PID" >> "$BM_RUN_FILE"
