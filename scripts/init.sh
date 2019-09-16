@@ -3,7 +3,7 @@
 # Use this by calling:
 # bash -c "$(curl -sL https://raw.githubusercontent.com/lawben/distributed-scotty/benchmark/scripts/init.sh)"
 
-BASE_DIR="~/benson"
+BASE_DIR="/home/hadoop/benson"
 BM_ENV_FILE="$BASE_DIR/benchmark_env"
 BM_RUN_FILE="$BASE_DIR/run.sh"
 
