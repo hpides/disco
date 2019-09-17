@@ -39,24 +39,23 @@ def upload_benchmark_params(host, *args):
 
 
 def upload_root_params(num_children, windows, agg_fns):
-    fixed_args = ["DistributedRootMain", ROOT_CONTROL_PORT,
-                  ROOT_WINDOW_PORT, "/tmp/disco-results"]
-    all_args = fixed_args + [num_children, windows, agg_fns]
-    upload_benchmark_params(ROOT_HOST, all_args)
+    fixed_args = ("DistributedRootMain", ROOT_CONTROL_PORT,
+                  ROOT_WINDOW_PORT, "/tmp/disco-results")
+    upload_benchmark_params(ROOT_HOST, *fixed_args, num_children,
+                            windows, agg_fns)
 
 
 def upload_child_params(child_host, child_id, num_streams):
-    fixed_args = ["DistributedChildMain", ROOT_HOST, ROOT_CONTROL_PORT,
-                  ROOT_WINDOW_PORT, CHILD_PORT]
-    all_args = fixed_args + [child_id, num_streams]
-    upload_benchmark_params(child_host, all_args)
+    fixed_args = ("DistributedChildMain", ROOT_HOST, ROOT_CONTROL_PORT,
+                  ROOT_WINDOW_PORT, CHILD_PORT)
+    upload_benchmark_params(child_host, *fixed_args, child_id, num_streams)
 
 
 def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration):
     parent_addr = f"{parent_host}:{CHILD_PORT}"
-    fixed_args = ["SustainableThroughputRunner"]
-    all_args = fixed_args + [stream_id, parent_addr, num_events, duration]
-    upload_benchmark_params(stream_host, all_args)
+    fixed_args = ("SustainableThroughputRunner",)
+    upload_benchmark_params(stream_host, *fixed_args, stream_id,
+                            parent_addr, num_events, duration)
 
 
 def run_host(host, name, log_dir, timeout=None):
