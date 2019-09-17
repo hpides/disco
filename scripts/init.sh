@@ -19,12 +19,12 @@ cd distributed-scotty
 # TODO: change this when needed
 git checkout benchmark
 
-GRADLE_FILE="$BASE_DIR/gradle-build-output.txt"
-./gradlew build > "$GRADLE_FILE"
-
-CLASSPATH=$(cat "$GRADLE_FILE" | grep "^CLASSPATH: " | tail -n 1 | cut -c12-)
-export CLASSPATH=${CLASSPATH}
-echo "export CLASSPATH=$CLASSPATH" > "$BM_ENV_FILE"
+#GRADLE_FILE="$BASE_DIR/gradle-build-output.txt"
+#./gradlew build > "$GRADLE_FILE"
+#
+#CLASSPATH=$(cat "$GRADLE_FILE" | grep "^CLASSPATH: " | tail -n 1 | cut -c12-)
+#export CLASSPATH=${CLASSPATH}
+#echo "export CLASSPATH=$CLASSPATH" > "$BM_ENV_FILE"
 
 # Clear run script
 > "$BM_RUN_FILE"
