@@ -10,13 +10,13 @@ from common import *
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", "..", ".."))
 
-ROOT_HOST = "cloud-12"
-# cloud-23 is dead, cloud-30 is partially broken
+ROOT_HOST = "cloud-13"
+
+# Bad hosts: 12, 14, 16, 23, 30
 ALL_HOSTS = [
-    'cloud-13', 'cloud-14', 'cloud-15', 'cloud-16', 'cloud-17',
-    'cloud-18', 'cloud-19', 'cloud-20', 'cloud-21', 'cloud-22',
-                'cloud-24', 'cloud-25', 'cloud-26', 'cloud-27',
-    'cloud-28', 'cloud-29',             'cloud-31', 'cloud-32',
+    'cloud-15', 'cloud-17', 'cloud-18', 'cloud-19', 'cloud-20',
+    'cloud-21', 'cloud-22', 'cloud-24', 'cloud-25', 'cloud-26',
+    'cloud-27', 'cloud-28', 'cloud-29', 'cloud-31', 'cloud-32',
     'cloud-33', 'cloud-34', 'cloud-35', 'cloud-36', 'cloud-37'
 ]
 
@@ -70,7 +70,7 @@ def run_host(host, name, log_dir, timeout=None):
         print(output)
         out_file.write(output)
 
-    util_output = ssh_command(host, "cat util.log")
+    util_output = ssh_command(host, f"cat {SSH_BASE_DIR}/cpu-util.log")
     with open(util_file_path, "w") as out_file:
         print(util_output)
         out_file.write(util_output)
@@ -113,14 +113,13 @@ def run(num_children, num_streams, num_events, duration, windows,
     for stream_id, stream_host in enumerate(stream_hosts):
         parent_host = child_hosts[stream_id % num_children]
         upload_stream_params(stream_host, stream_id, parent_host, num_events, duration)
-        named_hosts.append((stream_host, f"streams-{stream_id}"))
+        named_hosts.append((stream_host, f"stream-{stream_id}"))
 
     print("Starting `run.sh` on all nodes.\n")
     max_run_duration = duration + 30
     threads = []
 
     for host, name in named_hosts:
-        name = "root"
         thread = Thread(target=run_host,
                         args=(host, name, log_dir, max_run_duration),
                         name=f"thread-{name}")
