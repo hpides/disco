@@ -48,7 +48,7 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams,
     run_process = Process(target=run_all_main,
                           args=(num_children, num_streams,
                                 num_events_per_second, run_duration, windows,
-                                agg_functions, delete, short, process_send_pipe),
+                                agg_functions, process_send_pipe),
                           name=f"process-run-{num_nodes}-{num_events_per_second}")
     run_process.start()
 
