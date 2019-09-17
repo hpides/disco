@@ -31,7 +31,7 @@ git checkout benchmark
 chmod +x "$BM_RUN_FILE"
 
 echo "cd $BASE_DIR" >> "$BM_RUN_FILE"
-echo "kill -9 \$(cat /tmp/RUN_PID 2> /dev/null) &> dev/null" >> "$BM_RUN_FILE"
+echo "kill -9 \$(cat /tmp/RUN_PID 2> /dev/null) &> /dev/null" >> "$BM_RUN_FILE"
 echo "sleep 2" >> "$BM_RUN_FILE"
 echo "sar -u 1 120 > "$BASE_DIR/cpu-util.log" &" >> "$BM_RUN_FILE"
 echo "echo -e \"\nNEW RUN\n=======\"" >> "$BM_RUN_FILE"

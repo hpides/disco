@@ -8,7 +8,7 @@ from threading import Thread
 from common import *
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
-BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", ".."))
+BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", "..", ".."))
 
 ROOT_HOST = "cloud-12"
 # cloud-23 is dead, cloud-30 is partially broken
@@ -99,7 +99,7 @@ def run(num_children, num_streams, num_events, duration, windows,
     print("Uploading benchmark arguments on all nodes...")
     child_hosts = all_hosts[1:num_children + 1]
     assert len(child_hosts) == num_children
-    stream_hosts = all_hosts[num_children + 2:]
+    stream_hosts = all_hosts[num_children + 1:]
     assert len(stream_hosts) == num_streams
 
     named_hosts = []
