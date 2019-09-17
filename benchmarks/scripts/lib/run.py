@@ -5,10 +5,24 @@ import sys
 from datetime import datetime
 from threading import Thread
 
-from .common import *
+from common import *
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", ".."))
+
+ROOT_HOST = "cloud-12"
+# cloud-23 is dead, cloud-30 is partially broken
+ALL_HOSTS = [
+    'cloud-13', 'cloud-14', 'cloud-15', 'cloud-16', 'cloud-17',
+    'cloud-18', 'cloud-19', 'cloud-20', 'cloud-21', 'cloud-22',
+                'cloud-24', 'cloud-25', 'cloud-26', 'cloud-27',
+    'cloud-28', 'cloud-29',             'cloud-31', 'cloud-32',
+    'cloud-33', 'cloud-34', 'cloud-35', 'cloud-36', 'cloud-37'
+]
+
+
+def get_hosts_for_run(num_nodes):
+    return ALL_HOSTS[:num_nodes]
 
 
 def get_log_dir(num_nodes, num_events, duration):
@@ -18,32 +32,54 @@ def get_log_dir(num_nodes, num_events, duration):
            f"nodes_{num_events}-events_{duration}-seconds"
 
 
-def upload_benchmark_params(ip, *args):
+def upload_benchmark_params(host, *args):
     string_args = [str(arg) for arg in args]
     args_str = " ".join(string_args)
-    ssh_command(ip, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> ~/benchmark_env')
+    ssh_command(host, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> ~/benchmark_env')
 
 
-def run_droplet(droplet, log_dir, timeout=None):
-    ip = get_ip_of_droplet(droplet)
-    name = droplet['name']
-    ssh_command(ip, "~/run.sh &> logs", timeout=timeout, verbose=True)
+def upload_root_params(num_children, windows, agg_fns):
+    fixed_args = ["DistributedRootMain", ROOT_CONTROL_PORT,
+                  ROOT_WINDOW_PORT, "/tmp/disco-results"]
+    all_args = fixed_args + [num_children, windows, agg_fns]
+    upload_benchmark_params(ROOT_HOST, all_args)
+
+
+def upload_child_params(child_host, child_id, num_streams):
+    fixed_args = ["DistributedChildMain", ROOT_HOST, ROOT_CONTROL_PORT,
+                  ROOT_WINDOW_PORT, CHILD_PORT]
+    all_args = fixed_args + [child_id, num_streams]
+    upload_benchmark_params(child_host, all_args)
+
+
+def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration):
+    parent_addr = f"{parent_host}:{CHILD_PORT}"
+    fixed_args = ["SustainableThroughputRunner"]
+    all_args = fixed_args + [stream_id, parent_addr, num_events, duration]
+    upload_benchmark_params(stream_host, all_args)
+
+
+def run_host(host, name, log_dir, timeout=None):
+    ssh_command(host, f"{SSH_BASE_DIR}/run.sh &> {SSH_BASE_DIR}/logs",
+                timeout=timeout, verbose=True)
 
     out_file_path = os.path.join(log_dir, f"{name}.log")
     util_file_path = os.path.join(log_dir, f"util_{name}.log")
-    output = ssh_command(ip, "cat logs >> all_logs && cat logs")
+    output = ssh_command(host, f"cat {SSH_BASE_DIR}/logs >> {SSH_BASE_DIR}/all_logs"
+                               f" && cat {SSH_BASE_DIR}/logs")
     with open(out_file_path, "w") as out_file:
         print(output)
         out_file.write(output)
 
-    util_output = ssh_command(ip, "cat util.log")
+    util_output = ssh_command(host, "cat util.log")
     with open(util_file_path, "w") as out_file:
         print(util_output)
         out_file.write(util_output)
 
 
-def run(num_nodes, num_events, duration, windows, agg_functions,
-        delete, short, process_log_dir_pipe=None):
+def run(num_children, num_streams, num_events, duration, windows,
+        agg_functions, process_log_dir_pipe=None):
+    num_nodes = num_children + num_streams + 1
     log_dir = get_log_dir(num_nodes, num_events, duration)
 
     try:
@@ -57,57 +93,47 @@ def run(num_nodes, num_events, duration, windows, agg_functions,
 
     print(f"Writing logs to {log_dir}\n")
 
-    print("Getting IPs...")
-    wait_for_ips(num_nodes)
+    all_hosts = [ROOT_HOST] + get_hosts_for_run(num_children + num_streams)
+    print(f"All hosts ({len(all_hosts)}): {' '.join(all_hosts)}")
 
-    all_droplets = get_droplets()
-    if len(all_droplets) != num_nodes:
-        print(f"Did not get enough IPs while waiting. "
-              f"Got: {len(all_droplets)}, expected: {num_nodes}.")
-        sys.exit(1)
+    print("Uploading benchmark arguments on all nodes...")
+    child_hosts = all_hosts[1:num_children + 1]
+    assert len(child_hosts) == num_children
+    stream_hosts = all_hosts[num_children + 2:]
+    assert len(stream_hosts) == num_streams
 
-    all_ips = [get_ip_of_droplet(droplet) for droplet in all_droplets]
-    print(f"All IPs ({len(all_ips)}): {' '.join(all_ips)}")
-
-    if not short:
-        add_hosts(num_nodes)
-        ready_check(num_nodes)
-
-    print("Setup done. Uploading benchmark arguments on all nodes...")
-    child_ips = get_ips(CHILD_TAG)
-    num_children = len(child_ips)
-
-    stream_ips = get_ips(STREAM_TAG)
-    num_streams = len(stream_ips)
-
-    root_ip = get_ips(ROOT_TAG)[0]
-    upload_benchmark_params(root_ip, num_children, windows, agg_functions)
+    named_hosts = []
+    upload_root_params(num_children, windows, agg_functions)
+    named_hosts.append((ROOT_HOST, "root"))
 
     num_streams_per_child = num_streams // num_children
-    for child_ip in child_ips:
-        upload_benchmark_params(child_ip, num_streams_per_child)
+    for child_id, child_host in enumerate(child_hosts):
+        upload_child_params(child_host, child_id, num_streams_per_child)
+        named_hosts.append((child_host, f"child-{child_id}"))
 
-    for stream_ip in stream_ips:
-        upload_benchmark_params(stream_ip, num_events, duration)
+    for stream_id, stream_host in enumerate(stream_hosts):
+        parent_host = child_hosts[stream_id % num_children]
+        upload_stream_params(stream_host, stream_id, parent_host, num_events, duration)
+        named_hosts.append((stream_host, f"streams-{stream_id}"))
 
     print("Starting `run.sh` on all nodes.\n")
     max_run_duration = duration + 30
     threads = []
-    for droplet in all_droplets:
-        droplet_name = droplet['name']
 
-        thread = Thread(target=run_droplet,
-                        args=(droplet, log_dir, max_run_duration),
-                        name=f"thread-{droplet_name}")
+    for host, name in named_hosts:
+        name = "root"
+        thread = Thread(target=run_host,
+                        args=(host, name, log_dir, max_run_duration),
+                        name=f"thread-{name}")
         thread.start()
         threads.append(thread)
 
     print("To view root logs:")
     print(f"tail -F {os.path.join(log_dir, 'root.log')}\n")
 
-    uncompleted_ips = check_complete(max_run_duration, all_ips)
+    uncompleted_ips = check_complete(max_run_duration, all_hosts)
     if uncompleted_ips:
-        kill_command = "pkill -9 java &> /dev/null"
+        kill_command = "kill -9 $(cat /tmp/RUN_PID 2> /dev/null) &> dev/null"
         print("Ending script by killing all PIDs...")
         for ip in uncompleted_ips:
             ssh_command(ip, kill_command)
@@ -122,11 +148,6 @@ def run(num_nodes, num_events, duration, windows, agg_functions,
 
     print("Joined all run threads.")
 
-    if delete:
-        print("Deleting droplets...")
-        for droplet in all_droplets:
-            doctl.compute.droplet.delete(str(droplet['id']))
-
     if process_log_dir_pipe is not None:
         process_log_dir_pipe.send(log_dir)
 
@@ -135,17 +156,13 @@ def run(num_nodes, num_events, duration, windows, agg_functions,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-nodes", type=int, required=True, dest="num_nodes")
+    parser.add_argument("--num-children", type=int, required=True, dest="num_children")
+    parser.add_argument("--num-streams", type=int, required=True, dest="num_streams")
     parser.add_argument("--num-events", type=int, required=True, dest="num_events")
     parser.add_argument("--duration", type=int, required=True, dest="duration")
     parser.add_argument("--windows", type=str, required=True, dest="windows")
     parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
 
-    parser.add_argument("--delete", dest='delete', action='store_true')
-    parser.add_argument("--short", dest='short', action='store_true')
-    parser.set_defaults(delete=False)
-    parser.set_defaults(short=False)
-
     args = parser.parse_args()
-    run(args.num_nodes, args.num_events, args.duration, args.windows,
-        args.agg_functions, args.delete, args.short)
+    run(args.num_children, args.num_streams, args.num_events,
+        args.duration, args.windows, args.agg_functions)

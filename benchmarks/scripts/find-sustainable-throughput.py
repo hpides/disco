@@ -6,8 +6,8 @@ from argparse import ArgumentParser
 from datetime import datetime
 from multiprocessing import Process, Pipe
 
-from lib.run import run as run_all_main
-from lib.common import wait_for_setup, logs_are_unsustainable
+from run import run as run_all_main
+from common import wait_for_setup, logs_are_unsustainable
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -172,12 +172,8 @@ if __name__ == "__main__":
                         type=int, help="Number of stream per child.")
     parser.add_argument("--windows", type=str, required=True, dest="windows")
     parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
-    parser.add_argument("--no-create", dest='create', action='store_false')
-    parser.add_argument("--no-delete", dest='delete', action='store_false')
     parser.add_argument("--duration", dest='duration', required=False,
                         type=int, default="120", help="Duration of run in seconds.")
-    parser.set_defaults(create=True)
-    parser.set_defaults(delete=True)
 
     parser_args = parser.parse_args()
     main(parser_args)

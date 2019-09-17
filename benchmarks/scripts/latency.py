@@ -1,9 +1,8 @@
-import os
 from argparse import ArgumentParser
 from multiprocessing import Process, Pipe
 
-from lib.common import wait_for_setup, logs_are_unsustainable
-from lib.run import run as run_all_main
+from common import wait_for_setup, logs_are_unsustainable
+from run import run as run_all_main
 
 
 def single_latency_run(num_nodes, num_events, duration, windows, agg_functions):
