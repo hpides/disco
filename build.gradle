@@ -5,4 +5,4 @@ plugins {
 group 'com.github.lawben'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 8
+sourceCompatibility = 11
