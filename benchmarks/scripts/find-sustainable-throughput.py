@@ -1,19 +1,16 @@
 import os
 import re
 import shutil
-import subprocess
 from argparse import ArgumentParser
 from datetime import datetime
 from multiprocessing import Process, Pipe
 
+from common import logs_are_unsustainable
 from run import run as run_all_main
-from common import wait_for_setup, logs_are_unsustainable
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
-SCRIPTS_PATH = os.path.join(THIS_FILE_DIR, "..", "..", "scripts")
-LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "benchmark-runs"))
-CREATE_DROPLETS_SCRIPT = os.path.join(SCRIPTS_PATH, "create-droplets.sh")
+LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "..", "benchmark-runs"))
 
 RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
 STREAM_LOG_PREFIX = "stream"
@@ -88,26 +85,8 @@ def sustainability_run(num_events_per_second, num_children, num_streams,
     return not is_unsustainable
 
 
-def find_sustainable_throughput(args):
-    num_children = args.num_children
-    num_streams = args.num_streams
-    should_create_nodes = args.create
-    duration = args.duration
-    windows = args.windows
-    agg_functions = args.agg_functions
-
-    num_nodes = 1 + num_children + num_streams
-
-    if should_create_nodes:
-        print("Creating nodes...")
-        create_command = (CREATE_DROPLETS_SCRIPT, f"{num_children}", f"{num_streams}")
-        subprocess.run(create_command, check=True, timeout=180)
-    else:
-        print("Using existing node setup.")
-
-    # Wait for nodes to set up. Otherwise the time out of the runs will kill the setup.
-    wait_for_setup(num_nodes)
-
+def find_sustainable_throughput(num_children, num_streams, windows,
+                                agg_functions, duration):
     total_max_events = 2_000_000
     expected_max_events_per_stream = 1_000_000
 
@@ -138,30 +117,14 @@ def find_sustainable_throughput(args):
     print(f"Found sustainable candidate ({min_events} events/s).")
 
 
-def main(args):
-    red = '\033[91m'
-    end_color = '\033[0m'
-    if not args.delete:
-        print(red + "RUNNING IN NO_DELETE MODE! MAKE SURE TO DELETE MANUALLY AFTER USE!" + end_color)
-
+def main(num_children, num_streams, windows, agg_fns, duration):
     try:
-        find_sustainable_throughput(parser_args)
+        find_sustainable_throughput(num_children, num_streams, windows,
+                                    agg_fns, duration)
     except Exception as e:
         print(f"Got exception: {e}")
-
-        if not args.delete:
-            return
-
-        print("Deleting droplets...")
-        droplet_id_process = subprocess.run(("doctl", "compute", "droplet", "list",
-                                             "--format=ID", "--no-header"),
-                                            capture_output=True)
-        droplet_id_process_output = str(droplet_id_process.stdout, UTF8)
-        droplet_ids = droplet_id_process_output.split("\n")
-        droplet_ids = [d_id for d_id in droplet_ids if len(d_id) == 9]
-        subprocess.run(("doctl", "compute", "droplet", "delete", "--force", *droplet_ids))
     finally:
-        move_logs(args.num_children, args.num_streams)
+        move_logs(num_children, num_streams)
 
 
 if __name__ == "__main__":
@@ -176,4 +139,5 @@ if __name__ == "__main__":
                         type=int, default="120", help="Duration of run in seconds.")
 
     parser_args = parser.parse_args()
-    main(parser_args)
+    main(parser_args.num_children, parser_args.num_streams, parser_args.windows,
+         parser_args.agg_functions, parser_args.duration)
