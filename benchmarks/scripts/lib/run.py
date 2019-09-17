@@ -35,7 +35,7 @@ def get_log_dir(num_nodes, num_events, duration):
 def upload_benchmark_params(host, *args):
     string_args = [str(arg) for arg in args]
     args_str = " ".join(string_args)
-    ssh_command(host, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> ~/benchmark_env')
+    ssh_command(host, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> {SSH_BASE_DIR}/benchmark_env')
 
 
 def upload_root_params(num_children, windows, agg_fns):
