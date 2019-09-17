@@ -170,21 +170,21 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId functionWindowAggId11a = new FunctionWindowAggregateId(windowId1, 0, child1Id);
         windowMerger.processPreAggregate(slices11a, functionWindowAggId11a);
         Optional<FunctionWindowAggregateId> trigger11a = windowMerger.checkWindowComplete(functionWindowAggId11a);
-        assertTrue(trigger11a.isEmpty());
+        assertFalse(trigger11a.isPresent());
 
         DistributedSlice slice12a = new DistributedSlice(0, 1000, 2, 3);
         List<DistributedSlice> slices12a = Collections.singletonList(slice12a);
         FunctionWindowAggregateId functionWindowAggId12a = new FunctionWindowAggregateId(windowId1, 0, child2Id);
         windowMerger.processPreAggregate(slices12a, functionWindowAggId12a);
         Optional<FunctionWindowAggregateId> trigger12a = windowMerger.checkWindowComplete(functionWindowAggId12a);
-        assertTrue(trigger12a.isEmpty());
+        assertFalse(trigger12a.isPresent());
 
         DistributedSlice slice21a = new DistributedSlice(0, 1000, 4);
         List<DistributedSlice> slices21a = Collections.singletonList(slice21a);
         FunctionWindowAggregateId functionWindowAggId21a = new FunctionWindowAggregateId(windowId1, 0, child3Id);
         windowMerger.processPreAggregate(slices21a, functionWindowAggId21a);
         Optional<FunctionWindowAggregateId> trigger21a = windowMerger.checkWindowComplete(functionWindowAggId21a);
-        assertTrue(trigger21a.isEmpty());
+        assertFalse(trigger21a.isPresent());
 
         DistributedSlice slice22a = new DistributedSlice(0, 1000, 0);
         List<DistributedSlice> slices22a = Collections.singletonList(slice22a);
@@ -204,21 +204,21 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId functionWindowAggId11b = new FunctionWindowAggregateId(windowId2, 0, child1Id);
         windowMerger.processPreAggregate(slices11b, functionWindowAggId11b);
         Optional<FunctionWindowAggregateId> trigger11b = windowMerger.checkWindowComplete(functionWindowAggId11b);
-        assertTrue(trigger11b.isEmpty());
+        assertFalse(trigger11b.isPresent());
 
         DistributedSlice slice12b = new DistributedSlice(1000, 2000, 5, 6, 7);
         List<DistributedSlice> slices12b = Collections.singletonList(slice12b);
         FunctionWindowAggregateId functionWindowAggId12b = new FunctionWindowAggregateId(windowId2, 0, child2Id);
         windowMerger.processPreAggregate(slices12b, functionWindowAggId12b);
         Optional<FunctionWindowAggregateId> trigger12b = windowMerger.checkWindowComplete(functionWindowAggId12b);
-        assertTrue(trigger12b.isEmpty());
+        assertFalse(trigger12b.isPresent());
 
         DistributedSlice slice21b = new DistributedSlice(1000, 2000, 4);
         List<DistributedSlice> slices21b = Collections.singletonList(slice21b);
         FunctionWindowAggregateId functionWindowAggId21b = new FunctionWindowAggregateId(windowId2, 0, child3Id);
         windowMerger.processPreAggregate(slices21b, functionWindowAggId21b);
         Optional<FunctionWindowAggregateId> trigger21b = windowMerger.checkWindowComplete(functionWindowAggId21b);
-        assertTrue(trigger21b.isEmpty());
+        assertFalse(trigger21b.isPresent());
 
         DistributedSlice slice22b = new DistributedSlice(1000, 2000, 1, 2, 3);
         List<DistributedSlice> slices22b = Collections.singletonList(slice22b);
@@ -363,7 +363,7 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         int childId1 = 0;
         int childId2 = 1;
         GlobalHolisticWindowMerger windowMerger = new GlobalHolisticWindowMerger(numChildren, windows, aggregateFunctions);
-        windowMerger.initializeSessionState(List.of(childId1, childId2));
+        windowMerger.initializeSessionState(Arrays.asList(childId1, childId2));
 
         WindowAggregateId windowId11 = new WindowAggregateId(1,   0, 110);
         WindowAggregateId windowId12 = new WindowAggregateId(1, 120, 270);
@@ -380,7 +380,7 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId functionWindowAggId11 = new FunctionWindowAggregateId(windowId11, 0, childId1);
         windowMerger.processPreAggregate(slices11, functionWindowAggId11);
         Optional<FunctionWindowAggregateId> triggerId11 = windowMerger.checkWindowComplete(functionWindowAggId11);
-        assertTrue(triggerId11.isEmpty());
+        assertFalse(triggerId11.isPresent());
 
         FunctionWindowAggregateId sessionStart120 = FunctionWindowAggregateId.sessionStartId(1, 120, childId1, NO_KEY);
         Optional<FunctionWindowAggregateId> sessionStart120Opt = windowMerger.registerSessionStart(sessionStart120);
@@ -391,7 +391,7 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId functionWindowAggId21 = new FunctionWindowAggregateId(windowId21, 0, childId2);
         windowMerger.processPreAggregate(slices21, functionWindowAggId21);
         Optional<FunctionWindowAggregateId> triggerId21 = windowMerger.checkWindowComplete(functionWindowAggId21);
-        assertTrue(triggerId21.isEmpty());
+        assertFalse(triggerId21.isPresent());
 
         FunctionWindowAggregateId sessionStart460 = FunctionWindowAggregateId.sessionStartId(1, 460, childId2, NO_KEY);
         Optional<FunctionWindowAggregateId> sessionStart460Opt = windowMerger.registerSessionStart(sessionStart460);
@@ -432,7 +432,7 @@ public class GlobalHolisticWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId functionWindowAggId14 = new FunctionWindowAggregateId(windowId14, 0, childId1);
         windowMerger.processPreAggregate(slices14, functionWindowAggId14);
         Optional<FunctionWindowAggregateId> triggerId14 = windowMerger.checkWindowComplete(functionWindowAggId14);
-        assertTrue(triggerId14.isEmpty());
+        assertFalse(triggerId14.isPresent());
 
         FunctionWindowAggregateId sessionStart700 = FunctionWindowAggregateId.sessionStartId(1, 700, childId1, NO_KEY);
         Optional<FunctionWindowAggregateId> sessionStart700Opt = windowMerger.registerSessionStart(sessionStart700);

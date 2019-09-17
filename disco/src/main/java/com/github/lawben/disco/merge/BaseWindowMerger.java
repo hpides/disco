@@ -234,7 +234,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
             return false;
         }
 
-        for (var childAllStarts : childLastSessionStarts.entrySet()) {
+        for (Map.Entry<Integer, Map<WindowFunctionKey, Long>> childAllStarts : childLastSessionStarts.entrySet()) {
             int childStartId = childAllStarts.getKey();
             if (childStartId == oldSessionChildId || childStartId == currentChildId) {
                 // We can ignore the last child's session, because that is the one we are 'ending'.
@@ -329,9 +329,9 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
         Optional<FunctionWindowAggregateId> childStartNewSession = getSessionStartFromChildStarts(windowKey);
 
         final Optional<FunctionWindowAggregateId> newSession;
-        if (explicitNewSession.isEmpty()) {
+        if (!explicitNewSession.isPresent()) {
             newSession = childStartNewSession;
-        } else if (childStartNewSession.isEmpty()) {
+        } else if (!childStartNewSession.isPresent()) {
             newSession = explicitNewSession;
         } else {
             // Get earlier of one of both to guarantee correctness
@@ -362,7 +362,7 @@ public abstract class BaseWindowMerger<AggType> implements WindowMerger<AggType>
 
         long minNewSessionStart = Long.MAX_VALUE;
         boolean allChildrenHaveNewerSessions = true;
-        for (var sessionStarts : childLastSessionStarts.entrySet()) {
+        for (Map.Entry<Integer, Map<WindowFunctionKey, Long>> sessionStarts : childLastSessionStarts.entrySet()) {
             long sessionStartForKey = sessionStarts.getValue().getOrDefault(windowKey, Long.MIN_VALUE);
             if (sessionStartForKey <= lastSessionEndForKey) {
                 allChildrenHaveNewerSessions = false;

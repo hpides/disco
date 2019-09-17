@@ -124,7 +124,7 @@ public class AggregateMerger {
 
         // Handle window complete
         Optional<FunctionWindowAggregateId> triggerId = currentMerger.checkWindowComplete(functionWindowId);
-        if (triggerId.isEmpty()) {
+        if (!triggerId.isPresent()) {
             return new ArrayList<>();
         }
 

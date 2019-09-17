@@ -881,11 +881,13 @@ public class DistributedChildTest {
 
         sendSleepSortedEvents(50, streamSenders, events0, events1);
         Thread.sleep(DEFAULT_SOCKET_TIMEOUT_MS);
+        Long dummyNull = null;
 
         List<ExpectedWindow> expectedWindows = Arrays.asList(
                 new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 0, 100), 0, childId),
                         new DistributiveWindowAggregate(  7, key0),
-                        new DistributiveWindowAggregate(  3, key1)),
+                        new DistributiveWindowAggregate(  3, key1),
+                        new DistributiveWindowAggregate(dummyNull, key2)),
                 new ExpectedWindow(childId, new FunctionWindowAggregateId(new WindowAggregateId(0, 100, 200), 0, childId),
                         new DistributiveWindowAggregate( 60, key0),
                         new DistributiveWindowAggregate(150, key1),

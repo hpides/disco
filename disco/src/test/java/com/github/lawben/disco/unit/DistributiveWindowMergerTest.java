@@ -4,6 +4,7 @@ import static com.github.lawben.disco.aggregation.FunctionWindowAggregateId.NO_C
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -281,25 +282,25 @@ public class DistributiveWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId windowId4 = new FunctionWindowAggregateId(new WindowAggregateId(1, 200, 320), 0, 4);
 
         windowMerger.processPreAggregate(5L, windowId1);
-        assertTrue(windowMerger.checkWindowComplete(windowId1).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId1).isPresent());
         Optional<FunctionWindowAggregateId> trigger1 =
                 windowMerger.registerSessionStart(new FunctionWindowAggregateId(new WindowAggregateId(1, 400, 400), 0, 1));
-        assertTrue(trigger1.isEmpty());
-        assertTrue(windowMerger.checkWindowComplete(windowId1).isEmpty());
+        assertFalse(trigger1.isPresent());
+        assertFalse(windowMerger.checkWindowComplete(windowId1).isPresent());
 
         windowMerger.processPreAggregate(10L, windowId2);
-        assertTrue(windowMerger.checkWindowComplete(windowId2).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId2).isPresent());
         Optional<FunctionWindowAggregateId> trigger2 =
                 windowMerger.registerSessionStart(new FunctionWindowAggregateId(new WindowAggregateId(1, 400, 400), 0, 2));
-        assertTrue(trigger2.isEmpty());
-        assertTrue(windowMerger.checkWindowComplete(windowId2).isEmpty());
+        assertFalse(trigger2.isPresent());
+        assertFalse(windowMerger.checkWindowComplete(windowId2).isPresent());
         
         windowMerger.processPreAggregate(15L, windowId3);
-        assertTrue(windowMerger.checkWindowComplete(windowId3).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId3).isPresent());
         Optional<FunctionWindowAggregateId> trigger3 =
                 windowMerger.registerSessionStart(new FunctionWindowAggregateId(new WindowAggregateId(1, 400, 400), 0, 3));
-        assertTrue(trigger3.isEmpty());
-        assertTrue(windowMerger.checkWindowComplete(windowId3).isEmpty());
+        assertFalse(trigger3.isPresent());
+        assertFalse(windowMerger.checkWindowComplete(windowId3).isPresent());
 
         windowMerger.processPreAggregate(20L, windowId4);
         Optional<FunctionWindowAggregateId> triggerId4 = windowMerger.checkWindowComplete(windowId4);
@@ -464,22 +465,22 @@ public class DistributiveWindowMergerTest extends WindowMergerTestBase {
         FunctionWindowAggregateId windowId24 = new FunctionWindowAggregateId(child2windowId5Key1, 0, childId2, 1);
 
         windowMerger.processPreAggregate( 5L, windowId10);
-        assertTrue(windowMerger.checkWindowComplete(windowId10).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId10).isPresent());
 
         windowMerger.processPreAggregate(10L, windowId20);
-        assertTrue(windowMerger.checkWindowComplete(windowId20).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId20).isPresent());
 
         windowMerger.processPreAggregate(15L, windowId21);
-        assertTrue(windowMerger.checkWindowComplete(windowId21).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId21).isPresent());
 
         windowMerger.processPreAggregate(20L, windowId22);
-        assertTrue(windowMerger.checkWindowComplete(windowId22).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId22).isPresent());
 
         windowMerger.processPreAggregate(25L, windowId11);
-        assertTrue(windowMerger.checkWindowComplete(windowId11).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId11).isPresent());
 
         windowMerger.processPreAggregate(30L, windowId23);
-        assertTrue(windowMerger.checkWindowComplete(windowId23).isEmpty());
+        assertFalse(windowMerger.checkWindowComplete(windowId23).isPresent());
 
         windowMerger.processPreAggregate(35L, windowId12);
         Optional<FunctionWindowAggregateId> triggerId12 = windowMerger.checkWindowComplete(windowId12);

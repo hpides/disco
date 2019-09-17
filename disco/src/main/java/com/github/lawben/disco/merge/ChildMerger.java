@@ -82,7 +82,7 @@ public class ChildMerger {
             return;
         }
 
-        for (var lastTimestamps : sessionLastTimestamps.entrySet()) {
+        for (Map.Entry<Long, Map<Integer, Long>> lastTimestamps : sessionLastTimestamps.entrySet()) {
             final long windowId = lastTimestamps.getKey();
             Map<Integer, Long> keyedSessionEnds = lastTimestamps.getValue();
 

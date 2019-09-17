@@ -703,6 +703,9 @@ public class DistributedRootTest {
         Thread.sleep(50);
         child2.sendNext("1", functionWindowIdToString(windowId32), "1", new DistributiveWindowAggregate(14).asString());
         Thread.sleep(50);
+        child2.sendNext(EVENT_STRING, "1,200,0");
+        child2.sendNext(EVENT_STRING, "1,201,0");
+        Thread.sleep(50);
         child2.sendNext(STREAM_END, "1");
 
         List<Matcher<? super List<String>>> windowResultMatchers = Arrays.asList(
@@ -723,6 +726,7 @@ public class DistributedRootTest {
             windowStrings.add(resultListener.receiveNext(2));
         }
 
+        System.out.println(windowStrings);
         assertThat(windowStrings, containsInAnyOrder(windowResultMatchers));
 
         assertRootEnd();

@@ -143,7 +143,7 @@ public class DistributedNode {
                 .sorted(Comparator.comparingLong(y -> y.get(0).getStart()))
                 .collect(Collectors.toList());
 
-        for (var aggWindowsPerKey : sortedAggWindows) {
+        for (List<DistributedAggregateWindowState> aggWindowsPerKey : sortedAggWindows) {
             FunctionWindowAggregateId functionWindowAggId = aggWindowsPerKey.get(0).getFunctionWindowId();
             FunctionWindowAggregateId withChildId = functionWindowAggId.withChildId(this.nodeId);
             List<String> serializedMessage =
