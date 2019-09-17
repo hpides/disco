@@ -1,11 +1,13 @@
 import argparse
 import random
+import os
 import string
 import sys
 from datetime import datetime
 from threading import Thread
 
-from common import *
+from lib.common import ssh_command, check_complete, SSH_BASE_DIR, \
+                       ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", "..", ".."))

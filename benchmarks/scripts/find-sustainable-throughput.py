@@ -5,8 +5,8 @@ from argparse import ArgumentParser
 from datetime import datetime
 from multiprocessing import Process, Pipe
 
-from common import logs_are_unsustainable
-from run import run as run_all_main
+from lib.common import logs_are_unsustainable
+from lib.run import run as run_all_main
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -46,8 +46,8 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams,
 
     process_recv_pipe, process_send_pipe = Pipe(False)
     run_process = Process(target=run_all_main,
-                          args=(num_nodes, num_events_per_second,
-                                run_duration, windows,
+                          args=(num_children, num_streams,
+                                num_events_per_second, run_duration, windows,
                                 agg_functions, delete, short, process_send_pipe),
                           name=f"process-run-{num_nodes}-{num_events_per_second}")
     run_process.start()
