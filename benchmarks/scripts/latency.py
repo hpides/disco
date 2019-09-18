@@ -1,12 +1,30 @@
 from argparse import ArgumentParser
+from multiprocessing import Pipe, Process
 
-from lib.common import logs_are_unsustainable, single_run
+from lib.common import logs_are_unsustainable
+from run import run as run_all_main
 
 
 def single_latency_run(num_children, num_streams, num_events, duration,
                        windows, agg_functions):
-    log_directory = single_run(num_children, num_streams, num_events, duration,
-                               windows, agg_functions)
+    num_nodes = num_children + num_streams + 1  # + 1 for root
+    timeout = duration + 30
+    print(f"Running latency test with {num_events} events/s.")
+    process_recv_pipe, process_send_pipe = Pipe(False)
+    run_process = Process(target=run_all_main,
+                          args=(num_children, num_streams,
+                                num_events, duration, windows,
+                                agg_functions, process_send_pipe),
+                          name=f"process-run-{num_nodes}-{num_events}")
+    run_process.start()
+    try:
+        run_process.join(timeout)
+    except TimeoutError:
+        print("Current run failed. See logs for more details.")
+        raise
+
+    directory = process_recv_pipe.recv()
+    log_directory = directory
     return logs_are_unsustainable(log_directory), log_directory
 
 

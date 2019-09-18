@@ -3,8 +3,10 @@ import re
 import shutil
 from argparse import ArgumentParser
 from datetime import datetime
+from multiprocessing import Pipe, Process
 
-from lib.common import logs_are_unsustainable, single_run
+from lib.common import logs_are_unsustainable
+from run import run as run_all_main
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -36,8 +38,24 @@ def move_logs(num_children, num_streams):
 
 def single_sustainability_run(num_events_per_second, num_children, num_streams,
                               windows, agg_functions, run_duration):
-    log_directory = single_run(num_children, num_streams, num_events_per_second,
-                               run_duration, windows, agg_functions)
+    num_nodes = num_children + num_streams + 1  # + 1 for root
+    timeout = run_duration + 30
+    print(f"Running latency test with {num_events_per_second} events/s.")
+    process_recv_pipe, process_send_pipe = Pipe(False)
+    run_process = Process(target=run_all_main,
+                          args=(num_children, num_streams,
+                                num_events_per_second, run_duration, windows,
+                                agg_functions, process_send_pipe),
+                          name=f"process-run-{num_nodes}-{num_events_per_second}")
+    run_process.start()
+    try:
+        run_process.join(timeout)
+    except TimeoutError:
+        print("Current run failed. See logs for more details.")
+        raise
+
+    directory = process_recv_pipe.recv()
+    log_directory = directory
     if log_directory not in RUN_LOGS:
         RUN_LOGS.append(log_directory)
     return logs_are_unsustainable(log_directory)
