@@ -48,34 +48,34 @@ function run_bm() {
 echo "Running 1 child, 1 stream"
 run_bm 1 1
 
-#echo "Running 1 child, 2 streams"
-#run_bm 1 2
-#
-#echo "Running 1 child, 4 streams"
-#run_bm 1 4
-#
-#echo "Running 1 child, 8 streams"
-#run_bm 1 8
-#
-## ===================================
-## MULTI-CHILD RUNS
-## ===================================
-#
-#echo "Running 2 children, 2 streams"
-#run_bm 2 2
-#
-#echo "Running 2 children, 4 streams"
-#run_bm 2 4
-#
-#echo "Running 2 children, 8 streams"
-#run_bm 2 8
-#
-#echo "Running 4 children, 4 streams"
-#run_bm 4 4
-#
-#echo "Running 4 children, 8 streams"
-#run_bm 4 8
-#
-#echo "Running 4 children, 16 streams"
-#run_bm 4 16
+echo "Running 1 child, 2 streams"
+run_bm 1 2
+
+echo "Running 1 child, 4 streams"
+run_bm 1 4
+
+echo "Running 1 child, 8 streams"
+run_bm 1 8
+
+# ===================================
+# MULTI-CHILD RUNS
+# ===================================
+
+echo "Running 2 children, 2 streams"
+run_bm 2 2
+
+echo "Running 2 children, 4 streams"
+run_bm 2 4
+
+echo "Running 2 children, 8 streams"
+run_bm 2 8
+
+echo "Running 4 children, 4 streams"
+run_bm 4 4
+
+echo "Running 4 children, 8 streams"
+run_bm 4 8
+
+echo "Running 4 children, 16 streams"
+run_bm 4 16
 
