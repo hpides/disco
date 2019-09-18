@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from multiprocessing import Pipe, Process
 
 from lib.common import logs_are_unsustainable
-from run import run as run_all_main
+from lib.run import run as run_all_main
 
 
 def single_latency_run(num_children, num_streams, num_events, duration,

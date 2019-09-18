@@ -6,7 +6,7 @@ from datetime import datetime
 from multiprocessing import Pipe, Process
 
 from lib.common import logs_are_unsustainable
-from run import run as run_all_main
+from lib.run import run as run_all_main
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
