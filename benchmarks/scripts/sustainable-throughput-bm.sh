@@ -43,14 +43,15 @@ single_run 2 2
 echo "Running 2 children, 4 streams"
 single_run 2 4
 
+echo "Running 2 children, 8 streams"
+single_run 2 8
+
 echo "Running 4 children, 4 streams"
 single_run 4 4
 
 echo "Running 4 children, 8 streams"
 single_run 4 8
 
-echo "Running 8 children, 8 streams"
-single_run 8 8
+echo "Running 4 children, 16 streams"
+single_run 4 16
 
-echo "Running 8 children, 16 streams"
-single_run 8 16

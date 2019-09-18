@@ -2,6 +2,8 @@ package com.github.lawben.disco;
 
 import com.github.lawben.disco.Event;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -17,7 +19,7 @@ import org.zeromq.ZMQ;
  * If the back pressure becomes to high, throws an exception.
  */
 public class SustainableThroughputEventGenerator {
-    private static final int NUM_CHUNKS = 1000;
+    private static final int NUM_CHUNKS = 100;
     // Worst case, buffer first 30 seconds.
     private static final int QUEUE_BUFFER_FACTOR = 30;
     private static final int MILLIS_IN_SECOND = 1000;
@@ -91,6 +93,7 @@ public class SustainableThroughputEventGenerator {
                 throw new IllegalStateException("Sleep in event generation errored. ERROR: " + e);
             }
         }
+
         final long generationEnd = System.currentTimeMillis();
         final long realGenerationDuration = generationEnd - generationStart;
         final long generationDifference = generationEnd - secondEnd;

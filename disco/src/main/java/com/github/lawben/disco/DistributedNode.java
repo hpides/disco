@@ -318,7 +318,7 @@ public class DistributedNode {
         if (this.dataPuller == null) {
             this.dataPuller = this.context.createSocket(SocketType.PULL);
             this.dataPuller.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
-            this.dataPuller.setRcvHWM(100);
+            this.dataPuller.setRcvHWM(1000);
 
             int retries = 0;
             while (true) {

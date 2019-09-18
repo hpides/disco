@@ -10,8 +10,12 @@ public class ChildBenchmarkListener implements Runnable {
     private final DistributedNode nodeImpl;
 
     public ChildBenchmarkListener(int streamInputPort) {
+        this(streamInputPort, 1);
+    }
+
+    public ChildBenchmarkListener(int streamInputPort, int numStreams) {
         this.nodeImpl = new DistributedNode(0, "BM_CHILD_LISTENER", streamInputPort + STREAM_REGISTER_PORT_OFFSET,
-                streamInputPort, 1, "", 0, 0);
+                streamInputPort, numStreams, "", 0, 0);
         nodeImpl.createDataPuller();
     }
 
@@ -48,6 +52,7 @@ public class ChildBenchmarkListener implements Runnable {
                 if (nodeImpl.isTotalStreamEnd()) {
                     return;
                 }
+                continue;
             }
 
             final Event event = Event.fromString(eventOrStreamEnd);

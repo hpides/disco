@@ -17,8 +17,8 @@ import org.zeromq.ZMQ.Socket;
 
 
 public class SustainableThroughputRunner {
-    private static final int SEND_CHUNK_SIZE = 1000;
-    private static final long SEND_PERIOD_DURATION_MS = 500;
+    private static final int SEND_CHUNK_SIZE = 10000;
+    private static final long SEND_PERIOD_DURATION_MS = 1000;
     private static final long MAX_INCREASE_STREAK = 10;
     private static final long WARM_UP_PART = 4;
 
@@ -41,7 +41,7 @@ public class SustainableThroughputRunner {
 
         ZContext context = new ZContext();
         ZMQ.Socket dataPusher = context.createSocket(SocketType.PUSH);
-        dataPusher.setSndHWM(100);
+        dataPusher.setSndHWM(1000);
         dataPusher.connect("tcp://" + nodeAddress);
 
         // Register at parent and wait for it to set up correctly.
@@ -94,7 +94,8 @@ public class SustainableThroughputRunner {
         boolean warmedUp = false;
 
         while (System.currentTimeMillis() < endTime) {
-            long nextSendPeriodEnd = System.currentTimeMillis() + SEND_PERIOD_DURATION_MS;
+            final long sendStart = System.currentTimeMillis();
+            final long nextSendPeriodEnd = sendStart + SEND_PERIOD_DURATION_MS;
             LongAdder sentCounter = new LongAdder();
             // Send data for SEND_PERIOD_DURATION_MS
             while (System.currentTimeMillis() < nextSendPeriodEnd) {
@@ -103,6 +104,8 @@ public class SustainableThroughputRunner {
                     break;
                 }
             }
+            final long sendEnd = System.currentTimeMillis();
+            System.out.println("Sent " + sentCounter + " events in " + (sendEnd - sendStart) + "ms.");
 
             if (!warmedUp && System.currentTimeMillis() > warmUpEndTime) {
                 System.out.println("Clearing event queue after warm up time");
@@ -118,8 +121,6 @@ public class SustainableThroughputRunner {
                 endStream(streamId, dataPusher);
                 throw new RuntimeException("Generator exception was thrown!\n" + generatorException.getException());
             }
-
-            System.out.println("Sent " + sentCounter + " events in " + SEND_PERIOD_DURATION_MS + "ms.");
 
             // Check queue size after sending for a while.
             final long currentQueueSize = eventQueue.size();
