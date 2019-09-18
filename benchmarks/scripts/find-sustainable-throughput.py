@@ -3,10 +3,8 @@ import re
 import shutil
 from argparse import ArgumentParser
 from datetime import datetime
-from multiprocessing import Process, Pipe
 
-from lib.common import logs_are_unsustainable
-from lib.run import run as run_all_main
+from lib.common import logs_are_unsustainable, single_run
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -37,42 +35,23 @@ def move_logs(num_children, num_streams):
 
 
 def single_sustainability_run(num_events_per_second, num_children, num_streams,
-                              windows, agg_functions, run_duration, delete=False):
-    num_nodes = num_children + num_streams + 1  # + 1 for root
-    short = True
-
-    timeout = 2 * run_duration
-    print(f"Running sustainability test with {num_events_per_second} events/s.")
-
-    process_recv_pipe, process_send_pipe = Pipe(False)
-    run_process = Process(target=run_all_main,
-                          args=(num_children, num_streams,
-                                num_events_per_second, run_duration, windows,
-                                agg_functions, process_send_pipe),
-                          name=f"process-run-{num_nodes}-{num_events_per_second}")
-    run_process.start()
-
-    try:
-        run_process.join(timeout)
-    except TimeoutError:
-        print("Current run failed. See logs for more details.")
-        raise
-
-    log_directory = process_recv_pipe.recv()
+                              windows, agg_functions, run_duration):
+    log_directory = single_run(num_children, num_streams, num_events_per_second,
+                               run_duration, windows, agg_functions)
     if log_directory not in RUN_LOGS:
         RUN_LOGS.append(log_directory)
     return logs_are_unsustainable(log_directory)
 
 
 def sustainability_run(num_events_per_second, num_children, num_streams,
-                       windows, agg_functions, run_duration, delete=False):
+                       windows, agg_functions, run_duration):
     is_unsustainable = None
     tries = 0
     while is_unsustainable is None and tries < 3:
         is_unsustainable = single_sustainability_run(num_events_per_second,
                                                      num_children, num_streams,
                                                      windows, agg_functions,
-                                                     run_duration, delete)
+                                                     run_duration)
         tries += 1
         if is_unsustainable is None:
             # Error was very different to rest of nodes.
@@ -115,6 +94,8 @@ def find_sustainable_throughput(num_children, num_streams, windows,
 
     # Min and max are nearly equal --> min events is sustainable throughput
     print(f"Found sustainable candidate ({min_events} events/s).")
+    with open("/tmp/last_sustainable_run", "w") as out_f:
+        out_f.write(str(min_events))
 
 
 def main(num_children, num_streams, windows, agg_fns, duration):
@@ -129,10 +110,8 @@ def main(num_children, num_streams, windows, agg_fns, duration):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--num-children", dest='num_children', required=True,
-                        type=int, help="Number of total children.")
-    parser.add_argument("--num-streams", dest='num_streams', required=True,
-                        type=int, help="Number of stream per child.")
+    parser.add_argument("--num-children", type=int, required=True, dest='num_children')
+    parser.add_argument("--num-streams", type=int, required=True, dest='num_streams')
     parser.add_argument("--windows", type=str, required=True, dest="windows")
     parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
     parser.add_argument("--duration", dest='duration', required=False,

@@ -2,8 +2,11 @@ import os
 import re
 import socket
 import time
+from multiprocessing import Process, Pipe
 
 import paramiko
+
+from lib.run import run as run_all_main
 
 SSH_PORT = 22
 
@@ -83,6 +86,27 @@ def check_complete(timeout, hosts):
     print()
     print("All applications terminated before the timeout.")
     return []
+
+
+def single_run(num_children, num_streams, num_events, duration,
+               windows, agg_functions):
+    num_nodes = num_children + num_streams + 1  # + 1 for root
+    timeout = duration + 30
+    print(f"Running latency test with {num_events} events/s.")
+    process_recv_pipe, process_send_pipe = Pipe(False)
+    run_process = Process(target=run_all_main,
+                          args=(num_children, num_streams,
+                                num_events, duration, windows,
+                                agg_functions, process_send_pipe),
+                          name=f"process-run-{num_nodes}-{num_events}")
+    run_process.start()
+    try:
+        run_process.join(timeout)
+    except TimeoutError:
+        print("Current run failed. See logs for more details.")
+        raise
+    log_directory = process_recv_pipe.recv()
+    return log_directory
 
 
 def logs_are_unsustainable(log_directory):
