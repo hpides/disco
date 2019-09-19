@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser.add_argument("--num-children", type=int, required=True, dest='num_children')
     parser.add_argument("--num-streams", type=int, required=True, dest='num_streams')
     parser.add_argument("--num-events", type=int, required=True, dest="num_events")
-    parser.add_argument("--duration", type=int, dest='duration', required=True)
+    parser.add_argument("--duration", type=int, dest='duration', default=120)
     parser.add_argument("--windows", type=str, required=True, dest="windows")
     parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
 
