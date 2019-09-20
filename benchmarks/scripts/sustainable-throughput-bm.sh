@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+# Usage: ./sustainable-throughput-bm.sh WINDOWS AGGREGATE_FNS
+
+WINDOWS=${1:-"TUMBLING,1000"}
+AGG_FNS=${2:-"MAX"}
+
 FILE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 THROUGHPUT_SCRIPT="$FILE_DIR/find-sustainable-throughput.py"
@@ -8,8 +13,6 @@ LATENCY_SCRIPT="$FILE_DIR/latency.py"
 VENV_DIR="$FILE_DIR/../../venv"
 source "$VENV_DIR/bin/activate"
 
-WINDOWS="TUMBLING,1000"
-AGG_FNS="MAX"
 
 function run_throughput_bm() {
     local NUM_CHILDREN=${1}

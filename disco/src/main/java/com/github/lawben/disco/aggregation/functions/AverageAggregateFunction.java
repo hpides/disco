@@ -1,4 +1,6 @@
-package com.github.lawben.disco.aggregation;
+package com.github.lawben.disco.aggregation.functions;
+
+import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 
 public class AverageAggregateFunction implements AlgebraicAggregateFunction<Long, PartialAverage> {
     @Override

@@ -1,17 +1,18 @@
-package com.github.lawben.disco.aggregation;
+package com.github.lawben.disco.aggregation.functions;
 
+import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import java.util.Objects;
 
-public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
+public class MaxPartialAverage implements AlgebraicPartial<MaxPartialAverage, Long> {
     private final Long sum;
     private final int count;
 
-    public PartialAverage(Long sum, int count) {
+    public MaxPartialAverage(Long sum, int count) {
         this.sum = sum;
         this.count = count;
     }
 
-    public PartialAverage(int sum, int count) {
+    public MaxPartialAverage(int sum, int count) {
         this.sum = (long) sum;
         this.count = count;
     }
@@ -25,21 +26,21 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
     }
 
     @Override
-    public PartialAverage merge(PartialAverage other) {
+    public MaxPartialAverage merge(MaxPartialAverage other) {
         if (other.getSum() == null) {
-            return new PartialAverage(sum, count);
+            return new MaxPartialAverage(sum, count);
         }
         if (sum == null) {
-            return new PartialAverage(other.getSum(), other.getCount());
+            return new MaxPartialAverage(other.getSum(), other.getCount());
         }
 
-        return new PartialAverage(sum + other.getSum(), count + other.getCount());
+        return new MaxPartialAverage(Math.max(sum, other.getSum()), count + other.getCount());
     }
 
     @Override
-    public PartialAverage fromString(String s) {
+    public MaxPartialAverage fromString(String s) {
         if (s == null || s.equals("null")) {
-            return new PartialAverage(null, 0);
+            return new MaxPartialAverage(null, 0);
         }
         String[] parts = s.split(",");
         if (parts.length != 2) {
@@ -47,7 +48,7 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
         }
         Long sum = Long.parseLong(parts[0]);
         int count = Integer.parseInt(parts[1]);
-        return new PartialAverage(sum, count);
+        return new MaxPartialAverage(sum, count);
     }
 
     @Override
@@ -57,10 +58,7 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
 
     @Override
     public Long lower() {
-        if (sum == null) {
-            return null;
-        }
-        return sum / count;
+        return sum;
     }
 
     @Override
@@ -79,7 +77,7 @@ public class PartialAverage implements AlgebraicPartial<PartialAverage, Long> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        PartialAverage that = (PartialAverage) o;
+        MaxPartialAverage that = (MaxPartialAverage) o;
         return count == that.count &&
                 Objects.equals(sum, that.sum);
     }

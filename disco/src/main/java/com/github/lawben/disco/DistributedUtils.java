@@ -1,14 +1,18 @@
 package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
-import com.github.lawben.disco.aggregation.functions.AlgebraicMergeFunction;
-import com.github.lawben.disco.aggregation.AverageAggregateFunction;
+import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
+import com.github.lawben.disco.aggregation.functions.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import com.github.lawben.disco.aggregation.functions.MaxAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.MaxAverageAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.MaxMedianAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.MaxMinAggregateFunction;
+import com.github.lawben.disco.aggregation.functions.MaxSumAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.MedianAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.MinAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.SumAggregateFunction;
@@ -163,6 +167,20 @@ public class DistributedUtils {
             case "MIN": {
                 return aggregateFunctionMin();
             }
+            // Special cases for latency measurement
+            case "M_SUM": {
+                return maxAggregateFunctionSum();
+            }
+            case "M_AVG": {
+                return maxAggregateFunctionAverage();
+            }
+            case "M_MEDIAN": {
+                return maxAggregateFunctionMedian();
+            }
+            case "M_MIN": {
+                return maxAggregateFunctionMin();
+            }
+
             default: {
                 throw new IllegalArgumentException("No aggFn known for: '" + aggFnString + "'");
             }
@@ -324,6 +342,27 @@ public class DistributedUtils {
     private static DistributiveAggregateFunction aggregateFunctionMin() {
         return new MinAggregateFunction();
     }
+
+    public static DistributiveAggregateFunction maxAggregateFunctionSum() {
+        return new MaxSumAggregateFunction();
+    }
+
+    public static AlgebraicAggregateFunction maxAggregateFunctionAverage() {
+        return new MaxAverageAggregateFunction();
+    }
+
+    public static HolisticAggregateFunction maxAggregateFunctionMedian() {
+        return new MaxMedianAggregateFunction();
+    }
+
+    private static DistributiveAggregateFunction maxAggregateFunctionMax() {
+        return new MaxAggregateFunction();
+    }
+
+    private static DistributiveAggregateFunction maxAggregateFunctionMin() {
+        return new MaxMinAggregateFunction();
+    }
+
 
     public static List<AggregateFunction> convertAggregateFunctions(List<AggregateFunction> aggFns) {
         return aggFns.stream()

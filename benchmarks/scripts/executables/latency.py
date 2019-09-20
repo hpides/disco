@@ -70,10 +70,11 @@ def run_latency(num_children, num_streams, num_events, duration,
     _latency_run(num_children, num_streams, three_quarter_events,
                  duration, windows, agg_functions)
 
-    full_events = num_events
-    print(f"Running with full events/s: {full_events}")
-    _latency_run(num_children, num_streams, full_events,
-                 duration, windows, agg_functions)
+    # Ignore for now and use last sustainable run
+    # full_events = num_events
+    # print(f"Running with full events/s: {full_events}")
+    # _latency_run(num_children, num_streams, full_events,
+    #              duration, windows, agg_functions)
 
 
 if __name__ == '__main__':

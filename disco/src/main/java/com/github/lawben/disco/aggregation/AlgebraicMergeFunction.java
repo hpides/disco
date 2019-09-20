@@ -1,4 +1,4 @@
-package com.github.lawben.disco.aggregation.functions;
+package com.github.lawben.disco.aggregation;
 
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;

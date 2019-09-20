@@ -40,7 +40,7 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams,
                               windows, agg_functions, run_duration):
     num_nodes = num_children + num_streams + 1  # + 1 for root
     timeout = run_duration + 30
-    print(f"Running latency test with {num_events_per_second} events/s.")
+    print(f"Running sustainability test with {num_events_per_second} events/s.")
     process_recv_pipe, process_send_pipe = Pipe(False)
     run_process = Process(target=run_all_main,
                           args=(num_children, num_streams,
@@ -116,7 +116,7 @@ def find_sustainable_throughput(num_children, num_streams, windows,
         out_f.write(str(min_events))
 
 
-def main(num_children, num_streams, windows, agg_fns, duration):
+def run_throughput(num_children, num_streams, duration, windows, agg_fns):
     try:
         find_sustainable_throughput(num_children, num_streams, windows,
                                     agg_fns, duration)
@@ -136,5 +136,5 @@ if __name__ == "__main__":
                         type=int, default="120", help="Duration of run in seconds.")
 
     parser_args = parser.parse_args()
-    main(parser_args.num_children, parser_args.num_streams, parser_args.windows,
-         parser_args.agg_functions, parser_args.duration)
+    run_throughput(parser_args.num_children, parser_args.num_streams,  parser_args.duration,
+                   parser_args.windows, parser_args.agg_functions)

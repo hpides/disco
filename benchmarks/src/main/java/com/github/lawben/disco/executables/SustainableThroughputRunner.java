@@ -20,7 +20,7 @@ import org.zeromq.ZMQ.Socket;
 
 
 public class SustainableThroughputRunner {
-    private static final int NUM_SENDERS = 2;
+    private static final int NUM_SENDERS = 4;
     static final int SEND_CHUNK_SIZE = 10000;
     static final long SEND_PERIOD_DURATION_MS = 1000;
     private static final long MAX_INCREASE_STREAK = 10;

@@ -24,7 +24,7 @@ import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveWindowAggregate;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticWindowAggregate;
-import com.github.lawben.disco.aggregation.PartialAverage;
+import com.github.lawben.disco.aggregation.functions.PartialAverage;
 import com.github.lawben.disco.utils.WindowMatcher;
 import com.github.lawben.disco.utils.ZMQMock;
 import com.github.lawben.disco.utils.ZMQPullMock;
