@@ -115,11 +115,14 @@ def find_sustainable_throughput(num_children, num_streams, windows,
     with open("/tmp/last_sustainable_run", "w") as out_f:
         out_f.write(str(min_events))
 
+    return min_events
+
 
 def run_throughput(num_children, num_streams, duration, windows, agg_fns):
     try:
-        find_sustainable_throughput(num_children, num_streams, windows,
-                                    agg_fns, duration)
+        throughput = find_sustainable_throughput(num_children, num_streams, windows,
+                                                 agg_fns, duration)
+        return throughput
     except Exception as e:
         print(f"Got exception: {e}")
     finally:

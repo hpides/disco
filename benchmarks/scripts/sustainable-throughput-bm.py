@@ -4,14 +4,8 @@ from executables.find_sustainable_throughput import run_throughput
 DURATION = 120
 
 
-def _get_throughput():
-    with open("/tmp/last_sustainable_run") as f:
-        return f.read().strip()
-
-
 def _run_single_benchmark(num_children, num_streams, windows, agg_fns):
-    run_throughput(num_children, num_streams, DURATION, windows, agg_fns)
-    throughput = _get_throughput()
+    throughput = run_throughput(num_children, num_streams, DURATION, windows, agg_fns)
     run_latency(num_children, num_streams, throughput, DURATION, windows, agg_fns)
 
 
