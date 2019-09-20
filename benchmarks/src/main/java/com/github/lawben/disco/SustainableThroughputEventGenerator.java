@@ -1,18 +1,7 @@
 package com.github.lawben.disco;
 
-import com.github.lawben.disco.Event;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
-import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Function;
-import java.util.function.Supplier;
-import org.zeromq.ZMQ;
 
 /**
  * Keeps queue of events and checks if back pressure is building up.

@@ -116,7 +116,7 @@ def logs_are_unsustainable(log_directory):
                 if not queue_size_matches:
                     raise RuntimeError("Bad log file. No queue sizes.")
                 queue_size = int(queue_size_matches[-1][0])
-                if queue_size < 10_000:
+                if queue_size < 25_000:
                     num_streams_at_min_queue += 1
 
     # print(f"Scanned {num_streams} streams. {num_stream_with_error} with an error, "
