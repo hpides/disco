@@ -131,17 +131,11 @@ def run(num_children, num_streams, num_events, duration, windows,
     print("To view root logs:")
     print(f"tail -F {os.path.join(log_dir, 'root.log')}\n")
 
-    uncompleted_ips = check_complete(max_run_duration, all_hosts)
-    if uncompleted_ips:
-        kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
-        print("Ending script by killing all PIDs...")
-        for ip in uncompleted_ips:
-            ssh_command(ip, kill_command)
-
-        print(f"Killed remaining {len(uncompleted_ips)} jobs.")
-        uncompleted_ips = check_complete(30, uncompleted_ips)
-        if uncompleted_ips:
-            raise RuntimeError(f"Could not terminate IPs: {uncompleted_ips}")
+    check_complete(max_run_duration, all_hosts)
+    kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
+    print("Ending script by killing all PIDs...")
+    for host in all_hosts:
+        ssh_command(host, kill_command)
 
     for thread in threads:
         thread.join()
