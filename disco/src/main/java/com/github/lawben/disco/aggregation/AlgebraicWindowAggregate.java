@@ -13,6 +13,6 @@ public class AlgebraicWindowAggregate extends BaseWindowAggregate<AlgebraicParti
 
     @Override
     public String valueAsString() {
-        return this.value.asString();
+        return value != null ? this.value.asString() : null;
     }
 }
