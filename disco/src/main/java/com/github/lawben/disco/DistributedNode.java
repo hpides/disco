@@ -101,7 +101,7 @@ public class DistributedNode {
         FunctionWindowAggregateId functionWindowAggId =
                 DistributedUtils.stringToFunctionWindowAggId(rawFunctionWindowAggId);
 
-        System.out.println(nodeString("Processing: " + functionWindowAggId + " with " + rawPreAggregates));
+//        System.out.println(nodeString("Processing: " + functionWindowAggId + " with " + rawPreAggregates));
         List<DistributedAggregateWindowState> finalWindows =
                 this.aggregateMerger.processWindowAggregates(functionWindowAggId, rawPreAggregates);
         List<FunctionWindowAggregateId> sessionStarts = aggregateMerger.getSessionStarts(functionWindowAggId);
@@ -197,7 +197,7 @@ public class DistributedNode {
     }
 
     public void sendToParent(List<String> serializedMessage) {
-        System.out.println(nodeString("Sending to parent: " + serializedMessage));
+//        System.out.println(nodeString("Sending to parent: " + serializedMessage));
         for (int i = 0; i < serializedMessage.size() - 1; i++) {
             this.windowPusher.sendMore(serializedMessage.get(i));
         }

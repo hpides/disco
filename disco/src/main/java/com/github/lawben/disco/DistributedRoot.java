@@ -125,7 +125,7 @@ public class DistributedRoot implements Runnable {
     }
 
     private void sendResult(WindowResult windowResult) {
-        System.out.println(nodeImpl.nodeString("Sending result: " + windowResult));
+//        System.out.println(nodeImpl.nodeString("Sending result: " + windowResult));
         String finalAggregateString = String.valueOf(windowResult.getValue());
         this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(windowResult.getFinalWindowId()));
         this.resultPusher.send(finalAggregateString);
