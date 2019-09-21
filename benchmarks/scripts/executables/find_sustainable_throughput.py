@@ -33,6 +33,7 @@ def move_logs(num_children, num_streams):
         log_dir_name = os.path.basename(log)
         shutil.move(log, os.path.join(run_log_path, log_dir_name))
 
+    RUN_LOGS.clear()
     print(f"All logs can be found in {run_log_path}.")
 
 
