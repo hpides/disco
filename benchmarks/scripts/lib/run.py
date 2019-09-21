@@ -133,7 +133,7 @@ def run(num_children, num_streams, num_events, duration, windows,
 
     uncompleted_ips = check_complete(max_run_duration, all_hosts)
     if uncompleted_ips:
-        kill_command = "kill -9 $(cat /tmp/RUN_PID 2> /dev/null) &> dev/null"
+        kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
         print("Ending script by killing all PIDs...")
         for ip in uncompleted_ips:
             ssh_command(ip, kill_command)
