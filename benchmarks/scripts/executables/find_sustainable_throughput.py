@@ -10,7 +10,7 @@ from lib.run import run as run_all_main
 
 UTF8 = "utf-8"
 THIS_FILE_DIR = os.path.dirname(os.path.realpath(__file__))
-LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "..", "benchmark-runs"))
+LOG_PATH = os.path.abspath(os.path.join(THIS_FILE_DIR, "..", "..", "..", "..", "benchmark-runs"))
 
 RUN_LOG_RE = re.compile(r"Writing logs to (?P<log_location>.*)")
 STREAM_LOG_PREFIX = "stream"
