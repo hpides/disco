@@ -52,6 +52,10 @@ public class DistributedUtils {
     public static final String EVENT_STRING = "E";
     public static final String CONTROL_STRING = "C";
 
+    public static final String ARG_DELIMITER = ";";
+    public static final String CONCURRENT_WINDOW = "CONCURRENT";
+
+
     public static byte[] objectToBytes(Object object) {
         if (object instanceof Integer) {
             return integerToByte((Integer) object);
@@ -115,7 +119,7 @@ public class DistributedUtils {
         throw new IllegalArgumentException("Unknown measure: " + measureString);
     }
 
-    public static Window buildWindowFromString(String windowString) {
+    private static Window buildWindowFromString(String windowString) {
         String[] windowDetails = windowString.split(",");
         assert windowDetails.length > 0;
         switch (windowDetails[0]) {
@@ -378,13 +382,37 @@ public class DistributedUtils {
                 .collect(Collectors.toList());
     }
 
-    public static List<Window> createWindowsFromString(String windowString) {
-        List<Window> windows = new ArrayList<>();
+    public static List<Window> createWindowsFromStrings(String[] windowStrings) {
+        if (windowStrings.length == 1 && windowStrings[0].startsWith(CONCURRENT_WINDOW)) {
+            return buildConcurrentWindowsFromString(windowStrings[0]);
+        }
 
-        String[] windowRows = windowString.split("\n");
-        for (String windowRow : windowRows) {
+        List<Window> windows = new ArrayList<>(windowStrings.length);
+        for (String windowRow : windowStrings) {
             Window window = DistributedUtils.buildWindowFromString(windowRow);
             windows.add(window);
+        }
+
+        return windows;
+    }
+
+    public static List<Window> createWindowsFromString(String windowString) {
+        String[] windowStrings = windowString.split(ARG_DELIMITER);
+        return createWindowsFromStrings(windowStrings);
+    }
+
+    public static List<Window> buildConcurrentWindowsFromString(String windowString) {
+        String[] concurrentWindowParts = windowString.split(",");
+        assert concurrentWindowParts.length >= 4;
+        assert concurrentWindowParts[0].equals(CONCURRENT_WINDOW);
+
+        final int numConcurrentWindows = Integer.parseInt(concurrentWindowParts[1]);
+        List<String> baseStringParts = Arrays.asList(concurrentWindowParts).subList(2, concurrentWindowParts.length);
+        String baseWindow = String.join(",", baseStringParts);
+
+        List<Window> windows = new ArrayList<>(numConcurrentWindows);
+        for (int windowId = 1; windowId <= numConcurrentWindows; windowId++) {
+            windows.add(buildWindowFromString(baseWindow + "," + windowId));
         }
 
         return windows;
@@ -393,7 +421,7 @@ public class DistributedUtils {
     public static List<AggregateFunction> createAggFunctionsFromString(String aggFnString) {
         List<AggregateFunction> aggFns = new ArrayList<>();
 
-        String[] aggFnRows = aggFnString.split("\n");
+        String[] aggFnRows = aggFnString.split(ARG_DELIMITER);
         for (String aggFnRow : aggFnRows) {
             AggregateFunction aggFn = DistributedUtils.buildAggregateFunctionFromString(aggFnRow);
             aggFns.add(aggFn);
@@ -402,11 +430,7 @@ public class DistributedUtils {
         return aggFns;
     }
 
-    public static long getWatermarkMsFromWindowString(String[] windowStrings) {
-        List<Window> windows = Arrays.stream(windowStrings)
-                .map(DistributedUtils::buildWindowFromString)
-                .collect(Collectors.toList());
-
+    public static long getWatermarkMsFromWindows(List<Window> windows) {
         List<Window> timedWindows = windows.stream()
                 .filter(w -> w.getWindowMeasure() == WindowMeasure.Time)
                 .collect(Collectors.toList());
@@ -430,5 +454,10 @@ public class DistributedUtils {
                 .flatMap(Collection::stream)
                 .min(Comparator.naturalOrder())
                 .orElseThrow(() -> new IllegalArgumentException("Could not find watermark ms."));
+    }
+
+    public static long getWatermarkMsFromWindowString(String[] windowStrings) {
+        List<Window> windows = createWindowsFromString(String.join(ARG_DELIMITER, windowStrings));
+        return getWatermarkMsFromWindows(windows);
     }
 }

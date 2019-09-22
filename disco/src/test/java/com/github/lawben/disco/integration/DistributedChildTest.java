@@ -1,6 +1,7 @@
 package com.github.lawben.disco.integration;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
+import static com.github.lawben.disco.DistributedUtils.ARG_DELIMITER;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.utils.SessionControlMatcher.equalsSessionStart;
 import static com.github.lawben.disco.utils.TestUtils.receiveWindow;
@@ -176,7 +177,7 @@ public class DistributedChildTest {
     void testRegisterChildMultiWindowSum() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("100", "TUMBLING,100,0\nSLIDING,100,50,1\nSESSION,100,2", "SUM");
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0" + ARG_DELIMITER + "SLIDING,100,50,1" + ARG_DELIMITER + "SESSION,100,2", "SUM");
 
         runDefaultChild(rootInitPort, 0);
 
@@ -190,7 +191,7 @@ public class DistributedChildTest {
     void testRegisterChildMultiWindowAvg() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("100", "TUMBLING,100,0\nSLIDING,100,50,1\nSESSION,100,2", "AVG");
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0" + ARG_DELIMITER + "SLIDING,100,50,1" + ARG_DELIMITER + "SESSION,100,2", "AVG");
 
         runDefaultChild(rootInitPort, 0);
 
@@ -204,7 +205,7 @@ public class DistributedChildTest {
     void testRegisterChildMultiWindowMedian() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("100", "TUMBLING,100,0\nSLIDING,100,50,1\nSESSION,100,2", "MEDIAN");
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0" + ARG_DELIMITER + "SLIDING,100,50,1" + ARG_DELIMITER + "SESSION,100,2", "MEDIAN");
 
         runDefaultChild(rootInitPort, 0);
 
@@ -313,7 +314,7 @@ public class DistributedChildTest {
     void testMultiWindowSumTwoStreams() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("100", "TUMBLING,100,0\nSLIDING,100,50,1\nSESSION,60,2", "SUM");
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0" + ARG_DELIMITER + "SLIDING,100,50,1" + ARG_DELIMITER + "SESSION,60,2", "SUM");
 
         int rootWindowPort = Utils.findOpenPort();
         rootWindowReceiver = new ZMQPullMock(rootWindowPort);
@@ -508,7 +509,7 @@ public class DistributedChildTest {
     void testMedianTumblingAndSessionTwoStreams() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("100", "SLIDING,100,50,0\nSESSION,60,1", "MEDIAN");
+        rootRegisterResponder.addMessage("100", "SLIDING,100,50,0" + ARG_DELIMITER + "SESSION,60,1", "MEDIAN");
 
         int rootWindowPort = Utils.findOpenPort();
         rootWindowReceiver = new ZMQPullMock(rootWindowPort);
@@ -591,7 +592,7 @@ public class DistributedChildTest {
     void testTwoStreamsSumAvgMedianAggregatesTwice() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("100", "TUMBLING,100,0", "SUM\nSUM\nAVG\nAVG\nMEDIAN\nMEDIAN");
+        rootRegisterResponder.addMessage("100", "TUMBLING,100,0", "SUM" + ARG_DELIMITER + "SUM" + ARG_DELIMITER + "AVG" + ARG_DELIMITER + "AVG" + ARG_DELIMITER + "MEDIAN" + ARG_DELIMITER + "MEDIAN");
 
         int rootWindowPort = Utils.findOpenPort();
         rootWindowReceiver = new ZMQPullMock(rootWindowPort);
@@ -796,7 +797,7 @@ public class DistributedChildTest {
     void testTwoStreamsCountAndTimeWindow() throws Exception {
         int rootInitPort = Utils.findOpenPort();
         rootRegisterResponder = new ZMQRespondMock(rootInitPort);
-        rootRegisterResponder.addMessage("30", "TUMBLING,3,0,COUNT\nTUMBLING,30,1", "SUM");
+        rootRegisterResponder.addMessage("30", "TUMBLING,3,0,COUNT" + ARG_DELIMITER + "TUMBLING,30,1", "SUM");
 
         int rootWindowPort = Utils.findOpenPort();
         rootWindowReceiver = new ZMQPullMock(rootWindowPort);

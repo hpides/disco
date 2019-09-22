@@ -1,5 +1,6 @@
 package com.github.lawben.disco;
 
+import static com.github.lawben.disco.DistributedUtils.ARG_DELIMITER;
 import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.MAX_LATENESS;
@@ -33,12 +34,12 @@ public class DistributedRoot implements Runnable {
         this.nodeImpl = new DistributedNode(0, NODE_IDENTIFIER, controllerPort, windowPort, numChildren, "", 0, 0);
         this.resultPath = resultPath;
 
-        nodeImpl.windowStrings = windowsString.split(";");
+        nodeImpl.windowStrings = windowsString.split(ARG_DELIMITER);
         if (nodeImpl.windowStrings.length == 0) {
             throw new IllegalArgumentException("Need at least one window.");
         }
 
-        nodeImpl.aggregateFnStrings = aggregateFunctionsString.split(";");
+        nodeImpl.aggregateFnStrings = aggregateFunctionsString.split(ARG_DELIMITER);
         if (nodeImpl.aggregateFnStrings.length == 0) {
             throw new IllegalArgumentException("Need at least one aggregate function.");
         }

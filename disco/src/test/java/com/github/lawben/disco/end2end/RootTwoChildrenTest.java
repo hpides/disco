@@ -1,5 +1,6 @@
 package com.github.lawben.disco.end2end;
 
+import static com.github.lawben.disco.DistributedUtils.ARG_DELIMITER;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static com.github.lawben.disco.Event.NO_KEY;
@@ -64,8 +65,8 @@ public class RootTwoChildrenTest {
 
     void startNodes(List<String> windows, List<String> aggFns) throws Exception {
         int numChildren = 2;
-        String windowsString = String.join(";", windows);
-        String aggFnsString = String.join(";", aggFns);
+        String windowsString = String.join(ARG_DELIMITER, windows);
+        String aggFnsString = String.join(ARG_DELIMITER, aggFns);
         DistributedRoot root =
                 new DistributedRoot(controllerPort, windowPort, resultPath, numChildren, windowsString, aggFnsString);
 

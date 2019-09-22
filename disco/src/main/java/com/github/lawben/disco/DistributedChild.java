@@ -21,6 +21,9 @@ public class DistributedChild implements Runnable {
     public final static int STREAM_REGISTER_PORT_OFFSET = 100;
     public final static long STREAM_REGISTER_TIMEOUT_MS = 10 * 1000;
 
+    private long processingTime;
+    private long numEventsSinceLastWatermark;
+
     private ChildMerger childMerger;
 
     private boolean hasCountWindow;
@@ -63,6 +66,8 @@ public class DistributedChild implements Runnable {
         currentEventTime = 0;
         lastWatermark = 0;
         numEvents = 0;
+        processingTime = 0;
+        numEventsSinceLastWatermark = 0;
 
         while (!nodeImpl.isInterrupted()) {
             String eventOrStreamEnd = streamInput.recvStr();
@@ -94,10 +99,15 @@ public class DistributedChild implements Runnable {
     }
 
     private void processEvent(String eventString) {
+//        final long processingStart = System.nanoTime();
         final Event event = Event.fromString(eventString);
         this.childMerger.processElement(event);
+//        final long processingEnd = System.nanoTime();
+
         currentEventTime = event.getTimestamp();
         numEvents++;
+        numEventsSinceLastWatermark++;
+//        processingTime += (processingEnd - processingStart);
 
         // If we haven't processed a watermark in watermarkMs milliseconds and waited for the maximum lateness of a
         // tuple, process it.
@@ -109,17 +119,26 @@ public class DistributedChild implements Runnable {
     }
 
     private void handleWatermark(long watermarkTimestamp) {
-        System.out.println("Processed " + numEvents + " total events at watermark " + watermarkTimestamp + ".");
+        System.out.println("Processed " + numEventsSinceLastWatermark + " total events at watermark " + watermarkTimestamp);
+//        System.out.println("Avg processing time: " + (processingTime / numEventsSinceLastWatermark) + " ns.");
+        processingTime = 0;
+        numEventsSinceLastWatermark = 0;
+
+//        final long watermarkStart = System.nanoTime();
         List<DistributedAggregateWindowState> finalWindows =
                 this.childMerger.processWatermarkedWindows(watermarkTimestamp);
+//        final long watermarkEnd = System.nanoTime();
+//        System.out.println("Watermark processing took " + (watermarkEnd - watermarkStart) + " ns.");
 
+//        final long sendingStart = System.nanoTime();
         nodeImpl.sendPreAggregatedWindowsToParent(finalWindows);
 
         finalWindows.stream()
                 .map(state -> childMerger.getNextSessionStart(state.getFunctionWindowId()))
                 .forEach(newSession -> newSession.ifPresent(nodeImpl::sendSessionStartToParent));
-
         lastWatermark = watermarkTimestamp;
+//        final long sendingEnd = System.nanoTime();
+//        System.out.println("Watermark sending took " + (sendingEnd - sendingStart) + " ns.");
     }
 
     private boolean registerStreams(final WindowingConfig windowingConfig) {

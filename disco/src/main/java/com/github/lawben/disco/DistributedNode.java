@@ -1,5 +1,7 @@
 package com.github.lawben.disco;
 
+import static com.github.lawben.disco.DistributedUtils.ARG_DELIMITER;
+import static com.github.lawben.disco.DistributedUtils.CONCURRENT_WINDOW;
 import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
@@ -214,11 +216,8 @@ public class DistributedNode {
     public void waitForChildren() {
         ZMQ.Socket childReceiver = createRegistrationListener();
 
-        List<Window> windows = Arrays.stream(this.windowStrings)
-                .map(DistributedUtils::buildWindowFromString)
-                .collect(Collectors.toList());
-
-        final long watermarkMs = DistributedUtils.getWatermarkMsFromWindowString(this.windowStrings);
+        final List<Window> windows = DistributedUtils.createWindowsFromStrings(windowStrings);
+        final long watermarkMs = DistributedUtils.getWatermarkMsFromWindows(windows);
 
         List<AggregateFunction> aggFn = Arrays.stream(this.aggregateFnStrings)
                 .map(DistributedUtils::buildAggregateFunctionFromString)
@@ -228,8 +227,8 @@ public class DistributedNode {
         this.aggregateMerger = new AggregateMerger(windows, aggFn, this.numChildren);
         List<Integer> childIds = new ArrayList<>(this.numChildren);
 
-        String completeWindowString = String.join("\n", this.windowStrings);
-        String completeAggFnString = String.join("\n", this.aggregateFnStrings);
+        String completeWindowString = String.join(ARG_DELIMITER, this.windowStrings);
+        String completeAggFnString = String.join(ARG_DELIMITER, this.aggregateFnStrings);
         int numChildrenRegistered = 0;
         while (!isInterrupted() && numChildrenRegistered < numChildren) {
             String message = childReceiver.recvStr();
@@ -265,11 +264,13 @@ public class DistributedNode {
         controlSender.send(this.nodeString("I am a new node."));
 
         this.watermarkMs = Long.parseLong(controlSender.recvStr());
+        System.out.println("Received watermarks");
         String windowString = controlSender.recvStr();
+        System.out.println("Received windows");
         String aggString = controlSender.recvStr();
 
-        this.windowStrings = windowString.split(";");
-        this.aggregateFnStrings = aggString.split(";");
+        this.windowStrings = windowString.split(ARG_DELIMITER);
+        this.aggregateFnStrings = aggString.split(ARG_DELIMITER);
         System.out.println(this.nodeString("Received: " + this.watermarkMs +
                 " ms watermark | " + Arrays.toString(windowStrings) + " | " + Arrays.toString(aggregateFnStrings)));
 
