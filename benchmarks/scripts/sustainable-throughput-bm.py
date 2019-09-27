@@ -27,28 +27,28 @@ def run_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: Li
 
 
 def run_all():
-    # basic_windows = ["TUMBLING,1000", "SLIDING,1000,500"]  # , "SESSION,100"]
-    # basic_agg_fns = ["MAX", "M_AVG", "M_MEDIAN"]
-    # basic_node_config = [(1, 1), (1, 2), (1, 4), (1, 8), (2, 2), (4, 4), (8, 8)]
-    # run_benchmark_matrix(basic_windows, basic_agg_fns, basic_node_config)
+    basic_windows = ["TUMBLING,1000", "SLIDING,1000,500"]  # , "SESSION,100"]
+    basic_agg_fns = ['M_MEDIAN']  # ["MAX", "M_AVG", "M_MEDIAN"]
+    basic_node_config = [(1, 1), (1, 2), (1, 4), (1, 8), (2, 2), (4, 4), (8, 8)]
+    run_benchmark_matrix(basic_windows, basic_agg_fns, basic_node_config)
 
     ############################
-
-    tumbling_windows = [
-        # 10-10000 equal tumbling windows
-        "CONCURRENT,1,TUMBLING,1000",
-        "CONCURRENT,5,TUMBLING,1000",
-        "CONCURRENT,10,TUMBLING,1000",
-        "CONCURRENT,50,TUMBLING,1000",
-        "CONCURRENT,100,TUMBLING,1000",
-        "CONCURRENT,500,TUMBLING,1000",
-        "CONCURRENT,1000,TUMBLING,1000",
-        "CONCURRENT,5000,TUMBLING,1000",
-        "CONCURRENT,10000,TUMBLING,1000"
-    ]
-    tumbling_agg_fns = ["MAX", "M_MEDIAN"]
-    tumbling_node_config = [(1, 1)]  # , (2, 2), (4, 4), (8, 8)]
-    run_benchmark_matrix(tumbling_windows, tumbling_agg_fns, tumbling_node_config)
+    #
+    # tumbling_windows = [
+    #     # 10-10000 equal tumbling windows
+    #     "CONCURRENT,1,TUMBLING,1000",
+    #     "CONCURRENT,5,TUMBLING,1000",
+    #     "CONCURRENT,10,TUMBLING,1000",
+    #     "CONCURRENT,50,TUMBLING,1000",
+    #     "CONCURRENT,100,TUMBLING,1000",
+    #     "CONCURRENT,500,TUMBLING,1000",
+    #     "CONCURRENT,1000,TUMBLING,1000",
+    #     "CONCURRENT,5000,TUMBLING,1000",
+    #     "CONCURRENT,10000,TUMBLING,1000"
+    # ]
+    # tumbling_agg_fns = ["MAX", "M_MEDIAN"]
+    # tumbling_node_config = [(1, 1)]  # , (2, 2), (4, 4), (8, 8)]
+    # run_benchmark_matrix(tumbling_windows, tumbling_agg_fns, tumbling_node_config)
 
 
 if __name__ == '__main__':

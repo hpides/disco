@@ -18,7 +18,12 @@ GENERIC_ERROR_MSG = "Exception in thread"
 NODE_REGISTRATION_FAIL = "Could not register at child node"
 QUEUE_SIZE_RE = re.compile(r"Current queue size: (\d+)")
 
-SUSTAINABLE_THRESHOLD = 10_000
+DECOMPOSABLE_SUSTAINABLE_THRESHOLD = 10_000
+HOLISTIC_SUSTAINABLE_THRESHOLD = 1_000
+
+DECOMPOSABLE_EXPECTED = 1_000_000
+HOLISTIC_EXPECTED = 15_000
+
 
 RUN_LOGS = []
 
@@ -85,15 +90,21 @@ def sustainability_run(num_events_per_second, num_children, num_streams,
 
 def find_sustainable_throughput(num_children, num_streams, windows,
                                 agg_functions, duration):
-    total_max_events = 2_000_000
-    expected_max_events_per_stream = 1_000_000
 
+    expected_max_events_per_stream = DECOMPOSABLE_EXPECTED
+    sustainable_threshold = DECOMPOSABLE_SUSTAINABLE_THRESHOLD
+
+    if "MEDIAN" in windows:
+        expected_max_events_per_stream = HOLISTIC_EXPECTED
+        sustainable_threshold = HOLISTIC_SUSTAINABLE_THRESHOLD
+
+    total_max_events = expected_max_events_per_stream * 2
     max_events = total_max_events
     min_events = 0
     num_sustainable_events = expected_max_events_per_stream
 
     print("Trying to find sustainable throughput...")
-    while (max_events - min_events > SUSTAINABLE_THRESHOLD
+    while (max_events - min_events > sustainable_threshold
            and num_sustainable_events < max_events):
         is_sustainable = sustainability_run(num_sustainable_events,
                                             num_children, num_streams,

@@ -39,14 +39,20 @@ public class ChildBenchmarkListener implements Runnable {
         long lastSecondLatency = 0;
         long lastSecondNumEvents = 0;
 
+        long lastSecondReceiveTime = 0;
+
         long lastSecondStart = System.currentTimeMillis();
         long lastSecondEnd = lastSecondStart + 1000;
 
         while (!nodeImpl.isInterrupted()) {
+            final long receivingStart = System.nanoTime();
             String eventOrStreamEnd = streamInput.recvStr();
+            final long receivingEnd = System.nanoTime();
             if (eventOrStreamEnd == null) {
                 continue;
             }
+
+            lastSecondReceiveTime += (receivingEnd - receivingStart);
 
             if (eventOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
                 if (nodeImpl.isTotalStreamEnd()) {
@@ -68,12 +74,15 @@ public class ChildBenchmarkListener implements Runnable {
             totalLatency += lastSecondLatency;
             numEvents += lastSecondNumEvents;
             final long lastSecondAvgLatency = lastSecondLatency / lastSecondNumEvents;
+            final long lastSecondAvgReceive = lastSecondReceiveTime / lastSecondNumEvents;
             final long totalAvgLatency = totalLatency / numEvents;
+            System.out.println("Avg. receive: " + lastSecondAvgReceive);
             System.out.println("Current avg. latency: " + lastSecondAvgLatency);
             System.out.println("Total avg. latency: " + totalAvgLatency);
 
             lastSecondLatency = 0;
             lastSecondNumEvents = 0;
+            lastSecondReceiveTime = 0;
             lastSecondEnd = currentTime + 1000;
         }
     }

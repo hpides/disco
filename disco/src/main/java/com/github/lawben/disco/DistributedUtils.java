@@ -23,7 +23,10 @@ import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
+import de.tub.dima.scotty.slicing.slice.LazySlice;
 import de.tub.dima.scotty.slicing.slice.Slice;
+import de.tub.dima.scotty.slicing.slice.StreamRecord;
+import de.tub.dima.scotty.state.SetState;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -37,6 +40,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class DistributedUtils {
 
@@ -407,12 +411,18 @@ public class DistributedUtils {
         assert concurrentWindowParts[0].equals(CONCURRENT_WINDOW);
 
         final int numConcurrentWindows = Integer.parseInt(concurrentWindowParts[1]);
-        List<String> baseStringParts = Arrays.asList(concurrentWindowParts).subList(2, concurrentWindowParts.length);
-        String baseWindow = String.join(",", baseStringParts);
+        final String windowType = concurrentWindowParts[2];
+        assert windowType.equals("TUMBLING");
+        final int baseWindowLength = Integer.parseInt(concurrentWindowParts[3]);
 
         List<Window> windows = new ArrayList<>(numConcurrentWindows);
+        Random random = new Random();
+        final int minWindowLength = baseWindowLength / 2;
+
         for (int windowId = 1; windowId <= numConcurrentWindows; windowId++) {
-            windows.add(buildWindowFromString(baseWindow + "," + windowId));
+            final int windowLength = random.nextInt(baseWindowLength) + minWindowLength;
+            String randomWindowString = "TUMBLING," + windowLength + "," + windowId;
+            windows.add(buildWindowFromString(randomWindowString));
         }
 
         return windows;
