@@ -94,7 +94,7 @@ def find_sustainable_throughput(num_children, num_streams, windows,
     expected_max_events_per_stream = DECOMPOSABLE_EXPECTED
     sustainable_threshold = DECOMPOSABLE_SUSTAINABLE_THRESHOLD
 
-    if "MEDIAN" in windows:
+    if "MEDIAN" in agg_functions:
         expected_max_events_per_stream = HOLISTIC_EXPECTED
         sustainable_threshold = HOLISTIC_SUSTAINABLE_THRESHOLD
 
