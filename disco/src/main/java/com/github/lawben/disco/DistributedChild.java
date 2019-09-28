@@ -145,13 +145,17 @@ public class DistributedChild implements Runnable {
 
         final long sendingStart = System.nanoTime();
         nodeImpl.sendPreAggregatedWindowsToParent(finalWindows);
+        final long sendingEnd = System.nanoTime();
+        System.out.println("Watermark sending took " + (sendingEnd - sendingStart) + " ns.");
 
+        final long sessionStart = System.nanoTime();
         finalWindows.stream()
                 .map(state -> childMerger.getNextSessionStart(state.getFunctionWindowId()))
                 .forEach(newSession -> newSession.ifPresent(nodeImpl::sendSessionStartToParent));
+        final long sessionEnd = System.nanoTime();
+        System.out.println("Session start took " + (sessionEnd - sessionStart) + " ns.");
+
         lastWatermark = watermarkTimestamp;
-        final long sendingEnd = System.nanoTime();
-        System.out.println("Watermark sending took " + (sendingEnd - sendingStart) + " ns.");
     }
 
     private boolean registerStreams(final WindowingConfig windowingConfig) {

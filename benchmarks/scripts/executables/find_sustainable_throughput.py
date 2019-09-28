@@ -4,6 +4,7 @@ import shutil
 from argparse import ArgumentParser
 from datetime import datetime
 from multiprocessing import Pipe, Process
+from typing import List
 
 from lib.common import logs_are_unsustainable
 from lib.run import run as run_all_main
@@ -24,16 +25,20 @@ HOLISTIC_SUSTAINABLE_THRESHOLD = 1_000
 DECOMPOSABLE_EXPECTED = 1_000_000
 DECOMPOSABLE_MAX = 2_000_000
 HOLISTIC_EXPECTED = 15_000
-HOLISTIC_MAX = 60_000
+HOLISTIC_MAX = 70_000
 
 
 RUN_LOGS = []
 
 
-def move_logs(num_children, num_streams):
-    now = datetime.now()
-    run_date_string = now.strftime("%Y-%m-%d-%H%M")
-    run_log_dir = f"sustainable_{run_date_string}_{num_children}-children_{num_streams}-streams"
+def move_logs(node_config: List[int]):
+    run_date_string = datetime.now().strftime("%Y-%m-%d-%H%M")
+    node_str = f"{'_'.join(f'{node}-mergers' for node in node_config[:-2])}"
+    num_children = node_config[-2]
+    num_streams = node_config[-1]
+    child_stream_str = f"{num_children}-children_{num_streams}-streams"
+    node_child_sep = "_" if node_str else ""
+    run_log_dir = f"sustainable_{run_date_string}_{node_str}{node_child_sep}{child_stream_str}"
     run_log_path = os.path.join(LOG_PATH, run_log_dir)
     os.makedirs(run_log_path)
     for log in RUN_LOGS:
@@ -44,14 +49,14 @@ def move_logs(num_children, num_streams):
     print(f"All logs can be found in {run_log_path}.")
 
 
-def single_sustainability_run(num_events_per_second, num_children, num_streams,
-                              windows, agg_functions, run_duration):
-    num_nodes = num_children + num_streams + 1  # + 1 for root
+def single_sustainability_run(num_events_per_second: int, node_config: List[int],
+                              windows: str, agg_functions: str, run_duration: int):
+    num_nodes = sum(node_config) + 1  # + 1 for root
     timeout = run_duration + 30
     print(f"Running sustainability test with {num_events_per_second} events/s.")
     process_recv_pipe, process_send_pipe = Pipe(False)
     run_process = Process(target=run_all_main,
-                          args=(num_children, num_streams,
+                          args=(node_config,
                                 num_events_per_second, run_duration, windows,
                                 agg_functions, process_send_pipe),
                           name=f"process-run-{num_nodes}-{num_events_per_second}")
@@ -69,15 +74,13 @@ def single_sustainability_run(num_events_per_second, num_children, num_streams,
     return logs_are_unsustainable(log_directory)
 
 
-def sustainability_run(num_events_per_second, num_children, num_streams,
-                       windows, agg_functions, run_duration):
+def sustainability_run(num_events_per_second: int, node_config: List[int],
+                       windows: str, agg_functions: str, run_duration: int):
     is_unsustainable = None
     tries = 0
     while is_unsustainable is None and tries < 3:
-        is_unsustainable = single_sustainability_run(num_events_per_second,
-                                                     num_children, num_streams,
-                                                     windows, agg_functions,
-                                                     run_duration)
+        is_unsustainable = single_sustainability_run(num_events_per_second, node_config,
+                                                     windows, agg_functions, run_duration)
         tries += 1
         if is_unsustainable is None:
             # Error was very different to rest of nodes.
@@ -90,8 +93,8 @@ def sustainability_run(num_events_per_second, num_children, num_streams,
     return not is_unsustainable
 
 
-def find_sustainable_throughput(num_children, num_streams, windows,
-                                agg_functions, duration):
+def find_sustainable_throughput(node_config: List[int], windows: str,
+                                agg_functions: str, duration: int):
 
     expected_max_events_per_stream = DECOMPOSABLE_EXPECTED
     sustainable_threshold = DECOMPOSABLE_SUSTAINABLE_THRESHOLD
@@ -109,10 +112,8 @@ def find_sustainable_throughput(num_children, num_streams, windows,
     print("Trying to find sustainable throughput...")
     while (max_events - min_events > sustainable_threshold
            and num_sustainable_events < max_events):
-        is_sustainable = sustainability_run(num_sustainable_events,
-                                            num_children, num_streams,
-                                            windows, agg_functions,
-                                            duration)
+        is_sustainable = sustainability_run(num_sustainable_events, node_config,
+                                            windows, agg_functions, duration)
 
         if is_sustainable:
             # Try to go higher
@@ -133,26 +134,23 @@ def find_sustainable_throughput(num_children, num_streams, windows,
     return min_events
 
 
-def run_throughput(num_children, num_streams, duration, windows, agg_fns):
+def run_throughput(node_config: List[int], duration: int, windows: str, agg_fns: str):
     try:
-        throughput = find_sustainable_throughput(num_children, num_streams, windows,
-                                                 agg_fns, duration)
-        return throughput
+        return find_sustainable_throughput(node_config, windows, agg_fns, duration)
     except Exception as e:
         print(f"Got exception: {e}")
     finally:
-        move_logs(num_children, num_streams)
+        move_logs(node_config)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--num-children", type=int, required=True, dest='num_children')
-    parser.add_argument("--num-streams", type=int, required=True, dest='num_streams')
+    parser.add_argument("--nodes", type=int, nargs='+', required=True, dest='nodes')
     parser.add_argument("--windows", type=str, required=True, dest="windows")
     parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
     parser.add_argument("--duration", dest='duration', required=False,
                         type=int, default="120", help="Duration of run in seconds.")
 
     parser_args = parser.parse_args()
-    run_throughput(parser_args.num_children, parser_args.num_streams,  parser_args.duration,
+    run_throughput(parser_args.nodes, parser_args.duration,
                    parser_args.windows, parser_args.agg_functions)

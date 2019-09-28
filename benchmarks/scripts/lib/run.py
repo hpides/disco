@@ -5,6 +5,7 @@ import string
 import sys
 from datetime import datetime
 from threading import Thread
+from typing import List
 
 from lib.common import ssh_command, check_complete, SSH_BASE_DIR, \
                        ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT
@@ -23,8 +24,15 @@ ALL_HOSTS = [
 ]
 
 
-def get_hosts_for_run(num_nodes):
-    return ALL_HOSTS[:num_nodes]
+def get_hosts_for_run(node_config: List[int]) -> List[List[str]]:
+    assert sum(node_config) <= len(ALL_HOSTS), \
+        f"Cannot use more than {len(ALL_HOSTS)} nodes. Got {sum(node_config)}."
+    node_idx = 0
+    hosts = []
+    for num_level_nodes in node_config:
+        hosts.append(ALL_HOSTS[node_idx:node_idx + num_level_nodes])
+        node_idx += num_level_nodes
+    return hosts
 
 
 def get_log_dir(num_nodes, num_events, duration):
@@ -37,6 +45,7 @@ def get_log_dir(num_nodes, num_events, duration):
 def upload_benchmark_params(host, *args):
     string_args = [str(arg) for arg in args]
     args_str = " ".join(string_args)
+    print(f"BENCHMARK_ARGS={args_str}")
     ssh_command(host, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> {SSH_BASE_DIR}/benchmark_env')
 
 
@@ -47,17 +56,22 @@ def upload_root_params(num_children, windows, agg_fns):
                             windows, agg_fns)
 
 
-def upload_child_params(child_host, child_id, num_streams):
-    fixed_args = ("DistributedChildMain", ROOT_HOST, ROOT_CONTROL_PORT,
-                  ROOT_WINDOW_PORT, CHILD_PORT)
-    upload_benchmark_params(child_host, *fixed_args, child_id, num_streams)
+def upload_child_params(child_host, parent_host, child_id, num_streams):
+    node_args = ("DistributedChildMain", parent_host, ROOT_CONTROL_PORT,
+                 ROOT_WINDOW_PORT, CHILD_PORT, child_id, num_streams)
+    upload_benchmark_params(child_host, *node_args)
 
 
 def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration):
     parent_addr = f"{parent_host}:{CHILD_PORT}"
-    fixed_args = ("SustainableThroughputRunner",)
-    upload_benchmark_params(stream_host, *fixed_args, stream_id,
-                            parent_addr, num_events, duration)
+    node_args = ("SustainableThroughputRunner", stream_id, parent_addr, num_events, duration)
+    upload_benchmark_params(stream_host, *node_args)
+
+
+def upload_intermediate_params(host, node_id, num_children, parent_host):
+    node_args = ("DistributedMergeNodeMain", parent_host, ROOT_CONTROL_PORT, ROOT_WINDOW_PORT,
+                 ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, num_children, node_id)
+    upload_benchmark_params(host, *node_args)
 
 
 def run_host(host, name, log_dir, timeout=None):
@@ -78,9 +92,21 @@ def run_host(host, name, log_dir, timeout=None):
         out_file.write(util_output)
 
 
-def run(num_children, num_streams, num_events, duration, windows,
-        agg_functions, process_log_dir_pipe=None):
-    num_nodes = num_children + num_streams + 1
+def run_single_level(num_children: int, num_streams: int, num_events: int, duration: int,
+                     windows: str, agg_functions: str, process_log_dir_pipe=None):
+    node_config = [num_children, num_streams]
+    return run(node_config, num_events, duration, windows, agg_functions, process_log_dir_pipe)
+
+
+def run(node_config: List[int], num_events: int, duration: int,
+        windows: str, agg_functions: str, process_log_dir_pipe=None):
+    for i in range(len(node_config) - 1):
+        if node_config[i] > node_config[i + 1]:
+            raise RuntimeError(f"Bad runtime config. Need increasing number per level. {node_config}")
+        if node_config[i + 1] % node_config[i] != 0:
+            raise RuntimeError(f"Need exact multiple increase per level. {node_config}")
+
+    num_nodes = sum(node_config) + 1
     log_dir = get_log_dir(num_nodes, num_events, duration)
 
     try:
@@ -94,24 +120,44 @@ def run(num_children, num_streams, num_events, duration, windows,
 
     print(f"Writing logs to {log_dir}\n")
 
-    all_hosts = [ROOT_HOST] + get_hosts_for_run(num_children + num_streams)
-    print(f"All hosts ({len(all_hosts)}): {' '.join(all_hosts)}")
+    all_hosts = get_hosts_for_run(node_config)
+    all_hosts.insert(0, [ROOT_HOST])
+    flat_hosts = [host for level in all_hosts for host in level]
+    print(f"All hosts ({len(flat_hosts)}): {' '.join(flat_hosts)}")
 
     print("Uploading benchmark arguments on all nodes...")
-    child_hosts = all_hosts[1:num_children + 1]
-    assert len(child_hosts) == num_children
-    stream_hosts = all_hosts[num_children + 1:]
-    assert len(stream_hosts) == num_streams
+    # Upload for root node
+    named_hosts = [(ROOT_HOST, "root")]
+    upload_root_params(len(all_hosts[1]), windows, agg_functions)
 
-    named_hosts = []
-    upload_root_params(num_children, windows, agg_functions)
-    named_hosts.append((ROOT_HOST, "root"))
+    # Upload for intermediate nodes
+    for level_id, level_hosts in enumerate(all_hosts[1:-2], 1):
+        parent_nodes = all_hosts[level_id - 1]
+        num_parents = len(parent_nodes)
+        num_children = len(all_hosts[level_id + 1])
+        assert num_children % len(level_hosts) == 0
+        num_children_per_node = num_children // len(level_hosts)
+        for node_id, level_host in enumerate(level_hosts):
+            parent_host = parent_nodes[node_id % num_parents]
+            node_level_id = (10 * level_id) + node_id
+            upload_intermediate_params(level_host, node_level_id, num_children_per_node, parent_host)
+            named_hosts.append((level_host, f"merger-{node_level_id}"))
 
+    parent_nodes = all_hosts[-3]
+    child_hosts = all_hosts[-2]
+    stream_hosts = all_hosts[-1]
+    num_parents = len(parent_nodes)
+    num_children = len(child_hosts)
+    num_streams = len(stream_hosts)
+
+    # Upload for child nodes
     num_streams_per_child = num_streams // num_children
     for child_id, child_host in enumerate(child_hosts):
-        upload_child_params(child_host, child_id, num_streams_per_child)
+        parent_host = parent_nodes[child_id % num_parents]
+        upload_child_params(child_host, parent_host, child_id, num_streams_per_child)
         named_hosts.append((child_host, f"child-{child_id}"))
 
+    # Upload for stream nodes
     for stream_id, stream_host in enumerate(stream_hosts):
         parent_host = child_hosts[stream_id % num_children]
         upload_stream_params(stream_host, stream_id, parent_host, num_events, duration)
@@ -128,13 +174,10 @@ def run(num_children, num_streams, num_events, duration, windows,
         thread.start()
         threads.append(thread)
 
-    print("To view root logs:")
-    print(f"tail -F {os.path.join(log_dir, 'root.log')}\n")
-
-    check_complete(max_run_duration, all_hosts)
+    check_complete(max_run_duration, flat_hosts)
     kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
     print("Ending script by killing all PIDs...")
-    for host in all_hosts:
+    for host in flat_hosts:
         ssh_command(host, kill_command)
 
     for thread in threads:
@@ -147,16 +190,16 @@ def run(num_children, num_streams, num_events, duration, windows,
 
     return log_dir
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--num-children", type=int, required=True, dest="num_children")
-    parser.add_argument("--num-streams", type=int, required=True, dest="num_streams")
-    parser.add_argument("--num-events", type=int, required=True, dest="num_events")
-    parser.add_argument("--duration", type=int, required=True, dest="duration")
-    parser.add_argument("--windows", type=str, required=True, dest="windows")
-    parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
-
-    args = parser.parse_args()
-    run(args.num_children, args.num_streams, args.num_events,
-        args.duration, args.windows, args.agg_functions)
+# TODO: change if needed again for new node_config
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--num-children", type=int, required=True, dest="num_children")
+#     parser.add_argument("--num-streams", type=int, required=True, dest="num_streams")
+#     parser.add_argument("--num-events", type=int, required=True, dest="num_events")
+#     parser.add_argument("--duration", type=int, required=True, dest="duration")
+#     parser.add_argument("--windows", type=str, required=True, dest="windows")
+#     parser.add_argument("--agg-functions", type=str, required=True, dest="agg_functions")
+#
+#     args = parser.parse_args()
+#     run(args.num_children, args.num_streams, args.num_events,
+#         args.duration, args.windows, args.agg_functions)

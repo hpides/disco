@@ -106,7 +106,7 @@ def logs_are_unsustainable(log_directory):
                 continue
 
             num_streams += 1
-            if GENERIC_ERROR_MSG in log_contents:
+            if GENERIC_ERROR_MSG in log_contents or "unsustainable" in log_contents:
                 # Found an error while generating
                 if NODE_REGISTRATION_FAIL in log_contents:
                     raise RuntimeError(NODE_REGISTRATION_FAIL)
