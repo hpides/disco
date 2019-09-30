@@ -42,9 +42,20 @@ def ssh_command(host, command, timeout=None, verbose=False, user="hadoop"):
 
 
 def _ssh_command(host, command, timeout, user):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host, username=user)
+    retries = 0
+    max_num_retries = 3
+    ssh = None
+    while retries < max_num_retries:
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(host, username=user)
+        except (paramiko.SSHException, OSError) as e:
+            retries += 1
+            if retries == max_num_retries:
+                raise e
+            continue
+
     _, stdout, stderr = ssh.exec_command(command, timeout=timeout)
     return ssh, stdout, stderr
 
@@ -131,3 +142,9 @@ def logs_are_unsustainable(log_directory):
 
     # Run was sustainable
     return False
+
+
+def is_port_in_use(port):
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) != 0
