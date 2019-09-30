@@ -42,19 +42,19 @@ def ssh_command(host, command, timeout=None, verbose=False, user="hadoop"):
 
 
 def _ssh_command(host, command, timeout, user):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
     retries = 0
     max_num_retries = 3
-    ssh = None
     while retries < max_num_retries:
         try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(host, username=user)
+            break
         except (paramiko.SSHException, OSError) as e:
             retries += 1
             if retries == max_num_retries:
                 raise e
-            continue
 
     _, stdout, stderr = ssh.exec_command(command, timeout=timeout)
     return ssh, stdout, stderr
