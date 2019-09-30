@@ -1,10 +1,10 @@
 package com.github.lawben.disco.unit;
 
-import com.github.lawben.disco.merge.AlgebraicWindowMerger;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.functions.PartialAverage;
+import com.github.lawben.disco.merge.AlgebraicWindowMerger;
 import com.github.lawben.disco.utils.WindowMergerTestBase;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowType.SlidingWindow;

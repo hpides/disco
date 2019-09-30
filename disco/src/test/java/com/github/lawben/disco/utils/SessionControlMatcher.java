@@ -1,7 +1,6 @@
 package com.github.lawben.disco.utils;
 
 import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
-import static com.github.lawben.disco.DistributedUtils.functionWindowIdToString;
 
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import java.util.List;

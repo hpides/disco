@@ -4,10 +4,7 @@ import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
-import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.merge.FinalWindowsAndSessionStarts;
-import java.util.List;
-import java.util.Optional;
 import org.zeromq.ZMQ;
 
 public class DistributedMergeNode implements Runnable {
@@ -36,7 +33,6 @@ public class DistributedMergeNode implements Runnable {
             nodeImpl.waitForChildren();
             processPreAggregatedWindows();
         } finally {
-            nodeImpl.close();
             nodeImpl.close();
         }
     }

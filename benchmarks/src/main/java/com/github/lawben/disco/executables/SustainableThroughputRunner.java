@@ -1,6 +1,7 @@
 package com.github.lawben.disco.executables;
 
 import static com.github.lawben.disco.DistributedChild.STREAM_REGISTER_PORT_OFFSET;
+import static com.github.lawben.disco.DistributedUtils.HIGH_WATERMARK;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
 import com.github.lawben.disco.DistributedUtils;
@@ -47,7 +48,7 @@ public class SustainableThroughputRunner {
         List<Socket> senders = new ArrayList<>(NUM_SENDERS);
         for (int socketNum = 0; socketNum < NUM_SENDERS; socketNum++) {
             Socket dataPusher = context.createSocket(SocketType.PUSH);
-            dataPusher.setSndHWM(1000);
+            dataPusher.setSndHWM(HIGH_WATERMARK);
             dataPusher.connect("tcp://" + nodeAddress);
             senders.add(dataPusher);
         }

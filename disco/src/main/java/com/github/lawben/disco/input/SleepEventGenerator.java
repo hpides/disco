@@ -12,36 +12,48 @@ import org.zeromq.ZMQ;
 public class SleepEventGenerator implements EventGenerator {
     private final int streamId;
     private final InputStreamConfig config;
+    private final Random rand;
 
     public SleepEventGenerator(int streamId, InputStreamConfig config) {
         this.streamId = streamId;
         this.config = config;
+        this.rand = new Random();
     }
 
     @Override
-    public final long generateAndSendEvents(Random rand, ZMQ.Socket eventSender) throws Exception {
+    public final long generateAndSendEvents(ZMQ.Socket eventSender) throws Exception {
         long lastEventTimestamp = 0;
         final long startTime = config.startTimestamp;
-        final Function<Random, Long> eventGenerator = config.generatorFunction;
+        final Function<Long, Long> eventGenerator = config.generatorFunction;
         final int minSleepTime = config.minWaitTimeMillis;
         final int maxSleepTime = config.maxWaitTimeMillis;
 
-        for (int i = 0; i < config.numEventsToSend; i++) {
-            this.doSleep(minSleepTime, maxSleepTime, rand);
+        long sendSecondEnd = System.currentTimeMillis() + 1000;
+        long lastSendCount = 0;
 
-            final long eventTimestamp = System.currentTimeMillis() - startTime;
-            final Long eventValue = (Long) eventGenerator.apply(rand);
+        for (int i = 0; i < config.numEventsToSend; i++) {
+            this.doSleep(minSleepTime, maxSleepTime);
+
+            final long realTimestamp = System.currentTimeMillis();
+            final long eventTimestamp = realTimestamp - startTime;
+            final Long eventValue = eventGenerator.apply(realTimestamp);
             final Event event = new Event(eventValue, eventTimestamp, this.streamId);
             final String msg = event.asString();
             eventSender.send(msg);
 
             lastEventTimestamp = eventTimestamp;
+
+            if (System.currentTimeMillis() > sendSecondEnd) {
+                System.out.println("Sent " + (i - lastSendCount) + " events in last second.");
+                lastSendCount = i;
+                sendSecondEnd += 1000;
+            }
         }
 
         return lastEventTimestamp;
     }
 
-    protected void doSleep(int minSleep, int maxSleep, Random rand) throws InterruptedException {
+    protected void doSleep(int minSleep, int maxSleep) throws InterruptedException {
         int sleepTime = rand.nextInt((maxSleep - minSleep) + 1) + minSleep;
         Thread.sleep(sleepTime);
     }

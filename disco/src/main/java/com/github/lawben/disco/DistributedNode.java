@@ -1,10 +1,10 @@
 package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.ARG_DELIMITER;
-import static com.github.lawben.disco.DistributedUtils.CONCURRENT_WINDOW;
 import static com.github.lawben.disco.DistributedUtils.CONTROL_STRING;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
+import static com.github.lawben.disco.DistributedUtils.HIGH_WATERMARK;
 import static com.github.lawben.disco.DistributedUtils.HOLISTIC_STRING;
 import static com.github.lawben.disco.DistributedUtils.createAggFunctionsFromString;
 import static com.github.lawben.disco.DistributedUtils.createWindowsFromString;
@@ -236,7 +236,7 @@ public class DistributedNode {
                 continue;
             }
             System.out.println(this.nodeString("Received from child: " + message));
-            Pattern childIdPattern = Pattern.compile("(CHILD|NODE|MERGER)-(\\d+).*");
+            Pattern childIdPattern = Pattern.compile("\\[(.*)-(\\d+)].*");
             Matcher matcher = childIdPattern.matcher(message);
             if (matcher.find()) {
                 Integer childId = Integer.valueOf(matcher.group(2));
@@ -319,7 +319,7 @@ public class DistributedNode {
         if (this.dataPuller == null) {
             this.dataPuller = this.context.createSocket(SocketType.PULL);
             this.dataPuller.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
-            this.dataPuller.setRcvHWM(1000);
+            this.dataPuller.setRcvHWM(HIGH_WATERMARK);
 
             int retries = 0;
             while (true) {
@@ -343,6 +343,7 @@ public class DistributedNode {
     public ZMQ.Socket createWindowPusher(String ip, int port) {
         if (this.windowPusher == null){
             this.windowPusher = this.context.createSocket(SocketType.PUSH);
+            this.windowPusher.setSndHWM(HIGH_WATERMARK);
             this.windowPusher.connect(DistributedUtils.buildTcpUrl(ip, port));
         }
         return this.windowPusher;

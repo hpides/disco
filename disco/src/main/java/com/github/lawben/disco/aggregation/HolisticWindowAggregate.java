@@ -4,8 +4,6 @@ import static com.github.lawben.disco.DistributedUtils.slicesToString;
 import static com.github.lawben.disco.Event.NO_KEY;
 
 import com.github.lawben.disco.DistributedUtils;
-import com.github.lawben.disco.aggregation.BaseWindowAggregate;
-import com.github.lawben.disco.aggregation.DistributedSlice;
 import java.util.List;
 
 public class HolisticWindowAggregate extends BaseWindowAggregate<List<DistributedSlice>> {

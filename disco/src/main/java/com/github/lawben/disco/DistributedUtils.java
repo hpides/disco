@@ -2,12 +2,12 @@ package com.github.lawben.disco;
 
 import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
-import com.github.lawben.disco.aggregation.functions.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
+import com.github.lawben.disco.aggregation.functions.AverageAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.MaxAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.MaxAverageAggregateFunction;
 import com.github.lawben.disco.aggregation.functions.MaxMedianAggregateFunction;
@@ -23,10 +23,7 @@ import de.tub.dima.scotty.core.windowType.SlidingWindow;
 import de.tub.dima.scotty.core.windowType.TumblingWindow;
 import de.tub.dima.scotty.core.windowType.Window;
 import de.tub.dima.scotty.core.windowType.WindowMeasure;
-import de.tub.dima.scotty.slicing.slice.LazySlice;
 import de.tub.dima.scotty.slicing.slice.Slice;
-import de.tub.dima.scotty.slicing.slice.StreamRecord;
-import de.tub.dima.scotty.state.SetState;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -40,7 +37,6 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public class DistributedUtils {
 
@@ -52,6 +48,8 @@ public class DistributedUtils {
     public static final String HOLISTIC_STRING = "HOL";
 
     public static final long MAX_LATENESS = 100L;
+
+    public static int HIGH_WATERMARK = 1000;
 
     public static final String EVENT_STRING = "E";
     public static final String CONTROL_STRING = "C";

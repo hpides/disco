@@ -1,9 +1,9 @@
 package com.github.lawben.disco.executables;
 
-import com.github.lawben.disco.DistributedRoot;
 import com.github.lawben.disco.ResultListener;
+import com.github.lawben.disco.SingleNodeRoot;
 
-public class DistributedRootMain {
+public class SingleNodeRootMain {
     public static void main(String[] args) {
         if (args.length < 6) {
             System.out.println("Not enough arguments!\nUsage: java ... controllerPort windowPort resultPath "
@@ -18,17 +18,17 @@ public class DistributedRootMain {
         final String windowsString = args[4];
         final String aggFnsString = args[5];
 
-        runRoot(rootControllerPort, rootWindowPort, rootResultPath, numChildren, windowsString, aggFnsString);
+        runSingleNode(rootControllerPort, rootWindowPort, rootResultPath, numChildren, windowsString, aggFnsString);
     }
 
-    public static Thread runRoot(int controllerPort, int windowPort, String resultPath, int numChildren,
-                                 String windowsString, String aggFnsString) {
+    public static Thread runSingleNode(int controllerPort, int windowPort, String resultPath, int numChildren,
+                                       String windowsString, String aggFnsString) {
         ResultListener resultListener = new ResultListener(resultPath);
         Thread resultThread = new Thread(resultListener);
         resultThread.start();
 
-        DistributedRoot worker = new DistributedRoot(controllerPort, windowPort, resultPath, numChildren,
-                                                     windowsString, aggFnsString);
+        SingleNodeRoot worker = new SingleNodeRoot(controllerPort, windowPort, resultPath, numChildren,
+                                                   windowsString, aggFnsString);
         Thread rootThread = new Thread(worker);
         rootThread.start();
         return rootThread;

@@ -1,4 +1,4 @@
-package com.github.lawben.disco.single;
+package com.github.lawben.disco;
 
 import com.github.lawben.disco.input.EventGenerator;
 import com.github.lawben.disco.input.InputStream;

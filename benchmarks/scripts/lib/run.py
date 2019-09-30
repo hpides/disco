@@ -4,6 +4,8 @@ import os
 import string
 import sys
 from datetime import datetime
+from multiprocessing import Pipe
+from multiprocessing.connection import Connection
 from threading import Thread
 from typing import List
 
@@ -49,29 +51,32 @@ def upload_benchmark_params(host, *args):
     ssh_command(host, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> {SSH_BASE_DIR}/benchmark_env')
 
 
-def upload_root_params(num_children, windows, agg_fns):
-    fixed_args = ("DistributedRootMain", ROOT_CONTROL_PORT,
-                  ROOT_WINDOW_PORT, "/tmp/disco-results")
-    upload_benchmark_params(ROOT_HOST, *fixed_args, num_children,
+def upload_root_params(num_children, windows, agg_fns, is_single_node=False):
+    runner_class = "DistributedRootMain" if not is_single_node else "SingleNodeRootMain"
+    node_args = (runner_class, ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, "/tmp/disco-results")
+    upload_benchmark_params(ROOT_HOST, *node_args, num_children,
                             windows, agg_fns)
 
 
-def upload_child_params(child_host, parent_host, child_id, num_streams):
-    node_args = ("DistributedChildMain", parent_host, ROOT_CONTROL_PORT,
+def upload_intermediate_params(host, node_id, num_children, parent_host, is_single_node=False):
+    runner_class = "DistributedMergeNodeMain" if not is_single_node else "EventForwarderMain"
+    node_args = (runner_class, parent_host, ROOT_CONTROL_PORT, ROOT_WINDOW_PORT,
+                 ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, num_children, node_id)
+    upload_benchmark_params(host, *node_args)
+
+
+def upload_child_params(child_host, parent_host, child_id, num_streams, is_single_node=False):
+    runner_class = "DistributedChildMain" if not is_single_node else "SingleNodeChildMain"
+    node_args = (runner_class, parent_host, ROOT_CONTROL_PORT,
                  ROOT_WINDOW_PORT, CHILD_PORT, child_id, num_streams)
     upload_benchmark_params(child_host, *node_args)
 
 
-def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration):
+def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration, is_fixed_events=False):
+    runner_class = "SustainableThroughputRunner" if not is_fixed_events else "InputStreamMain"
     parent_addr = f"{parent_host}:{CHILD_PORT}"
-    node_args = ("SustainableThroughputRunner", stream_id, parent_addr, num_events, duration)
+    node_args = (runner_class, stream_id, parent_addr, num_events, duration)
     upload_benchmark_params(stream_host, *node_args)
-
-
-def upload_intermediate_params(host, node_id, num_children, parent_host):
-    node_args = ("DistributedMergeNodeMain", parent_host, ROOT_CONTROL_PORT, ROOT_WINDOW_PORT,
-                 ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, num_children, node_id)
-    upload_benchmark_params(host, *node_args)
 
 
 def run_host(host, name, log_dir, timeout=None):
@@ -93,18 +98,25 @@ def run_host(host, name, log_dir, timeout=None):
 
 
 def run_single_level(num_children: int, num_streams: int, num_events: int, duration: int,
-                     windows: str, agg_functions: str, process_log_dir_pipe=None):
+                     windows: str, agg_functions: str, process_log_dir_pipe: Connection = None):
     node_config = [num_children, num_streams]
-    return run(node_config, num_events, duration, windows, agg_functions, process_log_dir_pipe)
+    return run(node_config, num_events, duration, windows, agg_functions, process_log_dir_pipe=process_log_dir_pipe)
 
 
 def run(node_config: List[int], num_events: int, duration: int,
-        windows: str, agg_functions: str, process_log_dir_pipe=None):
+        windows: str, agg_functions: str, is_single_node: bool = False,
+        is_fixed_events: bool = False, process_log_dir_pipe: Connection = None):
     for i in range(len(node_config) - 1):
         if node_config[i] > node_config[i + 1]:
             raise RuntimeError(f"Bad runtime config. Need increasing number per level. {node_config}")
         if node_config[i + 1] % node_config[i] != 0:
             raise RuntimeError(f"Need exact multiple increase per level. {node_config}")
+
+    intermediates = "-".join([str(x) for x in node_config[:-2]])
+    intermediates_str = (f"{intermediates}" if intermediates else "0") + " intermediates"
+    children_str = f"{node_config[-2]} children"
+    streams_tr = f"{node_config[-1]} streams"
+    print(f"Running {intermediates_str}, {children_str}, {streams_tr}")
 
     num_nodes = sum(node_config) + 1
     log_dir = get_log_dir(num_nodes, num_events, duration)
@@ -128,7 +140,7 @@ def run(node_config: List[int], num_events: int, duration: int,
     print("Uploading benchmark arguments on all nodes...")
     # Upload for root node
     named_hosts = [(ROOT_HOST, "root")]
-    upload_root_params(len(all_hosts[1]), windows, agg_functions)
+    upload_root_params(len(all_hosts[1]), windows, agg_functions, is_single_node)
 
     # Upload for intermediate nodes
     for level_id, level_hosts in enumerate(all_hosts[1:-2], 1):
@@ -140,7 +152,7 @@ def run(node_config: List[int], num_events: int, duration: int,
         for node_id, level_host in enumerate(level_hosts):
             parent_host = parent_nodes[node_id % num_parents]
             node_level_id = (10 * level_id) + node_id
-            upload_intermediate_params(level_host, node_level_id, num_children_per_node, parent_host)
+            upload_intermediate_params(level_host, node_level_id, num_children_per_node, parent_host, is_single_node)
             named_hosts.append((level_host, f"merger-{node_level_id}"))
 
     parent_nodes = all_hosts[-3]
@@ -154,13 +166,13 @@ def run(node_config: List[int], num_events: int, duration: int,
     num_streams_per_child = num_streams // num_children
     for child_id, child_host in enumerate(child_hosts):
         parent_host = parent_nodes[child_id % num_parents]
-        upload_child_params(child_host, parent_host, child_id, num_streams_per_child)
+        upload_child_params(child_host, parent_host, child_id, num_streams_per_child, is_single_node)
         named_hosts.append((child_host, f"child-{child_id}"))
 
     # Upload for stream nodes
     for stream_id, stream_host in enumerate(stream_hosts):
         parent_host = child_hosts[stream_id % num_children]
-        upload_stream_params(stream_host, stream_id, parent_host, num_events, duration)
+        upload_stream_params(stream_host, stream_id, parent_host, num_events, duration, is_fixed_events)
         named_hosts.append((stream_host, f"stream-{stream_id}"))
 
     print("Starting `run.sh` on all nodes.\n")

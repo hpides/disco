@@ -50,15 +50,14 @@ def move_logs(node_config: List[int]):
 
 
 def single_sustainability_run(num_events_per_second: int, node_config: List[int],
-                              windows: str, agg_functions: str, run_duration: int):
+                              windows: str, agg_functions: str, run_duration: int, is_single_node: bool):
     num_nodes = sum(node_config) + 1  # + 1 for root
     timeout = run_duration + 30
     print(f"Running sustainability test with {num_events_per_second} events/s.")
     process_recv_pipe, process_send_pipe = Pipe(False)
     run_process = Process(target=run_all_main,
-                          args=(node_config,
-                                num_events_per_second, run_duration, windows,
-                                agg_functions, process_send_pipe),
+                          args=(node_config, num_events_per_second, run_duration, windows, agg_functions),
+                          kwargs=({'process_log_dir_pipe': process_send_pipe, 'is_single_node': is_single_node}),
                           name=f"process-run-{num_nodes}-{num_events_per_second}")
     run_process.start()
     try:
@@ -75,12 +74,12 @@ def single_sustainability_run(num_events_per_second: int, node_config: List[int]
 
 
 def sustainability_run(num_events_per_second: int, node_config: List[int],
-                       windows: str, agg_functions: str, run_duration: int):
+                       windows: str, agg_functions: str, run_duration: int, is_single_node: bool):
     is_unsustainable = None
     tries = 0
     while is_unsustainable is None and tries < 3:
-        is_unsustainable = single_sustainability_run(num_events_per_second, node_config,
-                                                     windows, agg_functions, run_duration)
+        is_unsustainable = single_sustainability_run(num_events_per_second, node_config, windows,
+                                                     agg_functions, run_duration, is_single_node)
         tries += 1
         if is_unsustainable is None:
             # Error was very different to rest of nodes.
@@ -94,7 +93,7 @@ def sustainability_run(num_events_per_second: int, node_config: List[int],
 
 
 def find_sustainable_throughput(node_config: List[int], windows: str,
-                                agg_functions: str, duration: int):
+                                agg_functions: str, duration: int, is_single_node: bool):
 
     expected_max_events_per_stream = DECOMPOSABLE_EXPECTED
     sustainable_threshold = DECOMPOSABLE_SUSTAINABLE_THRESHOLD
@@ -113,7 +112,7 @@ def find_sustainable_throughput(node_config: List[int], windows: str,
     while (max_events - min_events > sustainable_threshold
            and num_sustainable_events < max_events):
         is_sustainable = sustainability_run(num_sustainable_events, node_config,
-                                            windows, agg_functions, duration)
+                                            windows, agg_functions, duration, is_single_node)
 
         if is_sustainable:
             # Try to go higher
@@ -134,9 +133,9 @@ def find_sustainable_throughput(node_config: List[int], windows: str,
     return min_events
 
 
-def run_throughput(node_config: List[int], duration: int, windows: str, agg_fns: str):
+def run_throughput(node_config: List[int], duration: int, windows: str, agg_fns: str, is_single_node: bool = False):
     try:
-        return find_sustainable_throughput(node_config, windows, agg_fns, duration)
+        return find_sustainable_throughput(node_config, windows, agg_fns, duration, is_single_node)
     except Exception as e:
         print(f"Got exception: {e}")
     finally:

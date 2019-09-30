@@ -6,26 +6,27 @@ from executables.find_sustainable_throughput import run_throughput
 DURATION = 120
 
 
-def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str):
-    throughput = run_throughput(node_config, DURATION, windows, agg_fns)
-    run_latency(node_config, throughput, DURATION, windows, agg_fns)
+def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, is_single_node: bool):
+    throughput = run_throughput(node_config, DURATION, windows, agg_fns, is_single_node)
+    run_latency(node_config, throughput, DURATION, windows, agg_fns, is_single_node)
 
 
-def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]]):
-    print(f"BENCHMARK: WINDOWS: {windows} - AGG_FNS: {agg_fns}")
+def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]], is_single_node: bool):
+    run_mode_str = "SINGLE_NODE" if is_single_node else "DISTRIBUTED"
+    print(f"BENCHMARK: WINDOWS: {windows} - AGG_FNS: {agg_fns} - {run_mode_str}")
     for node_config in node_configs:
-        intermediates = "-".join([str(x) for x in node_config[:-2]])
-        intermediates_str = (f"{intermediates}" if intermediates else "0") + " intermediates"
-        children_str = f"{node_config[-2]} children"
-        streams_tr = f"{node_config[-1]} streams"
-        print(f"Running {intermediates_str}, {children_str}, {streams_tr}")
-        _run_single_benchmark(node_config, windows, agg_fns)
+        _run_single_benchmark(node_config, windows, agg_fns, is_single_node)
 
 
-def run_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]]):
+def run_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]],
+                         is_single_node: bool = False):
     for agg_fn in agg_fns:
         for window in windows:
-            run_benchmark(window, agg_fn, node_config)
+            run_benchmark(window, agg_fn, node_config, is_single_node)
+
+
+def run_single_node_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]]):
+    run_benchmark_matrix(windows, agg_fns, node_config, is_single_node=True)
 
 
 def run_all():

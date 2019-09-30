@@ -3,8 +3,6 @@ package com.github.lawben.disco.end2end;
 import static com.github.lawben.disco.DistributedUtils.ARG_DELIMITER;
 import static com.github.lawben.disco.DistributedUtils.DEFAULT_SOCKET_TIMEOUT_MS;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
-import static com.github.lawben.disco.Event.NO_KEY;
-import static com.github.lawben.disco.utils.SessionControlMatcher.equalsSessionStart;
 import static com.github.lawben.disco.utils.TestUtils.closeIfNotNull;
 import static com.github.lawben.disco.utils.TestUtils.findChildPort;
 import static com.github.lawben.disco.utils.TestUtils.receiveResultWindows;

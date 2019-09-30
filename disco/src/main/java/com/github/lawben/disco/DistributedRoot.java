@@ -6,21 +6,19 @@ import static com.github.lawben.disco.DistributedUtils.EVENT_STRING;
 import static com.github.lawben.disco.DistributedUtils.MAX_LATENESS;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
-import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
 import com.github.lawben.disco.merge.FinalWindowsAndSessionStarts;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZMQ;
 
 public class DistributedRoot implements Runnable {
-    private final static String NODE_IDENTIFIER = "ROOT";
-    private final DistributedNode nodeImpl;
+    protected final static String NODE_IDENTIFIER = "ROOT";
+    protected final DistributedNode nodeImpl;
 
-    private final String resultPath;
-    private final ZMQ.Socket resultPusher;
+    protected final String resultPath;
+    protected final ZMQ.Socket resultPusher;
 
     private long watermarkMs;
 
@@ -125,7 +123,7 @@ public class DistributedRoot implements Runnable {
         return nodeImpl.aggregateMerger.processCountWatermark(watermarkTimestamp);
     }
 
-    private void sendResult(WindowResult windowResult) {
+    protected void sendResult(WindowResult windowResult) {
 //        System.out.println(nodeImpl.nodeString("Sending result: " + windowResult));
         String finalAggregateString = String.valueOf(windowResult.getValue());
         this.resultPusher.sendMore(DistributedUtils.functionWindowIdToString(windowResult.getFinalWindowId()));

@@ -17,7 +17,7 @@ public class FakeTimeEventGenerator implements EventGenerator {
     }
 
     @Override
-    public long generateAndSendEvents(Random rand, ZMQ.Socket eventSender) {
+    public long generateAndSendEvents(ZMQ.Socket eventSender) {
         int numEvents = config.numEventsToSend;
         long[] eventValues = new long[numEvents];
         long[] eventTimestamps = new long[numEvents];
@@ -27,12 +27,14 @@ public class FakeTimeEventGenerator implements EventGenerator {
         int max = config.maxWaitTimeMillis;
         int min = config.minWaitTimeMillis;
 
+        Random rand = new Random();
+
         // Generate all events
         System.out.println("[FAKE-GEN] Generating...");
         for (int eventNum = 0; eventNum < numEvents; eventNum++) {
             final int fakeSleepTime = rand.nextInt((max - min) + 1) + min;
             final long eventTimestamp = lastEventTimestamp + fakeSleepTime;
-            final Long eventValue = config.generatorFunction.apply(rand);
+            final Long eventValue = config.generatorFunction.apply(eventTimestamp);
             eventValues[eventNum] = eventValue;
             eventTimestamps[eventNum] = eventTimestamp;
             lastEventTimestamp = eventTimestamp;

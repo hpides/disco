@@ -21,10 +21,10 @@ NODE_REGISTRATION_FAIL = "Could not register at child node"
 QUEUE_SIZE_RE = re.compile(r"Current queue size: (\d+)")
 
 
-def ssh_command(host, command, timeout=None, verbose=False):
+def ssh_command(host, command, timeout=None, verbose=False, user="hadoop"):
     ssh = None
     try:
-        ssh, stdout, stderr = _ssh_command(host, command, timeout=timeout)
+        ssh, stdout, stderr = _ssh_command(host, command, timeout=timeout, user=user)
         # Wait for command to finish
         output = str(stdout.read(), UTF8)
         status = stdout.channel.recv_exit_status()
@@ -41,10 +41,10 @@ def ssh_command(host, command, timeout=None, verbose=False):
             ssh.close()
 
 
-def _ssh_command(host, command, timeout):
+def _ssh_command(host, command, timeout, user):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host, username="hadoop")
+    ssh.connect(host, username=user)
     _, stdout, stderr = ssh.exec_command(command, timeout=timeout)
     return ssh, stdout, stderr
 

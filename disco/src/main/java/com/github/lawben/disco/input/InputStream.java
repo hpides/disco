@@ -2,7 +2,6 @@ package com.github.lawben.disco.input;
 
 import com.github.lawben.disco.DistributedChild;
 import com.github.lawben.disco.DistributedUtils;
-import java.util.Random;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -30,22 +29,19 @@ public class InputStream implements Runnable {
         System.out.println(this.streamIdString("Starting " + this.streamName() + " with " + this.config.numEventsToSend
                 + " events to node " + this.nodeIp + ":" + this.nodePort + " with " + this.config));
 
-        System.out.println(this.streamIdString("Using seed: " + this.config.randomSeed));
-        Random rand = new Random(this.config.randomSeed);
-
         try (ZContext context = new ZContext()) {
             this.registerAtNode(context);
 
-            Thread.sleep(DistributedChild.STREAM_REGISTER_TIMEOUT_MS * 2);
+            Thread.sleep(1000);
 
             ZMQ.Socket eventSender = context.createSocket(SocketType.PUSH);
-            eventSender.setHWM(this.config.numEventsToSend);
+            eventSender.setHWM(1000);
             eventSender.connect(DistributedUtils.buildTcpUrl(this.nodeIp, this.nodePort));
 
-            System.out.println(this.streamIdString("Start sending data"));
+            System.out.println(this.streamIdString("Start sending data."));
 
             final long sendingStartTime = System.currentTimeMillis();
-            long lastEventTimestamp = this.eventGenerator.generateAndSendEvents(rand, eventSender);
+            long lastEventTimestamp = this.eventGenerator.generateAndSendEvents(eventSender);
             final long duration = System.currentTimeMillis() - sendingStartTime;
             eventSender.sendMore(DistributedUtils.STREAM_END);
             eventSender.send(String.valueOf(this.streamId));

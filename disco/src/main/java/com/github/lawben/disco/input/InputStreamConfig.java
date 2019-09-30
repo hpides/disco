@@ -1,8 +1,6 @@
 package com.github.lawben.disco.input;
 
-import java.util.Random;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class InputStreamConfig {
     public final int numEventsToSend;
@@ -10,17 +8,15 @@ public class InputStreamConfig {
     public final int maxWaitTimeMillis;
     public final long startTimestamp;
 
-    public final Function<Random, Long> generatorFunction;
-    public final long randomSeed;
+    public final Function<Long, Long> generatorFunction;
 
     public InputStreamConfig(int numEventsToSend, int minWaitTimeMillis, int maxWaitTimeMillis, long startTimestamp,
-            Function<Random, Long> generatorFunction, long randomSeed) {
+            Function<Long, Long> generatorFunction) {
         this.numEventsToSend = numEventsToSend;
         this.minWaitTimeMillis = minWaitTimeMillis;
         this.maxWaitTimeMillis = maxWaitTimeMillis;
         this.startTimestamp = startTimestamp;
         this.generatorFunction = generatorFunction;
-        this.randomSeed = randomSeed;
     }
 
     @Override
@@ -31,7 +27,6 @@ public class InputStreamConfig {
                 ", maxWaitTimeMillis=" + maxWaitTimeMillis +
                 ", startTimestamp=" + startTimestamp +
                 ", generatorFunction=" + generatorFunction +
-                ", randomSeed=" + randomSeed +
                 '}';
     }
 }

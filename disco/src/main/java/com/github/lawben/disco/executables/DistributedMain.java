@@ -1,9 +1,5 @@
 package com.github.lawben.disco.executables;
 
-import com.github.lawben.disco.DistributedUtils;
-import java.util.List;
-import java.util.stream.Collectors;
-
 public class DistributedMain {
     public static void main(String[] args) throws Exception {
         final int numExpectedArgs = 9;
@@ -17,8 +13,7 @@ public class DistributedMain {
                     + "numStreams "
                     + "numEvents "
                     + "windowsString "
-                    + "aggFnsString "
-                    + "[seedList]");
+                    + "aggFnsString");
             System.exit(1);
         }
 
@@ -41,10 +36,6 @@ public class DistributedMain {
         System.out.println("Running with " + numChildren + " children, " + numStreams + " streams, and " +
                 numEvents + " events per stream. Windows: " + windowsString + "; aggFns: " + aggFnsString);
 
-        final List<Long> randomSeeds = DistributedUtils.getRandomSeeds(args, numStreams, numExpectedArgs);
-        List<String> seedStrings = randomSeeds.stream().map(String::valueOf).collect(Collectors.toList());
-        System.out.println("Using seeds: " + String.join(",", seedStrings));
-
         if (numStreams > 0 && numStreams < numChildren) {
             System.err.println("Need at least as many streams as children! "
                     + "Got " + numStreams + ", need at least " + numChildren);
@@ -64,7 +55,7 @@ public class DistributedMain {
 
         for (int streamId = 0; streamId < numStreams; streamId++) {
             int assignedChild = streamId % numChildren;
-            InputStreamMain.runInputStream("localhost", streamPort + assignedChild, numEvents, streamId, randomSeeds.get(streamId));
+            InputStreamMain.runInputStream(streamId,  "localhost:" + (streamPort + assignedChild), numEvents);
         }
 
         rootThread.join();

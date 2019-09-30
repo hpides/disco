@@ -3,7 +3,6 @@ package com.github.lawben.disco.aggregation.functions;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class MaxMedianAggregateFunction implements HolisticAggregateFunction<Long, List<Long>, Long> {

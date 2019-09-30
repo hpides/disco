@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.github.lawben.disco.merge.ChildMerger;
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.aggregation.BaseWindowAggregate;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
@@ -14,6 +13,7 @@ import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateHelper;
 import com.github.lawben.disco.aggregation.HolisticWindowAggregate;
+import com.github.lawben.disco.merge.ChildMerger;
 import com.github.lawben.disco.utils.ExpectedWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;

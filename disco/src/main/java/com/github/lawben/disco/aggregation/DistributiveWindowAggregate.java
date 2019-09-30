@@ -1,7 +1,6 @@
 package com.github.lawben.disco.aggregation;
 
 import com.github.lawben.disco.DistributedUtils;
-import com.github.lawben.disco.aggregation.BaseWindowAggregate;
 
 public class DistributiveWindowAggregate extends BaseWindowAggregate<Long> {
     public DistributiveWindowAggregate(Long value) {

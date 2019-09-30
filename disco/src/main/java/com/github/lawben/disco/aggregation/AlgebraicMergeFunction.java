@@ -1,7 +1,5 @@
 package com.github.lawben.disco.aggregation;
 
-import com.github.lawben.disco.aggregation.AlgebraicAggregateFunction;
-import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import de.tub.dima.scotty.core.windowFunction.ReduceAggregateFunction;
 
 public class AlgebraicMergeFunction<PartialType extends AlgebraicPartial<PartialType, ResultType>, ResultType> implements ReduceAggregateFunction<PartialType> {

@@ -9,6 +9,7 @@ def run_matrix(node_config, num_events, windows, agg_fns):
 
 def run_multi_level():
     node_configs = [
+        [1, 1],
         [2, 2],
         [4, 4],
         [8, 8],

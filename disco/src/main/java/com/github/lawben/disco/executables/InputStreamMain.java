@@ -5,43 +5,35 @@ import com.github.lawben.disco.input.EventGenerator;
 import com.github.lawben.disco.input.InputStream;
 import com.github.lawben.disco.input.InputStreamConfig;
 import com.github.lawben.disco.input.ThroughputEventGenerator;
-import com.github.lawben.disco.single.SingleInputStream;
-import java.util.Random;
 import java.util.function.Function;
 
 public class InputStreamMain {
     public static void main(String[] args) {
-        if (args.length < 4) {
-            System.out.println("Not enough arguments!\nUsage: java ... nodeIp nodePort numEvents streamId [randomSeed]");
+        if (args.length < 3) {
+            System.out.println("Not enough arguments!\nUsage: java ... streamId nodeAddress numEvents");
             System.exit(1);
         }
 
-        final String nodeIp = args[0];
-        final int nodePort = Integer.parseInt(args[1]);
+        final int streamId = Integer.parseInt(args[0]);
+        final String nodeAddress = args[1];
         final int numEvents = Integer.parseInt(args[2]);
-        final int streamId = Integer.parseInt(args[3]);
-        final long randomSeed = args.length >= 5 ? Long.parseLong(args[4]) : new Random().nextLong();
 
-        runInputStream(nodeIp, nodePort, numEvents, streamId, randomSeed);
+        runInputStream(streamId, nodeAddress, numEvents);
     }
 
-    public static Thread runInputStream(String nodeIp, int nodePort, int numEvents, int streamId, long randomSeed) {
-        return runInputStream(nodeIp, nodePort, numEvents, streamId, randomSeed, /*isDistributed=*/true);
-    }
+    public static Thread runInputStream(int streamId, String nodeAddress, int numEvents) {
+        Function<Long, Long> valueGenerator = (timestamp) -> timestamp;
 
-    public static Thread runInputStream(String nodeIp, int nodePort, int numEvents, int streamId, long randomSeed, boolean isDistributed) {
-        Function<Random, Long> valueGenerator = (rand) -> 1L; //rand.nextInt(100);
-
-        long startTime = System.currentTimeMillis() + DistributedChild.STREAM_REGISTER_TIMEOUT_MS * 2;
-        InputStreamConfig config = new InputStreamConfig(numEvents, 0, 2000, startTime, valueGenerator, randomSeed);
+        long startTime = System.currentTimeMillis() + 1000;
+        InputStreamConfig config = new InputStreamConfig(numEvents, 0, 0, startTime, valueGenerator);
 
         EventGenerator eventGenerator = new ThroughputEventGenerator(streamId, config);
-//        EventGenerator<Integer> eventGenerator = new FakeTimeEventGenerator<>(streamId, config);
+
+        String[] ipParts = nodeAddress.split(":");
+        String nodeIp = ipParts[0];
+        int nodePort = Integer.parseInt(ipParts[1]);
 
         InputStream stream = new InputStream(streamId, config, nodeIp, nodePort, eventGenerator);
-        if (!isDistributed) {
-            stream = new SingleInputStream(streamId, config, nodeIp, nodePort, eventGenerator);
-        }
 
         Thread thread = new Thread(stream);
         thread.start();

@@ -13,6 +13,7 @@ import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticAggregateFunction;
+import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
 import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
@@ -123,7 +124,7 @@ public class AggregateMerger {
 
         // Handle window complete
         Optional<FunctionWindowAggregateId> triggerId = currentMerger.checkWindowComplete(functionWindowId);
-        if (!triggerId.isPresent()) {
+        if (triggerId.isEmpty()) {
             return new ArrayList<>();
         }
 
@@ -160,6 +161,26 @@ public class AggregateMerger {
             default:
                 throw new IllegalArgumentException("Unknown aggregate type: " + aggregateType);
         }
+    }
+
+    public WindowResult convertUntypedAggregateToWindowResult(DistributedAggregateWindowState aggState) {
+        List<AggregateFunction> aggFns = aggState.getAggregateFunctions();
+        assert aggFns.size() == 1;
+
+        AggregateFunction aggFn = aggFns.get(0);
+        final WindowMerger merger;
+        if (aggFn instanceof DistributiveAggregateFunction) {
+            merger = this.distributiveWindowMerger;
+        } else if (aggFn instanceof AlgebraicMergeFunction) {
+            merger = this.algebraicWindowMerger;
+        } else if (aggFn instanceof HolisticMergeWrapper) {
+            merger = this.holisticWindowMerger;
+        } else {
+            throw new IllegalStateException("Got unknown aggregate function type: " + aggFn.getClass());
+        }
+
+        currentMerger = merger;
+        return convertAggregateToWindowResult(aggState);
     }
 
     public FinalWindowsAndSessionStarts registerSessionStart(FunctionWindowAggregateId sessionStartId) {

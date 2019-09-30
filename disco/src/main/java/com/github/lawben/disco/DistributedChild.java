@@ -12,7 +12,7 @@ import org.zeromq.ZMQ;
 public class DistributedChild implements Runnable {
     private final static String NODE_IDENTIFIER = "CHILD";
 
-    private final DistributedNode nodeImpl;
+    protected final DistributedNode nodeImpl;
 
     private long currentEventTime;
     private long lastWatermark;
@@ -30,7 +30,8 @@ public class DistributedChild implements Runnable {
 
     private boolean hasCountWindow;
 
-    public DistributedChild(String parentIp, int parentControllerPort, int parentWindowPort, int streamInputPort, int childId, int numStreams) {
+    public DistributedChild(String parentIp, int parentControllerPort, int parentWindowPort,
+                            int streamInputPort, int childId, int numStreams) {
         this.nodeImpl = new DistributedNode(childId, NODE_IDENTIFIER, streamInputPort + STREAM_REGISTER_PORT_OFFSET,
                 streamInputPort, numStreams, parentIp, parentControllerPort, parentWindowPort);
         this.hasCountWindow = false;
@@ -152,13 +153,13 @@ public class DistributedChild implements Runnable {
         finalWindows.stream()
                 .map(state -> childMerger.getNextSessionStart(state.getFunctionWindowId()))
                 .forEach(newSession -> newSession.ifPresent(nodeImpl::sendSessionStartToParent));
-        final long sessionEnd = System.nanoTime();
+//        final long sessionEnd = System.nanoTime();
 //        System.out.println("Session start took " + (sessionEnd - sessionStart) + " ns.");
 
         lastWatermark = watermarkTimestamp;
     }
 
-    private boolean registerStreams(final WindowingConfig windowingConfig) {
+    protected boolean registerStreams(final WindowingConfig windowingConfig) {
         final ZMQ.Socket streamReceiver = nodeImpl.context.createSocket(SocketType.REP);
         streamReceiver.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
         streamReceiver.bind(DistributedUtils.buildBindingTcpUrl(nodeImpl.dataPort + STREAM_REGISTER_PORT_OFFSET));
