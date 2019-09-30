@@ -74,9 +74,9 @@ public class DistributedChild implements Runnable {
         lastSecondEnd = System.currentTimeMillis() + 1000;
 
         while (!nodeImpl.isInterrupted()) {
-            final long receivingStart = System.nanoTime();
+//            final long receivingStart = System.nanoTime();
             String eventOrStreamEnd = streamInput.recvStr();
-            final long receivingEnd = System.nanoTime();
+//            final long receivingEnd = System.nanoTime();
 
             if (eventOrStreamEnd == null) {
                 continue;
@@ -100,32 +100,32 @@ public class DistributedChild implements Runnable {
             }
 
             this.processEvent(eventOrStreamEnd);
-            receivingTime += (receivingEnd - receivingStart);
+//            receivingTime += (receivingEnd - receivingStart);
 
-            if (System.currentTimeMillis() > lastSecondEnd) {
-                System.out.println("Processed " + numEventsInLastSecond + " events in last second.");
-                System.out.println("Avg receiving  time: " + (receivingTime / numEventsInLastSecond) + " ns.");
-                System.out.println("Avg processing time: " + (processingTime / numEventsInLastSecond) + " ns.");
-                processingTime = 0;
-                receivingTime = 0;
-                numEventsInLastSecond = 0;
-                lastSecondEnd += 1000;
-            }
+//            if (System.currentTimeMillis() > lastSecondEnd) {
+//                System.out.println("Processed " + numEventsInLastSecond + " events in last second.");
+//                System.out.println("Avg receiving  time: " + (receivingTime / numEventsInLastSecond) + " ns.");
+//                System.out.println("Avg processing time: " + (processingTime / numEventsInLastSecond) + " ns.");
+//                processingTime = 0;
+//                receivingTime = 0;
+//                numEventsInLastSecond = 0;
+//                lastSecondEnd += 1000;
+//            }
         }
 
         System.out.println(nodeImpl.nodeString("Interrupted while processing streams."));
     }
 
     private void processEvent(String eventString) {
-        final long processingStart = System.nanoTime();
+//        final long processingStart = System.nanoTime();
         final Event event = Event.fromString(eventString);
         this.childMerger.processElement(event);
-        final long processingEnd = System.nanoTime();
+//        final long processingEnd = System.nanoTime();
 
         currentEventTime = event.getTimestamp();
         numEvents++;
         numEventsInLastSecond++;
-        processingTime += (processingEnd - processingStart);
+//        processingTime += (processingEnd - processingStart);
 
         // If we haven't processed a watermark in watermarkMs milliseconds and waited for the maximum lateness of a
         // tuple, process it.
@@ -137,23 +137,23 @@ public class DistributedChild implements Runnable {
     }
 
     private void handleWatermark(long watermarkTimestamp) {
-        final long watermarkStart = System.nanoTime();
+//        final long watermarkStart = System.nanoTime();
         List<DistributedAggregateWindowState> finalWindows =
                 this.childMerger.processWatermarkedWindows(watermarkTimestamp);
-        final long watermarkEnd = System.nanoTime();
-        System.out.println("Watermark processing took " + (watermarkEnd - watermarkStart) + " ns.");
+//        final long watermarkEnd = System.nanoTime();
+//        System.out.println("Watermark processing took " + (watermarkEnd - watermarkStart) + " ns.");
 
-        final long sendingStart = System.nanoTime();
+//        final long sendingStart = System.nanoTime();
         nodeImpl.sendPreAggregatedWindowsToParent(finalWindows);
-        final long sendingEnd = System.nanoTime();
-        System.out.println("Watermark sending took " + (sendingEnd - sendingStart) + " ns.");
+//        final long sendingEnd = System.nanoTime();
+//        System.out.println("Watermark sending took " + (sendingEnd - sendingStart) + " ns.");
 
-        final long sessionStart = System.nanoTime();
+//        final long sessionStart = System.nanoTime();
         finalWindows.stream()
                 .map(state -> childMerger.getNextSessionStart(state.getFunctionWindowId()))
                 .forEach(newSession -> newSession.ifPresent(nodeImpl::sendSessionStartToParent));
         final long sessionEnd = System.nanoTime();
-        System.out.println("Session start took " + (sessionEnd - sessionStart) + " ns.");
+//        System.out.println("Session start took " + (sessionEnd - sessionStart) + " ns.");
 
         lastWatermark = watermarkTimestamp;
     }
