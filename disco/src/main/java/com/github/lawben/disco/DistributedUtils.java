@@ -310,25 +310,6 @@ public class DistributedUtils {
         return new DistributedSlice(start, end, values);
     }
 
-    public static List<Long> getRandomSeeds(String[] args, int numStreams, int position) {
-        final List<Long> randomSeeds = new ArrayList<>(numStreams);
-        if (args.length >= position + 1) {
-            String seedString = args[position];
-            String[] seedStringSplit = seedString.split(",");
-            assert seedStringSplit.length == numStreams;
-
-            for (String seed : seedStringSplit) {
-                randomSeeds.add(Long.valueOf(seed));
-            }
-        } else {
-            Random rand = new Random();
-            for (int i = 0; i < numStreams; i++) {
-                randomSeeds.add(rand.nextLong());
-            }
-        }
-        return randomSeeds;
-    }
-
     public static DistributiveAggregateFunction aggregateFunctionSum() {
         return new SumAggregateFunction();
     }
@@ -359,10 +340,6 @@ public class DistributedUtils {
 
     public static HolisticAggregateFunction maxAggregateFunctionMedian() {
         return new MaxMedianAggregateFunction();
-    }
-
-    private static DistributiveAggregateFunction maxAggregateFunctionMax() {
-        return new MaxAggregateFunction();
     }
 
     private static DistributiveAggregateFunction maxAggregateFunctionMin() {

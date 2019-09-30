@@ -10,6 +10,7 @@ import de.tub.dima.scotty.core.AggregateWindow;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.core.windowType.Window;
+import de.tub.dima.scotty.slicing.slice.EagerSlice;
 import de.tub.dima.scotty.slicing.state.AggregateState;
 import de.tub.dima.scotty.state.StateFactory;
 import de.tub.dima.scotty.state.memory.MemoryStateFactory;
@@ -99,15 +100,33 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
             throw new IllegalStateException("Cannot have empty slice list in holistic merge");
         }
 
-        List<DistributedSlice> slices = (List<DistributedSlice>) aggValues.get(0);
-        int totalSize = slices.stream().map(slice -> slice.getValues().size()).reduce(0, Integer::sum);
+        List<Long> allValues = new ArrayList<>();
+        List untypedSlices = (List) aggValues.get(0);
+        if (!untypedSlices.isEmpty() && untypedSlices.get(0) instanceof DistributedSlice) {
+            List<DistributedSlice> slices = (List<DistributedSlice>) untypedSlices;
+            int totalSize = slices.stream().map(slice -> slice.getValues().size()).reduce(0, Integer::sum);
 
-        List<Long> allValues = new ArrayList<>(totalSize);
-        for (DistributedSlice slice : slices) {
-            allValues.addAll(slice.getValues());
+            allValues = new ArrayList<>(totalSize);
+            for (DistributedSlice slice : slices) {
+                allValues.addAll(slice.getValues());
+            }
+        } else if (!untypedSlices.isEmpty() && untypedSlices.get(0) instanceof EagerSlice) {
+            List<EagerSlice> slices = (List<EagerSlice>) untypedSlices;
+            for (EagerSlice s : slices) {
+                List<List<Long>> allSlices = s.getAggState().getValues();
+                if (allSlices.isEmpty()) {
+                    continue;
+                }
+                allValues.addAll(allSlices.get(0));
+            }
         }
 
-        HolisticMergeWrapper holisticMergeFunction = (HolisticMergeWrapper) finalWindow.getAggregateFunctions().get(0);
+        HolisticMergeWrapper holisticMergeFunction;
+        if (this.aggFns.size() == 1) {
+            holisticMergeFunction = (HolisticMergeWrapper) this.aggFns.get(0);
+        } else {
+            holisticMergeFunction = (HolisticMergeWrapper) finalWindow.getAggregateFunctions().get(0);
+        }
         HolisticAggregateFunction originalFn = holisticMergeFunction.getOriginalFn();
         return (Long) originalFn.lower(allValues);
     }
