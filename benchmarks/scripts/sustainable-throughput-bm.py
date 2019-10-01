@@ -1,6 +1,6 @@
 from typing import List
 
-from common import print_run_string
+from lib.common import print_run_string
 from executables.latency import run_latency
 from executables.find_sustainable_throughput import run_throughput
 
