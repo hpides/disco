@@ -1,5 +1,6 @@
-from typing import List, Tuple
+from typing import List
 
+from common import print_run_string
 from executables.latency import run_latency
 from executables.find_sustainable_throughput import run_throughput
 
@@ -7,6 +8,7 @@ DURATION = 120
 
 
 def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, is_single_node: bool):
+    print_run_string(node_config)
     throughput = run_throughput(node_config, DURATION, windows, agg_fns, is_single_node)
     run_latency(node_config, throughput, DURATION, windows, agg_fns, is_single_node)
 

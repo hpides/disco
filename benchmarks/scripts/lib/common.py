@@ -2,6 +2,8 @@ import os
 import re
 import socket
 import time
+import random
+import string
 
 import paramiko
 
@@ -60,33 +62,31 @@ def _ssh_command(host, command, timeout, user):
     return ssh, stdout, stderr
 
 
-def check_complete(timeout, hosts):
+def check_complete(timeout, running_thing, complete_fn):
     print(f"Running on nodes for a maximum of {timeout} seconds...")
     sleep_duration = 10
     max_num_sleeps = timeout // sleep_duration
 
-    complete_command = "kill -0 $(cat /tmp/RUN_PID) 2>&1"
-    num_nodes = len(hosts)
-    host_set = set(hosts)
+    num_running_things = len(running_thing)
+    running_thing_set = set(running_thing)
 
     num_sleeps = 0
-    complete_hosts = []
-    while len(complete_hosts) < num_nodes:
-        incomplete_hosts = host_set - set(complete_hosts)
-        print(f"\rWaiting for {len(incomplete_hosts)} more node(s) to complete...", end="")
+    complete_running_things = []
+    while len(complete_running_things) < num_running_things:
+        incomplete_running_thing = running_thing_set - set(complete_running_things)
+        print(f"\rWaiting for {len(incomplete_running_thing)} more running thing(s) to complete...", end="")
 
-        for host in incomplete_hosts:
-            complete_output = ssh_command(host, complete_command)
-            if "No such process" in complete_output:
-                complete_hosts.append(host)
+        for running_thing in incomplete_running_thing:
+            if complete_fn(running_thing):
+                complete_running_things.append(running_thing)
 
-        if len(complete_hosts) < num_nodes:
+        if len(complete_running_things) < num_running_things:
             if num_sleeps == max_num_sleeps:
-                difference = num_nodes - len(complete_hosts)
+                difference = num_running_things - len(complete_running_things)
                 print()
                 print(f"{difference} application(s) still running after timeout. They will be terminated.")
                 print("This most likely indicates an error or a missing stream/child end message.")
-                return incomplete_hosts
+                return incomplete_running_thing
 
             time.sleep(sleep_duration)
             num_sleeps += 1
@@ -147,4 +147,31 @@ def logs_are_unsustainable(log_directory):
 def is_port_in_use(port):
     import socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) != 0
+        return s.connect_ex(('localhost', port)) == 0
+
+
+def assert_valid_node_config(node_config):
+    assert len(node_config) >= 2, f"Need at least #children and #streams! Got {node_config}"
+    for i in range(len(node_config) - 1):
+        if node_config[i] > node_config[i + 1]:
+            raise RuntimeError(f"Bad runtime config. Need increasing number per level. {node_config}")
+        if node_config[i + 1] % node_config[i] != 0:
+            raise RuntimeError(f"Need exact multiple increase per level. {node_config}")
+
+
+def create_log_dir(log_dir):
+    try:
+        os.makedirs(log_dir)
+        return log_dir
+    except OSError:
+        new_log_dir = f"{log_dir}_{''.join(random.choices(string.ascii_lowercase, k=3))}"
+        os.makedirs(new_log_dir)
+        return new_log_dir
+
+
+def print_run_string(node_config):
+    intermediates = "-".join([str(x) for x in node_config[:-2]])
+    intermediates_str = (f"{intermediates}" if intermediates else "0") + " intermediates"
+    children_str = f"{node_config[-2]} children"
+    streams_tr = f"{node_config[-1]} streams"
+    print(f"Running {intermediates_str}, {children_str}, {streams_tr}")

@@ -1,16 +1,15 @@
-import argparse
 import random
 import os
+import random
 import string
 import sys
 from datetime import datetime
-from multiprocessing import Pipe
 from multiprocessing.connection import Connection
 from threading import Thread
 from typing import List
 
 from lib.common import ssh_command, check_complete, SSH_BASE_DIR, \
-                       ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT
+    ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT, assert_valid_node_config, create_log_dir, print_run_string
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", "..", ".."))
@@ -42,6 +41,12 @@ def get_log_dir(num_nodes, num_events, duration):
     run_date_string = now.strftime("%Y-%m-%d-%H%M")
     return f"{BASE_DIR}/benchmark-runs/{run_date_string}_{num_nodes}-" \
            f"nodes_{num_events}-events_{duration}-seconds"
+
+
+def complete_check_fn(host):
+    complete_command = "kill -0 $(cat /tmp/RUN_PID) 2>&1"
+    complete_output = ssh_command(host, complete_command)
+    return "No such process" in complete_output
 
 
 def upload_benchmark_params(host, *args):
@@ -106,26 +111,11 @@ def run_single_level(num_children: int, num_streams: int, num_events: int, durat
 def run(node_config: List[int], num_events: int, duration: int,
         windows: str, agg_functions: str, is_single_node: bool = False,
         is_fixed_events: bool = False, process_log_dir_pipe: Connection = None):
-    for i in range(len(node_config) - 1):
-        if node_config[i] > node_config[i + 1]:
-            raise RuntimeError(f"Bad runtime config. Need increasing number per level. {node_config}")
-        if node_config[i + 1] % node_config[i] != 0:
-            raise RuntimeError(f"Need exact multiple increase per level. {node_config}")
-
-    intermediates = "-".join([str(x) for x in node_config[:-2]])
-    intermediates_str = (f"{intermediates}" if intermediates else "0") + " intermediates"
-    children_str = f"{node_config[-2]} children"
-    streams_tr = f"{node_config[-1]} streams"
-    print(f"Running {intermediates_str}, {children_str}, {streams_tr}")
+    assert_valid_node_config(node_config)
 
     num_nodes = sum(node_config) + 1
     log_dir = get_log_dir(num_nodes, num_events, duration)
-
-    try:
-        os.makedirs(log_dir)
-    except OSError:
-        log_dir += f"_{''.join(random.choices(string.ascii_lowercase, k=3))}"
-        os.makedirs(log_dir)
+    log_dir = create_log_dir(log_dir)
 
     if process_log_dir_pipe is not None:
         sys.stdout = open(os.path.join(log_dir, "main.log"), "w")
@@ -186,11 +176,12 @@ def run(node_config: List[int], num_events: int, duration: int,
         thread.start()
         threads.append(thread)
 
-    check_complete(max_run_duration, flat_hosts)
-    kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
-    print("Ending script by killing all PIDs...")
-    for host in flat_hosts:
-        ssh_command(host, kill_command)
+    incomplete_hosts = check_complete(max_run_duration, flat_hosts, complete_check_fn)
+    if incomplete_hosts:
+        kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
+        print("Ending script by killing all PIDs...")
+        for host in incomplete_hosts:
+            ssh_command(host, kill_command)
 
     for thread in threads:
         thread.join()
