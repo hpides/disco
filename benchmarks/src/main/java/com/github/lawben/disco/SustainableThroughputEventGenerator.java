@@ -1,6 +1,5 @@
 package com.github.lawben.disco;
 
-import com.github.lawben.disco.DistributedUtils.NtpClock;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.Function;
 
@@ -18,7 +17,6 @@ public class SustainableThroughputEventGenerator {
     private final int numEventsPerSecond;
     private final long startTimestamp;
     private final Function<Long, Long> dataSupplier;
-    private final NtpClock ntpClock;
 
     private final ArrayBlockingQueue<Event> eventQueue;
     private final int queueCapacity;
@@ -26,12 +24,11 @@ public class SustainableThroughputEventGenerator {
     private boolean interrupt;
 
     public SustainableThroughputEventGenerator(int streamId, int numEventsPerSecond, long startTimestamp,
-            Function<Long, Long> dataSupplier, NtpClock ntpClock) {
+            Function<Long, Long> dataSupplier) {
         this.streamId = streamId;
         this.numEventsPerSecond = numEventsPerSecond;
         this.startTimestamp = startTimestamp;
         this.dataSupplier = dataSupplier;
-        this.ntpClock = ntpClock;
         this.interrupt = false;
         // Allocate QUEUE_BUFFER_FACTOR times as much space as should be sent per second so we can track the
         // back pressure for QUEUE_BUFFER_FACTOR seconds.
@@ -41,7 +38,7 @@ public class SustainableThroughputEventGenerator {
 
     public final void generateNextSecondEvents() {
         final int eventsPerChunk = numEventsPerSecond / NUM_CHUNKS;
-        final long generationStart = ntpClock.currentTimeMillis();
+        final long generationStart = System.currentTimeMillis();
         final long secondEnd = generationStart + MILLIS_IN_SECOND;
 
         long totalGenerationTime = 0;
@@ -54,16 +51,16 @@ public class SustainableThroughputEventGenerator {
         }
 
         for (int chunkNum = 1; chunkNum <= NUM_CHUNKS; chunkNum++) {
-            final long chunkStart = ntpClock.currentTimeMillis();
+            final long chunkStart = System.currentTimeMillis();
             for (int eventNum = 0; eventNum < eventsPerChunk; eventNum++) {
-                final long realTimestamp = ntpClock.currentTimeMillis();
+                final long realTimestamp = System.currentTimeMillis();
                 final long eventTimestamp = realTimestamp - startTimestamp;
                 final long eventValue = dataSupplier.apply(realTimestamp);
                 eventQueue.add(new Event(eventValue, eventTimestamp, this.streamId));
             }
             final long remainingChunks = NUM_CHUNKS - chunkNum;
 
-            final long chunkEnd = ntpClock.currentTimeMillis();
+            final long chunkEnd = System.currentTimeMillis();
             final long chunkDuration = chunkEnd - chunkStart;
             totalGenerationTime += chunkDuration;
 
@@ -86,7 +83,7 @@ public class SustainableThroughputEventGenerator {
             }
         }
 
-        final long generationEnd = ntpClock.currentTimeMillis();
+        final long generationEnd = System.currentTimeMillis();
         final long realGenerationDuration = generationEnd - generationStart;
         final long generationDifference = generationEnd - secondEnd;
         System.out.println("Generated " + numEventsPerSecond +

@@ -1,6 +1,5 @@
 package com.github.lawben.disco;
 
-import com.github.lawben.disco.DistributedUtils.NtpClock;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -16,9 +15,6 @@ public class ResultListener implements Runnable {
     @Override
     public void run() {
         System.out.println(this.resultString("Starting on path " + this.resultPath));
-
-        System.out.println("Syncing clock time...");
-        final NtpClock ntpClock = new NtpClock();
 
         try (ZContext context = new ZContext()) {
             ZMQ.Socket resultListener = context.createSocket(SocketType.PULL);
@@ -42,7 +38,7 @@ public class ResultListener implements Runnable {
                  }
 
                 final Long finalAggregate = Long.valueOf(rawAggregatedResult);
-                final long currentTime = ntpClock.currentTimeMillis();
+                final long currentTime = System.currentTimeMillis();
 //                final long windowEnd = functionWindowAggId.getWindowId().getWindowEndTimestamp();
                 final long windowEnd = finalAggregate;
                 final long windowLatency = currentTime - windowEnd;
