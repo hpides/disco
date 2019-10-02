@@ -34,8 +34,10 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -396,12 +398,14 @@ public class DistributedUtils {
         final int baseWindowLength = Integer.parseInt(concurrentWindowParts[3]);
 
         List<Window> windows = new ArrayList<>(numConcurrentWindows);
-        Random random = new Random();
-        final int minWindowLength = baseWindowLength / 2;
+        Random random = new Random(windowString.hashCode());
 
+        final int minWindowIntervalMs = 100;
+        final int numIntervalsInWindow = baseWindowLength / minWindowIntervalMs;
         for (int windowId = 1; windowId <= numConcurrentWindows; windowId++) {
-            final int windowLength = random.nextInt(baseWindowLength) + minWindowLength;
+            final int windowLength = random.nextInt(numIntervalsInWindow) * minWindowIntervalMs;
             String randomWindowString = "TUMBLING," + windowLength + "," + windowId;
+            System.out.println(randomWindowString);
             windows.add(buildWindowFromString(randomWindowString));
         }
 
@@ -440,10 +444,18 @@ public class DistributedUtils {
                 .map(w -> ((SlidingWindow) w).getSlide())
                 .collect(Collectors.toList());
 
-        return Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)
+        List<Long> lengths = Stream.of(sessionWatermarkMs, slidingWatermarkMs, tumblingWatermarkMs)
                 .flatMap(Collection::stream)
-                .min(Comparator.naturalOrder())
-                .orElseThrow(() -> new IllegalArgumentException("Could not find watermark ms."));
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.toList());
+
+        long minDiff = Math.min(100, Collections.min(lengths));
+        for (int i = 0; i < lengths.size() - 1; i++) {
+            final long diff = lengths.get(i + 1) - lengths.get(i);
+            minDiff = Math.min(minDiff, diff);
+        }
+
+        return minDiff;
     }
 
     public static long getWatermarkMsFromWindowString(String[] windowStrings) {

@@ -48,7 +48,7 @@ def run_multi_level():
     windows = [
         "TUMBLING,1000",
         "SLIDING,1000,500",
-        "CONCURRENT,10,TUMBLING,1000",
+        "CONCURRENT,10,TUMBLING,20000",
     ]
 
     partial_node_configs = [
@@ -63,7 +63,7 @@ def run_multi_level():
     ]
     partial_windows = [
         "SLIDING,1000,500",
-        "CONCURRENT,10,TUMBLING,1000",
+        "CONCURRENT,10,TUMBLING,20000",
     ]
 
     max_agg_fns = ["MAX"]
