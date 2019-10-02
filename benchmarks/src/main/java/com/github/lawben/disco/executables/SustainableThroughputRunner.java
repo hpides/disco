@@ -5,8 +5,10 @@ import static com.github.lawben.disco.DistributedUtils.HIGH_WATERMARK;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
 import com.github.lawben.disco.DistributedUtils;
+import com.github.lawben.disco.DistributedUtils.NtpClock;
 import com.github.lawben.disco.Event;
 import com.github.lawben.disco.SustainableThroughputEventGenerator;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -14,6 +16,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.commons.net.ntp.NTPUDPClient;
+import org.apache.commons.net.ntp.TimeInfo;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -44,6 +48,9 @@ public class SustainableThroughputRunner {
         System.out.println("Running sustainable throughput generator for " + totalDuration + " seconds with " +
                 eventsPerSec + " events/s to " + nodeAddress);
 
+        System.out.println("Syncing clock time...");
+        final NtpClock ntpClock = new NtpClock();
+
         ZContext context = new ZContext();
         List<Socket> senders = new ArrayList<>(NUM_SENDERS);
         for (int socketNum = 0; socketNum < NUM_SENDERS; socketNum++) {
@@ -69,7 +76,7 @@ public class SustainableThroughputRunner {
         Thread.sleep(1000);
 
         // Time
-        final long startTime = System.currentTimeMillis();
+        final long startTime = ntpClock.currentTimeMillis();
         final long totalDurationInMillis = 1000 * totalDuration;
         final long warmUpTime = totalDurationInMillis / WARM_UP_PART;
         final long endTime = startTime + totalDurationInMillis;
@@ -78,7 +85,7 @@ public class SustainableThroughputRunner {
         List<GeneratorSetup> generators = new ArrayList<>(NUM_SENDERS);
         for (int i = 0; i < NUM_SENDERS; i++) {
             final int eventsPerGenerator = eventsPerSec / NUM_SENDERS;
-            generators.add(startGenerator(eventsPerGenerator, startTime, totalDurationInMillis));
+            generators.add(startGenerator(eventsPerGenerator, startTime, totalDurationInMillis, ntpClock));
         }
 
         List<Thread> senderThreads = new ArrayList<>(NUM_SENDERS);
@@ -86,7 +93,7 @@ public class SustainableThroughputRunner {
         for (int senderId = 0; senderId < NUM_SENDERS; senderId++) {
             Socket dataPusher = senders.get(senderId);
             GeneratorSetup generatorSetup = generators.get(senderId);
-            DataSender dataSender = new DataSender(dataPusher, generatorSetup, senderId);
+            DataSender dataSender = new DataSender(dataPusher, generatorSetup, senderId, ntpClock);
             Thread senderThread = new Thread(() -> dataSender.sendDataUntil(endTime), "sender-" + senderId);
             senderThread.start();
             senderThreads.add(senderThread);
@@ -100,15 +107,15 @@ public class SustainableThroughputRunner {
         int currentIncreaseStreak = 0;
         boolean warmedUp = false;
 
-        while (System.currentTimeMillis() < endTime) {
+        while (ntpClock.currentTimeMillis() < endTime) {
             Thread.sleep(SEND_PERIOD_DURATION_MS);
 
-            if (!warmedUp && System.currentTimeMillis() > warmUpEndTime) {
+            if (!warmedUp && ntpClock.currentTimeMillis() > warmUpEndTime) {
                 System.out.println("Clearing event queue after warm up time");
                 warmedUp = true;
-                final long emptyStart = System.currentTimeMillis();
+                final long emptyStart = ntpClock.currentTimeMillis();
                 eventQueues.forEach(Queue::clear);
-                System.out.println("Clearing took " + (System.currentTimeMillis() - emptyStart) + " ms.");
+                System.out.println("Clearing took " + (ntpClock.currentTimeMillis() - emptyStart) + " ms.");
                 queueSize = 0;
             }
 
@@ -147,12 +154,13 @@ public class SustainableThroughputRunner {
         return eventQueues.stream().map(Queue::size).reduce(Integer::sum).orElseThrow();
     }
 
-    public static GeneratorSetup startGenerator(int eventsPerSec, long startTime, long totalDurationInMillis) {
+    public static GeneratorSetup startGenerator(int eventsPerSec, long startTime,
+            long totalDurationInMillis, NtpClock ntpClock) {
         final Function<Long, Long> onesGenerator = (eventTimestamp) -> 1L;
         final Function<Long, Long> timestampGenerator = (eventTimestamp) -> eventTimestamp;
 
         final SustainableThroughputEventGenerator generator =
-                new SustainableThroughputEventGenerator(0, eventsPerSec, startTime, timestampGenerator);
+                new SustainableThroughputEventGenerator(0, eventsPerSec, startTime, timestampGenerator, ntpClock);
 
         GeneratorException generatorException = new GeneratorException();
         Thread.UncaughtExceptionHandler generatorThreadExceptionHandler =
@@ -164,7 +172,7 @@ public class SustainableThroughputRunner {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            while (!generator.isInterrupted() && System.currentTimeMillis() < startTime + totalDurationInMillis) {
+            while (!generator.isInterrupted() && ntpClock.currentTimeMillis() < startTime + totalDurationInMillis) {
                 generator.generateNextSecondEvents();
             }
             System.out.println("ENDING GENERATOR");
@@ -207,26 +215,28 @@ class DataSender {
     private final Socket dataPusher;
     private final GeneratorSetup generatorSetup;
     private final int id;
+    private final NtpClock ntpClock;
 
     private boolean interrupt;
 
-    public DataSender(Socket dataPusher, GeneratorSetup generatorSetup, int id) {
+    public DataSender(Socket dataPusher, GeneratorSetup generatorSetup, int id, NtpClock ntpClock) {
         this.dataPusher = dataPusher;
         this.generatorSetup = generatorSetup;
         this.id = id;
+        this.ntpClock = ntpClock;
     }
 
     public void sendDataUntil(final long endTime) {
-        while (!interrupt && System.currentTimeMillis() < endTime) {
-            final long sendStart = System.currentTimeMillis();
+        while (!interrupt && ntpClock.currentTimeMillis() < endTime) {
+            final long sendStart = ntpClock.currentTimeMillis();
             final long nextSendPeriodEnd = sendStart + SustainableThroughputRunner.SEND_PERIOD_DURATION_MS;
             LongAdder sentCounter = new LongAdder();
 
-            while (!interrupt && System.currentTimeMillis() < nextSendPeriodEnd) {
+            while (!interrupt && ntpClock.currentTimeMillis() < nextSendPeriodEnd) {
                 sendDataChunk(dataPusher, generatorSetup.generator.getEventQueue(), sentCounter);
             }
 
-            final long sendEnd = System.currentTimeMillis();
+            final long sendEnd = ntpClock.currentTimeMillis();
             System.out.println("[" + id + "] Sent " + sentCounter + " events in " +
                     (sendEnd - sendStart) + "ms.");
         }

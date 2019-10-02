@@ -26,8 +26,11 @@ import de.tub.dima.scotty.core.windowType.WindowMeasure;
 import de.tub.dima.scotty.slicing.slice.Slice;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -37,6 +40,8 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.net.ntp.NTPUDPClient;
+import org.apache.commons.net.ntp.TimeInfo;
 
 public class DistributedUtils {
 
@@ -444,5 +449,46 @@ public class DistributedUtils {
     public static long getWatermarkMsFromWindowString(String[] windowStrings) {
         List<Window> windows = createWindowsFromString(String.join(ARG_DELIMITER, windowStrings));
         return getWatermarkMsFromWindows(windows);
+    }
+
+    public static long getClockOffset() {
+        Long clockOffset = null;
+        int numSyncRetries = 0;
+        NTPUDPClient ntpClient = new NTPUDPClient();
+        try {
+            InetAddress ntpHost = InetAddress.getByName("pool.ntp.org");
+            while (clockOffset == null && ++numSyncRetries < 10) {
+                if (numSyncRetries == 3) {
+                    ntpHost = InetAddress.getByName("de.pool.ntp.org");
+                }
+                if (numSyncRetries == 6) {
+                    ntpHost = InetAddress.getByName("europe.pool.ntp.org");
+                }
+                TimeInfo timeInfo = ntpClient.getTime(ntpHost);
+                timeInfo.computeDetails();
+                clockOffset = timeInfo.getOffset();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Could not sync clocks.", e);
+        }
+
+        if (clockOffset == null) {
+            throw new RuntimeException("Could not sync clocks.");
+        }
+
+        return clockOffset;
+    }
+
+    public static class NtpClock {
+        private final long offset;
+
+        public NtpClock() {
+            offset = getClockOffset();
+            System.out.println("Clock offset = " + offset + " ms.");
+        }
+
+        public long currentTimeMillis() {
+            return System.currentTimeMillis() + this.offset;
+        }
     }
 }

@@ -18,6 +18,7 @@ dependencies {
     testImplementation group: 'org.hamcrest', name: 'hamcrest-library', version: '2.1'
 
     compile group: 'org.zeromq', name: 'jeromq', version: '0.5.0'
+    compile group: 'commons-net', name: 'commons-net', version: '3.6'
 
     def scottyVersion = '3e7fbc53c32c7c25f06f7446f88edfbd265792c3'
     implementation group: 'com.github.lawben.scotty-window-processor', name: 'core', version: scottyVersion
