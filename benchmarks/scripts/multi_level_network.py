@@ -52,29 +52,24 @@ def run_multi_level():
     ]
 
     partial_node_configs = [
-        [1, 1, 1],
-        [2, 4, 4],
-        [3, 6, 6],
-        [4, 8, 8],
-        [1, 1, 1, 1],
-        [2, 4, 8, 8],
-        [4, 8, 16, 16],
-        [1, 1, 1, 1, 1],
+        [1, 1],
+        [2, 2],
+        [4, 4],
+        [8, 8],
     ]
     partial_windows = [
-        "SLIDING,1000,500",
         "CONCURRENT,10,TUMBLING,20000",
     ]
 
     max_agg_fns = ["MAX"]
     run_matrix(partial_node_configs, 100_000_000, partial_windows, max_agg_fns, RUN_DURATION_DISTRIBUTIVE)
 
-    avg_agg_fns = ["M_AVG"]
-    run_matrix(node_configs, 100_000_000, windows, avg_agg_fns, RUN_DURATION_ALGEBRAIC)
-
-    # Run with less because median is slow
-    median_agg_fns = ["M_MEDIAN"]
-    run_matrix(node_configs, 10_000_000, windows, median_agg_fns, RUN_DURATION_HOLISTIC)
+    # avg_agg_fns = ["M_AVG"]
+    # run_matrix(node_configs, 100_000_000, windows, avg_agg_fns, RUN_DURATION_ALGEBRAIC)
+    #
+    # # Run with less because median is slow
+    # median_agg_fns = ["M_MEDIAN"]
+    # run_matrix(node_configs, 10_000_000, windows, median_agg_fns, RUN_DURATION_HOLISTIC)
 
 
 def get_dir_size(start_path):

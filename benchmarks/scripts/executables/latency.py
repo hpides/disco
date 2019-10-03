@@ -64,17 +64,15 @@ def run_latency(node_config: List[int], num_events: int, duration: int,
     _latency_run(node_config, half_events,
                  duration, windows, agg_functions, is_single_node)
 
-
     three_quarter_events = quarter_events * 3
     print(f"Running with three quarter events/s: {three_quarter_events}")
     _latency_run(node_config, three_quarter_events,
                  duration, windows, agg_functions, is_single_node)
 
-    # Ignore for now and use last sustainable run
-    # full_events = num_events
-    # print(f"Running with full events/s: {full_events}")
-    # _latency_run(num_children, num_streams, full_events,
-    #              duration, windows, agg_functions)
+    full_events = num_events
+    print(f"Running with full events/s: {full_events}")
+    _latency_run(node_config, full_events,
+                 duration, windows, agg_functions, is_single_node)
 
 
 # TODO: change if needed again

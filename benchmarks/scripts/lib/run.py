@@ -1,7 +1,5 @@
-import random
 import os
-import random
-import string
+import os
 import sys
 from datetime import datetime
 from multiprocessing.connection import Connection
@@ -9,7 +7,7 @@ from threading import Thread
 from typing import List
 
 from lib.common import ssh_command, check_complete, SSH_BASE_DIR, \
-    ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT, assert_valid_node_config, create_log_dir, print_run_string
+    ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT, assert_valid_node_config, create_log_dir
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(FILE_DIR, "..", "..", "..", ".."))
