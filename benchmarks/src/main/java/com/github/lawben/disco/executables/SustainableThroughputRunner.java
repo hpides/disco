@@ -60,7 +60,7 @@ public class SustainableThroughputRunner {
         final String nodeIP = nodeAddress.split(":")[0];
         final int dataPort = Integer.parseInt(nodeAddress.split(":")[1]);
         final ZMQ.Socket nodeRegistrar = context.createSocket(SocketType.REQ);
-        nodeRegistrar.setReceiveTimeOut(15 * 1000);
+        nodeRegistrar.setReceiveTimeOut(30 * 1000);
         nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
         nodeRegistrar.send(String.valueOf(streamId));
         if (nodeRegistrar.recvStr() == null) {
