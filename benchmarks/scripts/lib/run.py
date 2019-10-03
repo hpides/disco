@@ -44,9 +44,9 @@ def get_log_dir(num_nodes, num_events, duration):
 
 
 def complete_check_fn(host):
-    complete_command = "kill -0 $(cat /tmp/RUN_PID) 2>&1"
+    complete_command = "ps aux | grep disco.jar"
     complete_output = ssh_command(host, complete_command)
-    return "No such process" in complete_output
+    return not ("com.github.lawben" in complete_output)
 
 
 def upload_benchmark_params(host, *args):
@@ -90,8 +90,7 @@ def run_host(host, name, log_dir, timeout=None):
 
     out_file_path = os.path.join(log_dir, f"{name}.log")
     util_file_path = os.path.join(log_dir, f"util_{name}.log")
-    output = ssh_command(host, f"cat {SSH_BASE_DIR}/logs >> {SSH_BASE_DIR}/all_logs"
-                               f" && cat {SSH_BASE_DIR}/logs")
+    output = ssh_command(host, f"cat {SSH_BASE_DIR}/logs")
     with open(out_file_path, "w") as out_file:
         print(output)
         out_file.write(output)
@@ -176,12 +175,11 @@ def run(node_config: List[int], num_events: int, duration: int,
         thread.start()
         threads.append(thread)
 
-    incomplete_hosts = check_complete(max_run_duration, flat_hosts, complete_check_fn)
-    if incomplete_hosts:
-        kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
-        print("Ending script by killing all PIDs...")
-        for host in incomplete_hosts:
-            ssh_command(host, kill_command)
+    check_complete(max_run_duration, flat_hosts, complete_check_fn)
+    kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
+    print("Ending script by killing all PIDs...")
+    for host in flat_hosts:
+        ssh_command(host, kill_command)
 
     for thread in threads:
         thread.join()
