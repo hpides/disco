@@ -399,7 +399,6 @@ public class DistributedUtils {
         for (int windowId = 1; windowId <= numConcurrentWindows; windowId++) {
             final int windowLength = random.nextInt(numIntervalsInWindow) * minWindowIntervalMs;
             String randomWindowString = "TUMBLING," + windowLength + "," + windowId;
-            System.out.println(randomWindowString);
             windows.add(buildWindowFromString(randomWindowString));
         }
 
@@ -446,7 +445,9 @@ public class DistributedUtils {
         long minDiff = Math.min(100, Collections.min(lengths));
         for (int i = 0; i < lengths.size() - 1; i++) {
             final long diff = lengths.get(i + 1) - lengths.get(i);
-            minDiff = Math.min(minDiff, diff);
+            if (diff > 0) {
+                minDiff = Math.min(minDiff, diff);
+            }
         }
 
         return minDiff;
