@@ -14,6 +14,7 @@ import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,12 +39,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.zeromq.Utils;
 
 public class DistributedRootTest {
+    private final static long START_TIME = 1570061857;
 
     private int controllerPort;
     private int windowPort;
@@ -81,10 +84,11 @@ public class DistributedRootTest {
     void registerChild(int childId) {
         ZMQRequestMock child = new ZMQRequestMock(controllerPort);
         child.addMessage("[CHILD-" + childId + "] I am a new child");
-        List<String> response = child.requestNext(3);
+        List<String> response = child.requestNext(4);
         assertNotNull(response.get(0));
-        assertThat(response.get(1), anyOf(containsString("SESSION"), containsString("TUMBLING"), containsString("SLIDING")));
-        assertThat(response.get(2), anyOf(containsString("SUM"), containsString("AVG"), containsString("MEDIAN")));
+        assertThat(Long.parseLong(response.get(1)), Matchers.is(greaterThanOrEqualTo(START_TIME)));
+        assertThat(response.get(2), anyOf(containsString("SESSION"), containsString("TUMBLING"), containsString("SLIDING")));
+        assertThat(response.get(3), anyOf(containsString("SUM"), containsString("AVG"), containsString("MEDIAN")));
 
         children.add(new ZMQPushMock(windowPort));
     }

@@ -63,13 +63,14 @@ public class SustainableThroughputRunner {
         nodeRegistrar.setReceiveTimeOut(30 * 1000);
         nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
         nodeRegistrar.send(String.valueOf(streamId));
-        if (nodeRegistrar.recvStr() == null) {
+        String startTimeString = nodeRegistrar.recvStr();
+        if (startTimeString == null) {
             throw new RuntimeException("Could not register at child node.");
         }
+        final long startTime = Long.parseLong(startTimeString);
         Thread.sleep(1000);
 
         // Time
-        final long startTime = System.currentTimeMillis();
         final long totalDurationInMillis = 1000 * totalDuration;
         final long warmUpTime = totalDurationInMillis / WARM_UP_PART;
         final long endTime = startTime + totalDurationInMillis;

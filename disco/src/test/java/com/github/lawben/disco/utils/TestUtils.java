@@ -7,6 +7,8 @@ import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.util.stream.Stream;
 import org.zeromq.Utils;
 
 public class TestUtils {
+    private final static long START_TIME = 1570061857;
 
     public static void closeIfNotNull(AutoCloseable x) throws Exception {
         if (x != null) {
@@ -88,7 +91,7 @@ public class TestUtils {
 
             List<String> registerResult = streamRegister.requestNext();
             assertThat(registerResult, not(empty()));
-            assertThat(registerResult.get(0), equalTo("ack"));
+            assertThat(Long.parseLong(registerResult.get(0)), is(greaterThan(START_TIME)));
         }
 
         return new ZMQPushMock(childPort);

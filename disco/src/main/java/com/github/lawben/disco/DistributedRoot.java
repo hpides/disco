@@ -55,7 +55,9 @@ public class DistributedRoot implements Runnable {
                 nodeImpl.controllerPort + ", window port " + nodeImpl.dataPort +
                 " and result path " + this.resultPath));
 
+        nodeImpl.startTime = System.currentTimeMillis();
         try {
+
             nodeImpl.waitForChildren();
             nodeImpl.controlSender = null;
             this.processPreAggregatedWindows();

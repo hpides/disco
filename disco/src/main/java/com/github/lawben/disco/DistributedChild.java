@@ -164,7 +164,7 @@ public class DistributedChild implements Runnable {
         streamReceiver.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
         streamReceiver.bind(DistributedUtils.buildBindingTcpUrl(nodeImpl.dataPort + STREAM_REGISTER_PORT_OFFSET));
 
-        String ackResponse = "ack";
+        String startTimeResponse = String.valueOf(nodeImpl.startTime);
 
         int numRegisteredStreams = 0;
         while (!nodeImpl.isInterrupted()) {
@@ -176,7 +176,7 @@ public class DistributedChild implements Runnable {
 
             final int streamId = Integer.parseInt(rawStreamId);
             System.out.println(nodeImpl.nodeString("Registering stream " + streamId));
-            streamReceiver.send(ackResponse);
+            streamReceiver.send(startTimeResponse);
             numRegisteredStreams++;
 
             if (numRegisteredStreams == nodeImpl.numChildren) {

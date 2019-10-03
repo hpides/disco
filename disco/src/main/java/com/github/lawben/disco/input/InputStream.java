@@ -30,7 +30,7 @@ public class InputStream implements Runnable {
                 + " events to node " + this.nodeIp + ":" + this.nodePort + " with " + this.config));
 
         try (ZContext context = new ZContext()) {
-            this.registerAtNode(context);
+            final long sendingStartTime = this.registerAtNode(context);
 
             Thread.sleep(1000);
 
@@ -40,7 +40,6 @@ public class InputStream implements Runnable {
 
             System.out.println(this.streamIdString("Start sending data."));
 
-            final long sendingStartTime = System.currentTimeMillis();
             long lastEventTimestamp = this.eventGenerator.generateAndSendEvents(eventSender);
             final long duration = System.currentTimeMillis() - sendingStartTime;
             eventSender.sendMore(DistributedUtils.STREAM_END);
@@ -59,14 +58,15 @@ public class InputStream implements Runnable {
     }
 
 
-    protected void registerAtNode(ZContext context) {
+    protected long registerAtNode(ZContext context) {
         System.out.println(this.streamIdString("Registering at node."));
         final ZMQ.Socket nodeRegistrar = context.createSocket(SocketType.REQ);
         nodeRegistrar.connect(DistributedUtils.buildTcpUrl(this.nodeIp, this.nodePort + DistributedChild.STREAM_REGISTER_PORT_OFFSET));
 
         nodeRegistrar.send(String.valueOf(this.streamId));
-        nodeRegistrar.recvStr();
+        long startTime =  Long.parseLong(nodeRegistrar.recvStr());
         System.out.println(this.streamIdString("Registering successful."));
+        return startTime;
     }
 
     private String streamIdString(String msg) {

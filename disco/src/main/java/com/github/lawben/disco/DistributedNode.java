@@ -69,6 +69,7 @@ public class DistributedNode {
     final int parentControllerPort;
     final int parentWindowPort;
     protected long watermarkMs;
+    protected long startTime;
 
     public DistributedNode(int nodeId, String nodeIdentifier, int controllerPort, int dataPort, int numChildren,
             String parentIp, int parentControllerPort, int parentWindowPort) {
@@ -246,6 +247,7 @@ public class DistributedNode {
             }
 
             childReceiver.sendMore(String.valueOf(watermarkMs));
+            childReceiver.sendMore(String.valueOf(startTime));
             childReceiver.sendMore(completeWindowString);
             childReceiver.send(completeAggFnString);
             numChildrenRegistered++;
@@ -264,6 +266,7 @@ public class DistributedNode {
         controlSender.send(this.nodeString("I am a new node."));
 
         this.watermarkMs = Long.parseLong(controlSender.recvStr());
+        this.startTime = Long.parseLong(controlSender.recvStr());
         System.out.println("Received watermarks");
         String windowString = controlSender.recvStr();
         System.out.println("Received windows");
