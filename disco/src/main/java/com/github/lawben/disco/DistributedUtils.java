@@ -397,7 +397,8 @@ public class DistributedUtils {
         final int minWindowIntervalMs = 100;
         final int numIntervalsInWindow = baseWindowLength / minWindowIntervalMs;
         for (int windowId = 1; windowId <= numConcurrentWindows; windowId++) {
-            final int windowLength = random.nextInt(numIntervalsInWindow) * minWindowIntervalMs;
+            // +1 to avoid length 0
+            final int windowLength = (random.nextInt(numIntervalsInWindow) + 1) * minWindowIntervalMs;
             String randomWindowString = "TUMBLING," + windowLength + "," + windowId;
             windows.add(buildWindowFromString(randomWindowString));
         }

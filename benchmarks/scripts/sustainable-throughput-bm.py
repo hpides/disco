@@ -51,8 +51,17 @@ def run_all():
         "CONCURRENT,500,TUMBLING,20000",
         "CONCURRENT,1000,TUMBLING,20000",
     ]
-    concurrent_agg_fns = ["MAX", "M_AVG", "M_MEDIAN"]
     concurrent_node_config = [[1, 1]]
+
+    max_windows = [
+        "CONCURRENT,500,TUMBLING,20000",
+        "CONCURRENT,1000,TUMBLING,20000",
+    ]
+
+    run_benchmark_matrix(max_windows, ["MAX"], concurrent_node_config)
+    run_single_node_benchmark_matrix(max_windows, ["MAX"], concurrent_node_config)
+
+    concurrent_agg_fns = ["M_AVG", "M_MEDIAN"]
     run_benchmark_matrix(concurrent_windows, concurrent_agg_fns, concurrent_node_config)
     run_single_node_benchmark_matrix(concurrent_windows, concurrent_agg_fns, concurrent_node_config)
 
