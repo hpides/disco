@@ -69,8 +69,17 @@ public class DistributedRoot implements Runnable {
     private void processPreAggregatedWindows() {
         ZMQ.Socket windowPuller = nodeImpl.dataPuller;
 
+        nodeImpl.processingTime = 0;
+        nodeImpl.receivingTime = 0;
+        nodeImpl.numWindowsInLastSecond = 0;
+        nodeImpl.lastSecondEnd = System.currentTimeMillis() + 1000;
+
+        long lowerTime = 0;
+
         while (!nodeImpl.isInterrupted()) {
+            nodeImpl.receiveStart = System.nanoTime();
             String messageOrStreamEnd = windowPuller.recvStr();
+
             if (messageOrStreamEnd == null) {
                 continue;
             }
@@ -98,13 +107,35 @@ public class DistributedRoot implements Runnable {
                 }
                 default: {
                     FinalWindowsAndSessionStarts processingResults = nodeImpl.processWindowAggregates();
+                    final long lowerStart = System.nanoTime();
                     windowResults = processingResults.getFinalWindows().stream()
                             .map(state -> nodeImpl.aggregateMerger.convertAggregateToWindowResult(state))
                             .collect(Collectors.toList());
+                    final long lowerEnd = System.nanoTime();
+                    lowerTime += (lowerEnd - lowerStart);
                 }
             }
 
-            windowResults.forEach(this::sendResult);
+            if (!windowResults.isEmpty()) {
+                final long sendingStart = System.nanoTime();
+                final long numResults = windowResults.size();
+                windowResults.forEach(this::sendResult);
+                final long sendingEnd = System.nanoTime();
+                final long sendingTime = (sendingEnd - sendingStart);
+                System.out.println("Avg lower time: " + (lowerTime / numResults) + " ns.");
+                System.out.println("Avg sending time: " + (sendingTime / numResults) + " ns.");
+                lowerTime = 0;
+            }
+
+            if (System.currentTimeMillis() > nodeImpl.lastSecondEnd) {
+                System.out.println("Processed " + nodeImpl.numWindowsInLastSecond + " windows in last second.");
+                System.out.println("Avg receiving  time: " + (nodeImpl.receivingTime / nodeImpl.numWindowsInLastSecond) + " ns.");
+                System.out.println("Avg processing time: " + (nodeImpl.processingTime / nodeImpl.numWindowsInLastSecond) + " ns.");
+                nodeImpl.processingTime = 0;
+                nodeImpl.receivingTime = 0;
+                nodeImpl.numWindowsInLastSecond = 0;
+                nodeImpl.lastSecondEnd += 1000;
+            }
         }
     }
 

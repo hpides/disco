@@ -71,6 +71,14 @@ public class DistributedNode {
     protected long watermarkMs;
     protected long startTime;
 
+    // Micro-measurements
+    protected long receiveStart;
+    protected long receiveEnd;
+    protected long processingTime;
+    protected long receivingTime;
+    protected long numWindowsInLastSecond;
+    protected long lastSecondEnd;
+
     public DistributedNode(int nodeId, String nodeIdentifier, int controllerPort, int dataPort, int numChildren,
             String parentIp, int parentControllerPort, int parentWindowPort) {
         this.nodeId = nodeId;
@@ -103,10 +111,17 @@ public class DistributedNode {
 
         FunctionWindowAggregateId functionWindowAggId =
                 DistributedUtils.stringToFunctionWindowAggId(rawFunctionWindowAggId);
+        receiveEnd = System.nanoTime();
+        receivingTime += (receiveEnd - receiveStart);
 
-//        System.out.println(nodeString("Processing: " + functionWindowAggId + " with " + rawPreAggregates));
+        numWindowsInLastSecond += rawPreAggregates.size();
+
+        final long processingStart = System.nanoTime();
         List<DistributedAggregateWindowState> finalWindows =
                 this.aggregateMerger.processWindowAggregates(functionWindowAggId, rawPreAggregates);
+        final long processingEnd = System.nanoTime();
+        processingTime += (processingEnd - processingStart);
+
         List<FunctionWindowAggregateId> sessionStarts = aggregateMerger.getSessionStarts(functionWindowAggId);
         return new FinalWindowsAndSessionStarts(finalWindows, sessionStarts);
     }
@@ -321,7 +336,9 @@ public class DistributedNode {
     public ZMQ.Socket createDataPuller(int port) {
         if (this.dataPuller == null) {
             this.dataPuller = this.context.createSocket(SocketType.PULL);
+            // TODO: change back
             this.dataPuller.setReceiveTimeOut(DEFAULT_SOCKET_TIMEOUT_MS);
+            this.dataPuller.setReceiveTimeOut(0);
             this.dataPuller.setRcvHWM(HIGH_WATERMARK);
 
             int retries = 0;
