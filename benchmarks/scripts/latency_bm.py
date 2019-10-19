@@ -21,7 +21,7 @@ def run_dist_benchmark(windows: str, agg_fns: str, node_config: List[int], throu
 def run_all():
     dist_matrix = [
         ("TUMBLING,1000", "MAX", [1, 1], (1023437, 875000)),
-        ("TUMBLING,1000", "MAX", [2, 2], (1062500, 492187)),
+        ("TUMBLING,1000", "MAX", [2, 2], (1002500, 492187)),
         ("TUMBLING,1000", "MAX", [4, 4], (966562, 250000)),
         ("TUMBLING,1000", "MAX", [8, 8], (929687, 125000)),
         ("TUMBLING,1000", "M_MEDIAN", [1, 1], (27359, 22593)),
