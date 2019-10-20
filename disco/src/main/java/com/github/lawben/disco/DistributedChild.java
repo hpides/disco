@@ -29,6 +29,7 @@ public class DistributedChild implements Runnable {
     private ChildMerger childMerger;
 
     private boolean hasCountWindow;
+    private boolean hasDistributedWindow;
 
     public DistributedChild(String parentIp, int parentControllerPort, int parentWindowPort,
                             int streamInputPort, int childId, int numStreams) {
@@ -50,6 +51,7 @@ public class DistributedChild implements Runnable {
         try {
             WindowingConfig config = this.nodeImpl.registerAtParent();
             this.hasCountWindow = !config.getCountWindows().isEmpty();
+            this.hasDistributedWindow = !config.getTimeWindows().isEmpty();
 
             boolean registerSuccess = this.registerStreams(config);
             if (!registerSuccess) {
@@ -96,8 +98,12 @@ public class DistributedChild implements Runnable {
                 return;
             }
 
-            if (this.hasCountWindow()) {
+            if (this.hasCountWindow) {
                 nodeImpl.forwardEvent(eventOrStreamEnd);
+            }
+
+            if (!this.hasDistributedWindow) {
+                continue;
             }
 
             this.processEvent(eventOrStreamEnd);
@@ -190,10 +196,6 @@ public class DistributedChild implements Runnable {
 
         System.out.println(nodeImpl.nodeString("Interrupted while registering streams."));
         return false;
-    }
-
-    private boolean hasCountWindow() {
-        return this.hasCountWindow;
     }
 
     public void interrupt() {
