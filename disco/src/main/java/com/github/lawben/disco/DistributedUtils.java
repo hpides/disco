@@ -443,6 +443,10 @@ public class DistributedUtils {
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toList());
 
+        if (lengths.isEmpty()) {
+            return 100;
+        }
+
         long minDiff = Math.min(100, Collections.min(lengths));
         for (int i = 0; i < lengths.size() - 1; i++) {
             final long diff = lengths.get(i + 1) - lengths.get(i);
