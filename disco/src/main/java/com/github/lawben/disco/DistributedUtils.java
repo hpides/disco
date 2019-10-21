@@ -323,11 +323,11 @@ public class DistributedUtils {
         return new MedianAggregateFunction();
     }
 
-    private static DistributiveAggregateFunction aggregateFunctionMax() {
+    public static DistributiveAggregateFunction aggregateFunctionMax() {
         return new MaxAggregateFunction();
     }
 
-    private static DistributiveAggregateFunction aggregateFunctionMin() {
+    public static DistributiveAggregateFunction aggregateFunctionMin() {
         return new MinAggregateFunction();
     }
 
@@ -343,7 +343,7 @@ public class DistributedUtils {
         return new MaxMedianAggregateFunction();
     }
 
-    private static DistributiveAggregateFunction maxAggregateFunctionMin() {
+    public static DistributiveAggregateFunction maxAggregateFunctionMin() {
         return new MaxMinAggregateFunction();
     }
 

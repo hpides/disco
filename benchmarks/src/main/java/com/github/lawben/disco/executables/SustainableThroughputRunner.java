@@ -5,14 +5,14 @@ import static com.github.lawben.disco.DistributedUtils.HIGH_WATERMARK;
 import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 
 import com.github.lawben.disco.DistributedUtils;
-import com.github.lawben.disco.Event;
 import com.github.lawben.disco.SustainableThroughputEventGenerator;
+import com.github.lawben.disco.SustainableThroughputGenerator;
+import com.github.lawben.disco.SustainableThroughputWindowGenerator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -22,14 +22,14 @@ import org.zeromq.ZMQ.Socket;
 
 public class SustainableThroughputRunner {
     private static final int NUM_SENDERS = 4;
-    static final int SEND_CHUNK_SIZE = 10000;
     static final long SEND_PERIOD_DURATION_MS = 1000;
     private static final long MAX_INCREASE_STREAK = 10;
     private static final long WARM_UP_PART = 4;
+    static int SEND_CHUNK_SIZE = 10000;
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 4) {
-            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds\n" +
+        if (args.length != 5) {
+            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds childX|stream\n" +
                     "e.g. java SustainableThroughputRunner 0 127.0.0.1:4060 100000 60\n" +
                     "This will generate 100.000 events per second for 60 seconds (6 mio. events in total) "
                     + "and send them to localhost on port 4060 from stream with id 0.");
@@ -40,9 +40,22 @@ public class SustainableThroughputRunner {
         final String nodeAddress = args[1];
         final int eventsPerSec = Integer.parseInt(args[2]);
         final long totalDuration = Long.parseLong(args[3]);
+        final String mode = args[4];
+        assert mode.startsWith("child") || mode.equals("stream");
 
-        System.out.println("Running sustainable throughput generator for " + totalDuration + " seconds with " +
-                eventsPerSec + " events/s to " + nodeAddress);
+        final boolean isStream = mode.equals("stream");
+        int numChildren = 0;
+        if (!isStream) {
+            numChildren = Integer.parseInt(mode.replace("child", ""));
+            SEND_CHUNK_SIZE = 1000;
+        }
+
+        if (eventsPerSec < 100_000) {
+            SEND_CHUNK_SIZE = 1000;
+        }
+
+        System.out.println("Running sustainable " + mode + " throughput generator for " + totalDuration +
+                " seconds with " + eventsPerSec + " events/s to " + nodeAddress);
 
         ZContext context = new ZContext();
         List<Socket> senders = new ArrayList<>(NUM_SENDERS);
@@ -59,15 +72,35 @@ public class SustainableThroughputRunner {
         // Register at parent and wait for it to set up correctly.
         final String nodeIP = nodeAddress.split(":")[0];
         final int dataPort = Integer.parseInt(nodeAddress.split(":")[1]);
-        final ZMQ.Socket nodeRegistrar = context.createSocket(SocketType.REQ);
-        nodeRegistrar.setReceiveTimeOut(30 * 1000);
-        nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
-        nodeRegistrar.send(String.valueOf(streamId));
-        String startTimeString = nodeRegistrar.recvStr();
-        if (startTimeString == null) {
-            throw new RuntimeException("Could not register at child node.");
+
+        final long startTime;
+        if (isStream) {
+            final Socket nodeRegistrar = context.createSocket(SocketType.REQ);
+            nodeRegistrar.setReceiveTimeOut(30 * 1000);
+            nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
+            nodeRegistrar.send(String.valueOf(streamId));
+            String startTimeString = nodeRegistrar.recvStr();
+            if (startTimeString == null) {
+                throw new RuntimeException("Could not register at child node.");
+            }
+            startTime = Long.parseLong(startTimeString);
+        } else {
+            int registerPortOffset = -1;
+            long partialStartTime = 0;
+            for (int i = 0; i < numChildren; i++) {
+                final Socket nodeRegistrar = context.createSocket(SocketType.REQ);
+                nodeRegistrar.setReceiveTimeOut(15 * 1000);
+                nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + registerPortOffset));
+                nodeRegistrar.send("[NODE-" + i + "] I am a new node");
+                nodeRegistrar.recvStr();
+                partialStartTime = Long.parseLong(nodeRegistrar.recvStr());
+                nodeRegistrar.recvStr();
+                nodeRegistrar.recvStr();
+                System.out.println("Registered generator " + i);
+            }
+            startTime = partialStartTime;
         }
-        final long startTime = Long.parseLong(startTimeString);
+
         Thread.sleep(1000);
 
         // Time
@@ -79,7 +112,7 @@ public class SustainableThroughputRunner {
         List<GeneratorSetup> generators = new ArrayList<>(NUM_SENDERS);
         for (int i = 0; i < NUM_SENDERS; i++) {
             final int eventsPerGenerator = eventsPerSec / NUM_SENDERS;
-            generators.add(startGenerator(eventsPerGenerator, startTime, totalDurationInMillis));
+            generators.add(startGenerator(eventsPerGenerator, startTime, totalDurationInMillis, numChildren, isStream));
         }
 
         List<Thread> senderThreads = new ArrayList<>(NUM_SENDERS);
@@ -95,8 +128,10 @@ public class SustainableThroughputRunner {
         }
 
         // Event sending
-        List<ArrayBlockingQueue<Event>> eventQueues = generators.stream()
-                .map(g -> g.generator.getEventQueue()).collect(Collectors.toList());
+        List<ArrayBlockingQueue<List<String>>> eventQueues = generators.stream()
+                .map(g -> g.generator.getEventQueue())
+                .collect(Collectors.toList());
+
         int queueSize = getTotalQueueSize(eventQueues);
         int currentIncreaseStreak = 0;
         boolean warmedUp = false;
@@ -117,7 +152,7 @@ public class SustainableThroughputRunner {
                 GeneratorException generatorException = generatorSetup.exception;
                 if (generatorException.wasThrown()) {
                     System.out.println("Ending stream because of generator exception.");
-                    endRunner(streamId, context, senders, streamEndSender, generators, senderThreads, dataSenders);
+                    endRunner(streamId, context, senders, streamEndSender, generators, senderThreads, dataSenders, numChildren);
                     throw new RuntimeException("Generator exception was thrown!\n" + generatorException.getException());
                 }
             }
@@ -131,7 +166,7 @@ public class SustainableThroughputRunner {
                 // Queue is growing in size
                 if (++currentIncreaseStreak == MAX_INCREASE_STREAK) {
                     System.out.println("Ending stream because of unsustainable throughput.");
-                    endRunner(streamId, context, senders, streamEndSender, generators, senderThreads, dataSenders);
+                    endRunner(streamId, context, senders, streamEndSender, generators, senderThreads, dataSenders, numChildren);
                     throw new IllegalStateException("Unsustainable throughput! Queue size is " + queueSize +
                             " and has increased " + MAX_INCREASE_STREAK + " times in a row.");
                 }
@@ -141,19 +176,18 @@ public class SustainableThroughputRunner {
         }
 
         System.out.println("Ending stream after " + totalDuration + " seconds.");
-        endRunner(streamId, context, senders, streamEndSender, generators, senderThreads, dataSenders);
+        endRunner(streamId, context, senders, streamEndSender, generators, senderThreads, dataSenders, numChildren);
     }
 
-    private static int getTotalQueueSize(List<ArrayBlockingQueue<Event>> eventQueues) {
+    private static int getTotalQueueSize(List<ArrayBlockingQueue<List<String>>> eventQueues) {
         return eventQueues.stream().map(Queue::size).reduce(Integer::sum).orElseThrow();
     }
 
-    public static GeneratorSetup startGenerator(int eventsPerSec, long startTime, long totalDurationInMillis) {
-        final Function<Long, Long> onesGenerator = (eventTimestamp) -> 1L;
-        final Function<Long, Long> timestampGenerator = (eventTimestamp) -> eventTimestamp;
-
-        final SustainableThroughputEventGenerator generator =
-                new SustainableThroughputEventGenerator(0, eventsPerSec, startTime, timestampGenerator);
+    public static GeneratorSetup startGenerator(int eventsPerSec, long startTime, long totalDurationInMillis,
+            int numChildren, boolean isStream) {
+        final SustainableThroughputGenerator generator = isStream
+                ? new SustainableThroughputEventGenerator(0, eventsPerSec, startTime)
+                : new SustainableThroughputWindowGenerator(numChildren, eventsPerSec);
 
         GeneratorException generatorException = new GeneratorException();
         Thread.UncaughtExceptionHandler generatorThreadExceptionHandler =
@@ -177,7 +211,7 @@ public class SustainableThroughputRunner {
     }
 
     private static void endRunner(int streamId, ZContext context, List<Socket> senders, Socket streamEndSender,
-            List<GeneratorSetup> generators, List<Thread> senderThreads, List<DataSender> dataSenders)
+            List<GeneratorSetup> generators, List<Thread> senderThreads, List<DataSender> dataSenders, int numChildren)
             throws InterruptedException {
         generators.forEach(g -> g.generator.interrupt());
         dataSenders.forEach(DataSender::interrupt);
@@ -192,8 +226,15 @@ public class SustainableThroughputRunner {
         Thread.sleep(SEND_PERIOD_DURATION_MS);
 
         System.out.println("Ending stream...");
-        streamEndSender.sendMore(STREAM_END);
-        streamEndSender.send(String.valueOf(streamId));
+        if (streamId != -1) {
+            streamEndSender.sendMore(STREAM_END);
+            streamEndSender.send(String.valueOf(streamId));
+        } else {
+            for (int i = 0; i < numChildren; i++) {
+                streamEndSender.sendMore(STREAM_END);
+                streamEndSender.send(String.valueOf(i));
+            }
+        }
 
         // Wait for child to receive stream end before killing connection.
         Thread.sleep(5000);
@@ -237,13 +278,13 @@ class DataSender {
         }
     }
 
-    private void sendDataChunk(Socket dataPusher, Queue<Event> eventQueue, LongAdder sentCounter) {
+    private void sendDataChunk(Socket dataPusher, Queue<List<String>> eventQueue, LongAdder sentCounter) {
         int numSleepsInSendPeriod = 0;
 
         // Send SEND_CHUNK_SIZE to avoid system call every iteration.
         for (int i = 0; i < SustainableThroughputRunner.SEND_CHUNK_SIZE; i++) {
-            Event event = eventQueue.poll();
-            if (event == null) {
+            List<String> msg = eventQueue.poll();
+            if (msg == null) {
                 // Sleep for a while to avoid blocking the data generator too much while pushing data.
                 try {
                     Thread.sleep(5);
@@ -258,7 +299,11 @@ class DataSender {
                 continue;
             }
 
-            dataPusher.send(event.asString());
+            for (int msgPart = 0; msgPart < msg.size() - 1; msgPart++) {
+                dataPusher.sendMore(msg.get(msgPart));
+            }
+            this.dataPusher.send(msg.get(msg.size() - 1));
+
             sentCounter.increment();
         }
     }
@@ -296,11 +341,11 @@ class GeneratorException {
 }
 
 class GeneratorSetup {
-    SustainableThroughputEventGenerator generator;
+    SustainableThroughputGenerator generator;
     GeneratorException exception;
     Thread thread;
 
-    public GeneratorSetup(SustainableThroughputEventGenerator generator,
+    public GeneratorSetup(SustainableThroughputGenerator generator,
             GeneratorException exception, Thread thread) {
         this.generator = generator;
         this.exception = exception;
