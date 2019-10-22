@@ -20,6 +20,8 @@ public class ResultListener implements Runnable {
             ZMQ.Socket resultListener = context.createSocket(SocketType.PULL);
             resultListener.bind(DistributedUtils.buildIpcUrl(this.resultPath));
 
+            int numResultWindows = 0;
+
             while (!Thread.currentThread().isInterrupted()) {
                 final String rawAggIdOrStreamEnd = resultListener.recvStr();
                 if (rawAggIdOrStreamEnd.equals(DistributedUtils.STREAM_END)) {
@@ -33,7 +35,7 @@ public class ResultListener implements Runnable {
                         DistributedUtils.stringToFunctionWindowAggId(rawAggIdOrStreamEnd);
 
                  if (rawAggregatedResult == null || rawAggregatedResult.equals("null")) {
-                     System.out.println("Null latency: " + functionWindowAggId);
+//                     System.out.println("Null latency: " + functionWindowAggId);
                      continue;
                  }
 
@@ -42,7 +44,11 @@ public class ResultListener implements Runnable {
 //                final long windowEnd = functionWindowAggId.getWindowId().getWindowEndTimestamp();
                 final long windowEnd = finalAggregate;
                 final long windowLatency = currentTime - windowEnd;
-                System.out.println("Latency for window: " + functionWindowAggId + " --> " + windowLatency);
+//                System.out.println("Latency for window: " + functionWindowAggId + " --> " + windowLatency);
+
+                if (++numResultWindows % 10_000 == 0) {
+                    System.out.println("Received " + numResultWindows + " windows.");
+                }
 
                 // System.out.println(this.resultString("FINAL WINDOW: " + functionWindowAggId + " --> " + finalAggregate));
 
