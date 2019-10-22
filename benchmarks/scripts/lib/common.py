@@ -109,7 +109,7 @@ def logs_are_unsustainable(log_directory):
             if log_file.startswith("main"):
                 continue
 
-            if not log_file.startswith(STREAM_LOG_PREFIX):
+            if not (log_file.startswith(STREAM_LOG_PREFIX) or log_file.startswith("child-generator")):
                 # Not a stream file, error here is bad
                 if GENERIC_ERROR_MSG in log_contents:
                     print(f" '--> Error in file {log_file_path}. Retry.")
