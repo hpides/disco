@@ -21,15 +21,15 @@ import org.zeromq.ZMQ.Socket;
 
 
 public class SustainableThroughputRunner {
-    private static final int NUM_SENDERS = 4;
+    private static int NUM_SENDERS = 4;
     static final long SEND_PERIOD_DURATION_MS = 1000;
     private static final long MAX_INCREASE_STREAK = 10;
     private static final long WARM_UP_PART = 4;
     static int SEND_CHUNK_SIZE = 10000;
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 5) {
-            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds childX|stream\n" +
+        if (args.length != 6) {
+            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds aggFn childX|stream\n" +
                     "e.g. java SustainableThroughputRunner 0 127.0.0.1:4060 100000 60\n" +
                     "This will generate 100.000 events per second for 60 seconds (6 mio. events in total) "
                     + "and send them to localhost on port 4060 from stream with id 0.");
@@ -40,7 +40,8 @@ public class SustainableThroughputRunner {
         final String nodeAddress = args[1];
         final int eventsPerSec = Integer.parseInt(args[2]);
         final long totalDuration = Long.parseLong(args[3]);
-        final String mode = args[4];
+        final String aggFn = args[4];
+        final String mode = args[5];
         assert mode.startsWith("child") || mode.equals("stream");
 
         final boolean isStream = mode.equals("stream");
@@ -48,10 +49,14 @@ public class SustainableThroughputRunner {
         if (!isStream) {
             numChildren = Integer.parseInt(mode.replace("child", ""));
             SEND_CHUNK_SIZE = 1000;
-        }
-
-        if (eventsPerSec < 100_000) {
-            SEND_CHUNK_SIZE = 1000;
+            NUM_SENDERS = numChildren;
+            if (aggFn.equals("M_MEDIAN")) {
+                SEND_CHUNK_SIZE = 100;
+            }
+        } else {
+            if (aggFn.equals("M_MEDIAN")) {
+                SEND_CHUNK_SIZE = 1000;
+            }
         }
 
         System.out.println("Running sustainable " + mode + " throughput generator for " + totalDuration +
@@ -112,7 +117,8 @@ public class SustainableThroughputRunner {
         List<GeneratorSetup> generators = new ArrayList<>(NUM_SENDERS);
         for (int i = 0; i < NUM_SENDERS; i++) {
             final int eventsPerGenerator = eventsPerSec / NUM_SENDERS;
-            generators.add(startGenerator(eventsPerGenerator, startTime, totalDurationInMillis, numChildren, isStream));
+            generators.add(startGenerator(eventsPerGenerator, startTime, aggFn, totalDurationInMillis,
+                    numChildren, isStream));
         }
 
         List<Thread> senderThreads = new ArrayList<>(NUM_SENDERS);
@@ -183,11 +189,11 @@ public class SustainableThroughputRunner {
         return eventQueues.stream().map(Queue::size).reduce(Integer::sum).orElseThrow();
     }
 
-    public static GeneratorSetup startGenerator(int eventsPerSec, long startTime, long totalDurationInMillis,
-            int numChildren, boolean isStream) {
+    public static GeneratorSetup startGenerator(int eventsPerSec, long startTime, String aggFn, long totalDurationInMillis,
+            int nodeId, boolean isStream) {
         final SustainableThroughputGenerator generator = isStream
-                ? new SustainableThroughputEventGenerator(0, eventsPerSec, startTime)
-                : new SustainableThroughputWindowGenerator(numChildren, eventsPerSec);
+                ? new SustainableThroughputEventGenerator(nodeId, eventsPerSec, startTime)
+                : new SustainableThroughputWindowGenerator(nodeId, eventsPerSec, aggFn);
 
         GeneratorException generatorException = new GeneratorException();
         Thread.UncaughtExceptionHandler generatorThreadExceptionHandler =

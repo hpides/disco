@@ -74,7 +74,7 @@ public class GlobalHolisticWindowMerger extends BaseWindowMerger<List<Distribute
                         keyedFinalSlices.add(slice);
                     }
                 } else {
-                    break;
+                    iterator.remove();
                 }
             }
         }

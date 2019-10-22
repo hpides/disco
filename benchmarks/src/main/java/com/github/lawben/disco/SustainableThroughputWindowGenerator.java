@@ -1,11 +1,13 @@
 package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.HOLISTIC_STRING;
+import static com.github.lawben.disco.DistributedUtils.aggregateFunctionMax;
 
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
 import com.github.lawben.disco.aggregation.AlgebraicWindowAggregate;
 import com.github.lawben.disco.aggregation.DistributedAggregateWindowState;
+import com.github.lawben.disco.aggregation.DistributedSlice;
 import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributiveWindowAggregate;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
@@ -23,50 +25,89 @@ import java.util.function.Function;
 
 public class SustainableThroughputWindowGenerator extends SustainableThroughputGenerator {
 
-    public static Function<Long, List<String>> getWindowGen(int numChildren) {
-        WindowGenerator windowGenerator = new WindowGenerator(numChildren);
+    public static Function<Long, List<String>> getWindowGen(int childId, String aggFn) {
+        WindowGenerator windowGenerator = new WindowGenerator(childId, aggFn);
         return (realTime) -> windowGenerator.getNextWindow();
     }
 
-    public SustainableThroughputWindowGenerator(int numChildren, int numWindowsPerSecond) {
-        super(numWindowsPerSecond, getWindowGen(numChildren));
+    public SustainableThroughputWindowGenerator(int childId, int numWindowsPerSecond, String aggFn) {
+        super(numWindowsPerSecond, getWindowGen(childId, aggFn));
     }
 
     private static class WindowGenerator {
-        final int numChildren;
-        int currentChild;
+        int childId;
         int currentWindowNum;
+        String aggFn;
 
-        final long windowSize = 10;
+        final long windowSize = 1000;
 
         MemoryStateFactory factory;
         List<AggregateFunction> functions;
+        List<Long> sliceValues;
 
-        public WindowGenerator(int numChildren) {
-            this.numChildren = numChildren;
-            this.currentChild = 0;
+        public WindowGenerator(int childId, String aggFn) {
+            this.childId = childId;
             this.currentWindowNum = 0;
+            this.aggFn = aggFn;
 
             this.factory = new MemoryStateFactory();
-            this.functions = List.of(new AlgebraicMergeFunction(DistributedUtils.maxAggregateFunctionAverage())); // aggregateFunctionMax());
+
+            switch (aggFn) {
+                case "MAX":  {
+                    this.functions = List.of(aggregateFunctionMax());
+                    break;
+                }
+                case "M_AVG": {
+                    this.functions = List.of(new AlgebraicMergeFunction(DistributedUtils.maxAggregateFunctionAverage()));
+                    break;
+                }
+                case "M_MEDIAN": {
+                    this.functions = List.of(new HolisticMergeWrapper(DistributedUtils.maxAggregateFunctionMedian()));
+                    break;
+                }
+                default:
+                    throw new RuntimeException("Unknown aggFn: " + aggFn);
+            }
+
+            this.sliceValues = new ArrayList<>(25_000);
+            final long currentTime = System.currentTimeMillis();
+            for (int i = 0; i < 25_000; i++) {
+                sliceValues.add(currentTime + 1);
+            }
         }
 
         public List<String> getNextWindow() {
             final long windowStart = windowSize * currentWindowNum;
             final long windowEnd = windowStart + windowSize;
             WindowAggregateId windowAggId = new WindowAggregateId(0, windowStart, windowEnd);
-            FunctionWindowAggregateId windowId = new FunctionWindowAggregateId(windowAggId, 0, currentChild);
+            FunctionWindowAggregateId windowId = new FunctionWindowAggregateId(windowAggId, 0, childId);
 
-            AggregateState<PartialAverage> state = new AggregateState<>(factory, functions);
-            state.addElement(new PartialAverage(100L, 1));
-            DistributedAggregateWindowState<PartialAverage> window = new DistributedAggregateWindowState<>(windowId, state);
-            List<String> serializedMsg = serializedFunctionWindows(windowId, List.of(window), currentChild);
+            final DistributedAggregateWindowState window;
+            switch (aggFn) {
+                case "MAX": {
+                    AggregateState<Long> state = new AggregateState<>(factory, functions);
+                    state.addElement(100000000L);
+                    window = new DistributedAggregateWindowState<>(windowId, state);
+                    break;
+                }
+                case "M_AVG": {
+                    AggregateState<PartialAverage> state = new AggregateState<>(factory, functions);
+                    state.addElement(new PartialAverage(1000000000L, 1));
+                    window = new DistributedAggregateWindowState<>(windowId, state);
+                    break;
+                }
+                case "M_MEDIAN": {
+                    AggregateState<List<DistributedSlice>> state = new AggregateState<>(factory, functions);
+                    state.addElement(List.of(new DistributedSlice(windowStart, windowEnd, sliceValues)));
+                    window = new DistributedAggregateWindowState<>(windowId, state);
+                    break;
+                }
+                default:
+                    throw new RuntimeException("Unknown aggFn: " + aggFn);
+            }
 
-            currentChild = (currentChild + 1) % numChildren;
-            // Send same window for each child, then increase window
-            if (currentChild == 0) currentWindowNum++;
-
-            return serializedMsg;
+            currentWindowNum++;
+            return serializedFunctionWindows(windowId, List.of(window), childId);
         }
 
         private List<String> serializedFunctionWindows(FunctionWindowAggregateId functionWindowAggId,

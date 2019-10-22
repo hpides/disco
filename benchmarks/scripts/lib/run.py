@@ -80,10 +80,10 @@ def upload_child_params(child_host, parent_host, child_id, num_streams, is_singl
 #     node_args = (runner_class, stream_id, parent_addr, num_events, duration)
 #     upload_benchmark_params(stream_host, *node_args)
 
-def upload_stream_params(stream_host, parent_host, num_events, duration, num_children):
+def upload_stream_params(stream_host, parent_host, num_events, agg_fn, duration, num_children):
     runner_class = "SustainableThroughputRunner"
     parent_addr = f"{parent_host}:{ROOT_WINDOW_PORT}"
-    node_args = (runner_class, -1, parent_addr, num_events, duration, f"child{num_children}")
+    node_args = (runner_class, -1, parent_addr, num_events, duration, agg_fn, f"child{num_children}")
     upload_benchmark_params(stream_host, *node_args)
 
 
@@ -170,7 +170,7 @@ def run(node_config: List[int], num_events: int, duration: int,
 
     # TODO
     child_host = child_hosts[0]
-    upload_stream_params(child_host, ROOT_HOST, num_events, duration, num_children)
+    upload_stream_params(child_host, ROOT_HOST, num_events, agg_functions, duration, num_children)
     named_hosts.append((child_host, f"child-generator"))
 
     print("Starting `run.sh` on all nodes.\n")
