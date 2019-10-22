@@ -2,6 +2,8 @@ package com.github.lawben.disco;
 
 import static com.github.lawben.disco.DistributedUtils.HOLISTIC_STRING;
 import static com.github.lawben.disco.DistributedUtils.aggregateFunctionMax;
+import static com.github.lawben.disco.DistributedUtils.maxAggregateFunctionAverage;
+import static com.github.lawben.disco.DistributedUtils.maxAggregateFunctionMedian;
 
 import com.github.lawben.disco.aggregation.AlgebraicMergeFunction;
 import com.github.lawben.disco.aggregation.AlgebraicPartial;
@@ -50,30 +52,30 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
             this.currentWindowNum = 0;
             this.aggFn = aggFn;
 
+            this.sliceValues = new ArrayList<>(25_000);
             this.factory = new MemoryStateFactory();
 
             switch (aggFn) {
-                case "MAX":  {
+                case "MAX": {
                     this.functions = List.of(aggregateFunctionMax());
                     break;
                 }
                 case "M_AVG": {
-                    this.functions = List.of(new AlgebraicMergeFunction(DistributedUtils.maxAggregateFunctionAverage()));
+                    this.functions = List.of(new AlgebraicMergeFunction(maxAggregateFunctionAverage()));
                     break;
                 }
                 case "M_MEDIAN": {
-                    this.functions = List.of(new HolisticMergeWrapper(DistributedUtils.maxAggregateFunctionMedian()));
+                    this.functions = List.of(new HolisticMergeWrapper(maxAggregateFunctionMedian()));
+                    final long currentTime = System.currentTimeMillis();
+                    for (int i = 0; i < 25_000; i++) {
+                        sliceValues.add(currentTime + 1);
+                    }
                     break;
                 }
                 default:
                     throw new RuntimeException("Unknown aggFn: " + aggFn);
             }
 
-            this.sliceValues = new ArrayList<>(25_000);
-            final long currentTime = System.currentTimeMillis();
-            for (int i = 0; i < 25_000; i++) {
-                sliceValues.add(currentTime + 1);
-            }
         }
 
         public List<String> getNextWindow() {

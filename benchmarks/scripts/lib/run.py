@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from datetime import datetime
 from multiprocessing.connection import Connection
 from threading import Thread
@@ -183,6 +184,8 @@ def run(node_config: List[int], num_events: int, duration: int,
                         name=f"thread-{name}")
         thread.start()
         threads.append(thread)
+
+    time.sleep(5)
 
     check_complete(max_run_duration, flat_hosts, complete_check_fn)
     kill_command = "pkill -9 -f /home/hadoop/benson/openjdk12/bin/java"
