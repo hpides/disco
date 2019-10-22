@@ -10,6 +10,7 @@ import com.github.lawben.disco.aggregation.DistributiveAggregateFunction;
 import com.github.lawben.disco.aggregation.DistributiveWindowAggregate;
 import com.github.lawben.disco.aggregation.FunctionWindowAggregateId;
 import com.github.lawben.disco.aggregation.HolisticMergeWrapper;
+import com.github.lawben.disco.aggregation.functions.PartialAverage;
 import de.tub.dima.scotty.core.WindowAggregateId;
 import de.tub.dima.scotty.core.windowFunction.AggregateFunction;
 import de.tub.dima.scotty.slicing.slice.Slice;
@@ -47,7 +48,7 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
             this.currentWindowNum = 0;
 
             this.factory = new MemoryStateFactory();
-            this.functions = List.of(DistributedUtils.aggregateFunctionMax());
+            this.functions = List.of(new AlgebraicMergeFunction(DistributedUtils.maxAggregateFunctionAverage())); // aggregateFunctionMax());
         }
 
         public List<String> getNextWindow() {
@@ -56,9 +57,9 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
             WindowAggregateId windowAggId = new WindowAggregateId(0, windowStart, windowEnd);
             FunctionWindowAggregateId windowId = new FunctionWindowAggregateId(windowAggId, 0, currentChild);
 
-            AggregateState<Long> state = new AggregateState<>(factory, functions);
-            state.addElement(100L);
-            DistributedAggregateWindowState<Long> window = new DistributedAggregateWindowState<>(windowId, state);
+            AggregateState<PartialAverage> state = new AggregateState<>(factory, functions);
+            state.addElement(new PartialAverage(100L, 1));
+            DistributedAggregateWindowState<PartialAverage> window = new DistributedAggregateWindowState<>(windowId, state);
             List<String> serializedMsg = serializedFunctionWindows(windowId, List.of(window), currentChild);
 
             currentChild = (currentChild + 1) % numChildren;
