@@ -43,6 +43,7 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
         String aggFn;
 
         final long windowSize = 1000;
+        final int numSliceValues = 1000;
 
         MemoryStateFactory factory;
         final List<AggregateFunction> functions;
@@ -54,7 +55,7 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
             this.currentWindowNum = 0;
             this.aggFn = aggFn;
 
-            this.sliceValues = new ArrayList<>(25_000);
+            this.sliceValues = new ArrayList<>(numSliceValues);
             this.factory = new MemoryStateFactory();
 
             switch (aggFn) {
@@ -69,7 +70,7 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
                 case "M_MEDIAN": {
                     this.functions = List.of(new HolisticMergeWrapper(maxAggregateFunctionMedian()));
                     final long currentTime = System.currentTimeMillis();
-                    for (int i = 0; i < 25_000; i++) {
+                    for (int i = 0; i < numSliceValues; i++) {
                         sliceValues.add(currentTime);
                     }
                     List<String> sliceStrings = this.sliceValues.stream().map(Object::toString).collect(Collectors.toList());
