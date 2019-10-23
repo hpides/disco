@@ -23,6 +23,7 @@ import de.tub.dima.scotty.state.memory.MemoryStateFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 public class SustainableThroughputWindowGenerator extends SustainableThroughputGenerator {
@@ -44,8 +45,9 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
         final long windowSize = 1000;
 
         MemoryStateFactory factory;
-        List<AggregateFunction> functions;
-        List<Long> sliceValues;
+        final List<AggregateFunction> functions;
+        final List<Long> sliceValues;
+        String sliceString;
 
         public WindowGenerator(int childId, String aggFn) {
             this.childId = childId;
@@ -68,8 +70,10 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
                     this.functions = List.of(new HolisticMergeWrapper(maxAggregateFunctionMedian()));
                     final long currentTime = System.currentTimeMillis();
                     for (int i = 0; i < 25_000; i++) {
-                        sliceValues.add(currentTime + 1);
+                        sliceValues.add(currentTime);
                     }
+                    List<String> sliceStrings = this.sliceValues.stream().map(Object::toString).collect(Collectors.toList());
+                    sliceString = String.join(",", sliceStrings);
                     break;
                 }
                 default:
@@ -147,13 +151,22 @@ public class SustainableThroughputWindowGenerator extends SustainableThroughputG
                 AlgebraicPartial partial = hasValue ? (AlgebraicPartial) aggValues.get(0) : null;
                 return new AlgebraicWindowAggregate(partial, key).asString();
             } else if (aggFn instanceof HolisticMergeWrapper) {
-                List<Slice> slices = hasValue ? (List<Slice>) aggValues.get(0) : new ArrayList<>();
+                List<DistributedSlice> slices = (List<DistributedSlice>) aggValues.get(0);
                 // Add functionId as slice might have multiple states
-                String slicesString = DistributedUtils.slicesToString(slices, functionWindowAggId.getFunctionId());
+                String slicesString = this.slicesToString(slices.get(0));
                 return HOLISTIC_STRING + ":" + slicesString + ":" + key;
             } else {
                 throw new IllegalArgumentException("Unknown aggregate function type: " + aggFn.getClass().getSimpleName());
             }
+        }
+
+
+        public String slicesToString(DistributedSlice slice) {
+            return String.valueOf(slice.getTStart())
+                    + ','
+                    + slice.getTLast()
+                    + ';'
+                    + this.sliceString;
         }
     }
 }

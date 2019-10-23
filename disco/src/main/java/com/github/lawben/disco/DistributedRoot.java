@@ -69,6 +69,8 @@ public class DistributedRoot implements Runnable {
     private void processPreAggregatedWindows() {
         ZMQ.Socket windowPuller = nodeImpl.dataPuller;
 
+        int counter = 0;
+
         while (!nodeImpl.isInterrupted()) {
             String messageOrStreamEnd = windowPuller.recvStr();
             if (messageOrStreamEnd == null) {
@@ -101,6 +103,9 @@ public class DistributedRoot implements Runnable {
                     windowResults = processingResults.getFinalWindows().stream()
                             .map(state -> nodeImpl.aggregateMerger.convertAggregateToWindowResult(state))
                             .collect(Collectors.toList());
+                    if (++counter % 10_000 == 0) {
+                        System.out.println("Received " + counter + " windows.");
+                    }
                 }
             }
 
