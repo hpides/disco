@@ -52,7 +52,9 @@ def move_logs(node_config: List[int]):
 def single_sustainability_run(num_events_per_second: int, node_config: List[int],
                               windows: str, agg_functions: str, run_duration: int, is_single_node: bool):
     num_nodes = sum(node_config) + 1  # + 1 for root
-    timeout = run_duration + 30
+    # TODO
+    # timeout = run_duration + 30
+    timeout = 150
     print(f"Running sustainability test with {num_events_per_second} events/s.")
     process_recv_pipe, process_send_pipe = Pipe(False)
     run_process = Process(target=run_all_main,

@@ -74,6 +74,7 @@ def upload_child_params(child_host, parent_host, child_id, num_streams, is_singl
                  ROOT_WINDOW_PORT, CHILD_PORT, child_id, num_streams)
     upload_benchmark_params(child_host, *node_args)
 
+
 # TODO
 # def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration, is_fixed_events=False):
 #     runner_class = "SustainableThroughputRunner" if not is_fixed_events else "InputStreamMain"
@@ -81,10 +82,12 @@ def upload_child_params(child_host, parent_host, child_id, num_streams, is_singl
 #     node_args = (runner_class, stream_id, parent_addr, num_events, duration)
 #     upload_benchmark_params(stream_host, *node_args)
 
-def upload_stream_params(stream_host, parent_host, num_events, agg_fn, duration, num_children):
-    runner_class = "SustainableThroughputRunner"
-    parent_addr = f"{parent_host}:{ROOT_WINDOW_PORT}"
-    node_args = (runner_class, -1, parent_addr, num_events, duration, agg_fn, f"child{num_children}")
+
+def upload_stream_params(stream_host: str, stream_id: int, parent_host: str, num_events: int, duration: int,
+                         agg_fn: str, num_keys: int, is_fixed_events: bool = False):
+    runner_class = "SustainableThroughputRunner" if not is_fixed_events else "InputStreamMain"
+    parent_addr = f"{parent_host}:{CHILD_PORT}"
+    node_args = (runner_class, stream_id, parent_addr, num_events, duration, agg_fn, f"stream{num_keys}")
     upload_benchmark_params(stream_host, *node_args)
 
 
@@ -115,6 +118,10 @@ def run(node_config: List[int], num_events: int, duration: int,
         windows: str, agg_functions: str, is_single_node: bool = False,
         is_fixed_events: bool = False, process_log_dir_pipe: Connection = None):
     assert_valid_node_config(node_config)
+
+    # TODO
+    num_keys = duration
+    duration = 120
 
     num_nodes = sum(node_config) + 1
     log_dir = get_log_dir(num_nodes, num_events, duration)
@@ -155,24 +162,19 @@ def run(node_config: List[int], num_events: int, duration: int,
     num_children = len(child_hosts)
     num_streams = len(stream_hosts)
 
-    # TODO
     # Upload for child nodes
-    # num_streams_per_child = num_streams // num_children
-    # for child_id, child_host in enumerate(child_hosts):
-    #     parent_host = parent_nodes[child_id % num_parents]
-    #     upload_child_params(child_host, parent_host, child_id, num_streams_per_child, is_single_node)
-    #     named_hosts.append((child_host, f"child-{child_id}"))
+    num_streams_per_child = num_streams // num_children
+    for child_id, child_host in enumerate(child_hosts):
+        parent_host = parent_nodes[child_id % num_parents]
+        upload_child_params(child_host, parent_host, child_id, num_streams_per_child, is_single_node)
+        named_hosts.append((child_host, f"child-{child_id}"))
 
     # Upload for stream nodes
-    # for stream_id, stream_host in enumerate(stream_hosts):
-    #     parent_host = child_hosts[stream_id % num_children]
-    #     upload_stream_params(stream_host, stream_id, parent_host, num_events, duration, is_fixed_events)
-    #     named_hosts.append((stream_host, f"stream-{stream_id}"))
-
-    # TODO
-    child_host = child_hosts[0]
-    upload_stream_params(child_host, ROOT_HOST, num_events, agg_functions, duration, num_children)
-    named_hosts.append((child_host, f"child-generator"))
+    for stream_id, stream_host in enumerate(stream_hosts):
+        parent_host = child_hosts[stream_id % num_children]
+        upload_stream_params(stream_host, stream_id, parent_host, num_events, duration,
+                             agg_functions, num_keys, is_fixed_events)
+        named_hosts.append((stream_host, f"stream-{stream_id}"))
 
     print("Starting `run.sh` on all nodes.\n")
     max_run_duration = duration + 30
@@ -185,6 +187,7 @@ def run(node_config: List[int], num_events: int, duration: int,
         thread.start()
         threads.append(thread)
 
+    # Give nodes time to start running
     time.sleep(5)
 
     check_complete(max_run_duration, flat_hosts, complete_check_fn)

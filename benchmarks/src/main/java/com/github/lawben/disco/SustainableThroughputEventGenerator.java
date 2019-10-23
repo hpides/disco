@@ -9,16 +9,33 @@ import java.util.function.Function;
  */
 public class SustainableThroughputEventGenerator extends SustainableThroughputGenerator {
 
-    public static Function<Long, List<String>> getEventGen(final long startTime, final int streamId) {
-        return (realTime) -> {
-            final long eventTimestamp = realTime - startTime;
-            final long eventValue = realTime;
-            return List.of(new Event(eventValue, eventTimestamp, streamId).asString());
-        };
+    public static Function<Long, List<String>> getEventGen(final long startTime, final int streamId, int numKeys) {
+        EventGenerator eventGenerator = new EventGenerator(streamId, numKeys, startTime);
+        return eventGenerator::getNextWindow;
     }
 
-    public SustainableThroughputEventGenerator(int streamId, int numEventsPerSecond, long startTimestamp) {
-        super(numEventsPerSecond, getEventGen(startTimestamp, streamId));
+    public SustainableThroughputEventGenerator(int streamId, int numEventsPerSecond, long startTimestamp, int numKeys) {
+        super(numEventsPerSecond, getEventGen(startTimestamp, streamId, numKeys));
+    }
+
+    private static class EventGenerator {
+        final int streamId;
+        final int numKeys;
+        final long startTime;
+
+        int currentKey;
+
+        public EventGenerator(int streamId, int numKeys, long startTime) {
+            this.streamId = streamId;
+            this.numKeys = numKeys;
+            this.startTime = startTime;
+            this.currentKey = 0;
+        }
+
+        public List<String> getNextWindow(long realTime) {
+            currentKey = currentKey + 1 % numKeys;
+            final long eventTimestamp = realTime - startTime;
+            return List.of(new Event(realTime, eventTimestamp, streamId, currentKey).asString());
+        }
     }
 }
-

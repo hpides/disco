@@ -7,13 +7,13 @@ from executables.find_sustainable_throughput import run_throughput
 DURATION = 120
 
 
-def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, is_single_node: bool):
+def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, num_keys: int, is_single_node: bool):
     print_run_string(node_config)
-    throughput = run_throughput(node_config, DURATION, windows, agg_fns, is_single_node)
+    throughput = run_throughput(node_config, num_keys, windows, agg_fns, is_single_node)
     # run_latency(node_config, throughput, DURATION, windows, agg_fns, is_single_node)
 
 
-def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]], is_single_node: bool):
+def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]], num_keys: int, is_single_node: bool):
     run_mode_str = "SINGLE_NODE" if is_single_node else "DISTRIBUTED"
     print(f"BENCHMARK: WINDOWS: {windows} - AGG_FNS: {agg_fns} - {run_mode_str}")
     for node_config in node_configs:
@@ -21,10 +21,11 @@ def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]], is_
 
 
 def run_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]],
-                         is_single_node: bool = False):
+                         keys: List[int], is_single_node: bool = False):
     for agg_fn in agg_fns:
         for window in windows:
-            run_benchmark(window, agg_fn, node_config, is_single_node)
+            for num_keys in keys:
+                run_benchmark(window, agg_fn, node_config, num_keys, is_single_node)
 
 
 def run_single_node_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]]):

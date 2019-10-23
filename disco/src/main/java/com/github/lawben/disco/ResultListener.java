@@ -46,7 +46,7 @@ public class ResultListener implements Runnable {
                 final long windowLatency = currentTime - windowEnd;
 //                System.out.println("Latency for window: " + functionWindowAggId + " --> " + windowLatency);
 
-                if (++numResultWindows % 10_000 == 0) {
+                if (++numResultWindows % 1000 == 0) {
                     System.out.println("Received " + numResultWindows + " results.");
                 }
 
