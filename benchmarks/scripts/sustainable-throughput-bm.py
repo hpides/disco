@@ -9,6 +9,10 @@ DURATION = 120
 
 def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, num_keys: int, is_single_node: bool):
     print_run_string(node_config)
+
+    # TODO
+    # throughput = run_throughput(node_config, DURATION, windows, agg_fns, is_single_node)
+
     throughput = run_throughput(node_config, num_keys, windows, agg_fns, is_single_node)
     # run_latency(node_config, throughput, DURATION, windows, agg_fns, is_single_node)
 
@@ -16,8 +20,9 @@ def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, nu
 def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]], num_keys: int, is_single_node: bool):
     run_mode_str = "SINGLE_NODE" if is_single_node else "DISTRIBUTED"
     print(f"BENCHMARK: WINDOWS: {windows} - AGG_FNS: {agg_fns} - {run_mode_str}")
+    print(f"BM NUM_KEYS: {num_keys}")
     for node_config in node_configs:
-        _run_single_benchmark(node_config, windows, agg_fns, is_single_node)
+        _run_single_benchmark(node_config, windows, agg_fns, num_keys, is_single_node)
 
 
 def run_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]],
@@ -28,17 +33,20 @@ def run_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: Li
                 run_benchmark(window, agg_fn, node_config, num_keys, is_single_node)
 
 
-def run_single_node_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]]):
-    run_benchmark_matrix(windows, agg_fns, node_config, is_single_node=True)
+def run_single_node_benchmark_matrix(windows: List[str], agg_fns: List[str], node_config: List[List[int]],
+                                     keys: List[int]):
+    run_benchmark_matrix(windows, agg_fns, node_config, keys, is_single_node=True)
 
 
 def run_all():
     basic_windows = ["TUMBLING,1000"]  # , "SLIDING,1000,500"]  # , "SESSION,100"]
     basic_agg_fns = ["MAX", "M_AVG", "M_MEDIAN"]
     # basic_node_config = [[1, 1], [1, 2], [1, 4], [1, 8], [2, 2], [4, 4], [8, 8]]
-    basic_node_config = [[1, 1], [2, 2], [4, 4], [8, 8], [16, 16]]
-    run_benchmark_matrix(basic_windows, basic_agg_fns, basic_node_config)
-    # run_single_node_benchmark_matrix(basic_windows, basic_agg_fns, basic_node_config)
+    basic_node_config = [[1, 1]] #, [2, 2], [4, 4], [8, 8], [16, 16]]
+    keys = [1, 10, 100, 1000, 10000]
+
+    run_benchmark_matrix(basic_windows, basic_agg_fns, basic_node_config, keys)
+    # run_single_node_benchmark_matrix(basic_windows, basic_agg_fns, basic_node_config, keys)
 
     ############################
 
