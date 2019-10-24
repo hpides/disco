@@ -17,7 +17,6 @@ def _run_single_benchmark(node_config: List[int], windows: str, agg_fns: str, is
 def run_benchmark(windows: str, agg_fns: str, node_configs: List[List[int]], is_single_node: bool):
     run_mode_str = "SINGLE_NODE" if is_single_node else "DISTRIBUTED"
     print(f"BENCHMARK: WINDOWS: {windows} - AGG_FNS: {agg_fns} - {run_mode_str}")
-    print(f"BM NUM_KEYS: {num_keys}")
     for node_config in node_configs:
         _run_single_benchmark(node_config, windows, agg_fns, is_single_node)
 
