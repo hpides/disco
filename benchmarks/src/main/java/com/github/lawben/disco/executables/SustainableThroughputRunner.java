@@ -7,6 +7,7 @@ import static com.github.lawben.disco.DistributedUtils.STREAM_END;
 import com.github.lawben.disco.DistributedUtils;
 import com.github.lawben.disco.SustainableThroughputEventGenerator;
 import com.github.lawben.disco.SustainableThroughputGenerator;
+import com.github.lawben.disco.SustainableThroughputSessionGenerator;
 import com.github.lawben.disco.SustainableThroughputWindowGenerator;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ public class SustainableThroughputRunner {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 6) {
-            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds aggFn childX|streamX\n" +
+            System.err.println("Required args: streamId nodeAddress eventsPerSecond totalRunTimeInSeconds aggFn childX|streamX|session\n" +
                     "e.g. java SustainableThroughputRunner 0 127.0.0.1:4060 100000 60\n" +
                     "This will generate 100.000 events per second for 60 seconds (6 mio. events in total) "
                     + "and send them to localhost on port 4060 from stream with id 0.");
@@ -42,23 +43,35 @@ public class SustainableThroughputRunner {
         final long totalDuration = Long.parseLong(args[3]);
         final String aggFn = args[4];
         final String mode = args[5];
-        assert mode.startsWith("child") || mode.startsWith("stream");
+        assert mode.startsWith("child") || mode.startsWith("stream") || mode.startsWith("session");
 
         final boolean isStream = mode.startsWith("stream");
+        final boolean isChild = mode.startsWith("child");
+        final boolean isSession = mode.startsWith("session");
+        final String runMode;
         int numChildren = 0;
         int numKeys = 1;
-        if (!isStream) {
+
+        if (isChild) {
             numChildren = Integer.parseInt(mode.replace("child", ""));
             SEND_CHUNK_SIZE = 1000;
             NUM_SENDERS = numChildren;
             if (aggFn.equals("M_MEDIAN")) {
                 SEND_CHUNK_SIZE = 100;
             }
-        } else {
+            runMode = "child";
+        } else if (isStream) {
             numKeys = Integer.parseInt(mode.replace("stream", ""));
             if (aggFn.equals("M_MEDIAN")) {
                 SEND_CHUNK_SIZE = 1000;
             }
+            runMode = "stream";
+        } else if (isSession) {
+            numKeys = 3;
+            NUM_SENDERS = numKeys;
+            runMode = "session";
+        } else {
+            throw new RuntimeException("Bad mode...");
         }
 
         System.out.println("Running sustainable " + mode + " throughput generator for " + totalDuration +
@@ -81,9 +94,9 @@ public class SustainableThroughputRunner {
         final int dataPort = Integer.parseInt(nodeAddress.split(":")[1]);
 
         final long startTime;
-        if (isStream) {
+        if (isStream || isSession) {
             final Socket nodeRegistrar = context.createSocket(SocketType.REQ);
-            nodeRegistrar.setReceiveTimeOut(30 * 1000);
+            nodeRegistrar.setReceiveTimeOut(60 * 1000);
             nodeRegistrar.connect(DistributedUtils.buildTcpUrl(nodeIP, dataPort + STREAM_REGISTER_PORT_OFFSET));
             nodeRegistrar.send(String.valueOf(streamId));
             String startTimeString = nodeRegistrar.recvStr();
@@ -119,7 +132,7 @@ public class SustainableThroughputRunner {
         List<GeneratorSetup> generators = new ArrayList<>(NUM_SENDERS);
         for (int i = 0; i < NUM_SENDERS; i++) {
             final int eventsPerGenerator = eventsPerSec / NUM_SENDERS;
-            generators.add(startGenerator(eventsPerGenerator, startTime, aggFn, totalDurationInMillis, i, numKeys, isStream));
+            generators.add(startGenerator(eventsPerGenerator, startTime, aggFn, totalDurationInMillis, i, numKeys, runMode));
         }
 
         List<Thread> senderThreads = new ArrayList<>(NUM_SENDERS);
@@ -191,10 +204,23 @@ public class SustainableThroughputRunner {
     }
 
     public static GeneratorSetup startGenerator(int eventsPerSec, long startTime, String aggFn, long totalDurationInMillis,
-            int nodeId, int numKeys, boolean isStream) {
-        final SustainableThroughputGenerator generator = isStream
-                ? new SustainableThroughputEventGenerator(nodeId, eventsPerSec, startTime, numKeys)
-                : new SustainableThroughputWindowGenerator(nodeId, eventsPerSec, aggFn);
+            int nodeId, int numKeys, String runMode) {
+        final SustainableThroughputGenerator generator;
+        switch (runMode) {
+            case ("stream"): {
+                generator = new SustainableThroughputEventGenerator(nodeId, eventsPerSec, startTime, numKeys);
+                break;
+            }
+            case ("child"): {
+                generator = new SustainableThroughputWindowGenerator(nodeId, eventsPerSec, aggFn);
+                break;
+            }
+            case ("session"): {
+                generator = new SustainableThroughputSessionGenerator(nodeId, eventsPerSec, startTime);
+                break;
+            }
+            default: throw new RuntimeException("Bad mode...");
+        }
 
         GeneratorException generatorException = new GeneratorException();
         Thread.UncaughtExceptionHandler generatorThreadExceptionHandler =

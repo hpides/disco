@@ -17,6 +17,7 @@ public class DistributedChild implements Runnable {
     private long currentEventTime;
     private long lastWatermark;
     private long numEvents;
+    private long numOutOfOrderEvents;
 
     public final static int STREAM_REGISTER_PORT_OFFSET = 100;
     public final static long STREAM_REGISTER_TIMEOUT_MS = 10 * 1000;
@@ -71,6 +72,7 @@ public class DistributedChild implements Runnable {
         currentEventTime = 0;
         lastWatermark = 0;
         numEvents = 0;
+        numOutOfOrderEvents = 0;
         processingTime = 0;
         receivingTime = 0;
         numEventsInLastSecond = 0;
@@ -91,6 +93,9 @@ public class DistributedChild implements Runnable {
                 }
 
                 System.out.println(nodeImpl.nodeString("Processed " + numEvents + " events in total."));
+                final double outOfOrderPercentage = (numOutOfOrderEvents / (double) numEvents) * 100;
+                System.out.println(nodeImpl.nodeString(outOfOrderPercentage + "% of events out-of-order "
+                        + "(" + numOutOfOrderEvents + "/" + numEvents + ")"));
                 final long watermarkTimestamp = currentEventTime + nodeImpl.watermarkMs;
                 handleWatermark(watermarkTimestamp);
                 System.out.println(nodeImpl.nodeString("No more data to come. Ending child worker..."));
@@ -129,7 +134,11 @@ public class DistributedChild implements Runnable {
         this.childMerger.processElement(event);
 //        final long processingEnd = System.nanoTime();
 
-        currentEventTime = event.getTimestamp();
+        if (event.getTimestamp() < currentEventTime) {
+            numOutOfOrderEvents++;
+        }
+
+        currentEventTime = Math.max(currentEventTime, event.getTimestamp());
         numEvents++;
         numEventsInLastSecond++;
 //        processingTime += (processingEnd - processingStart);

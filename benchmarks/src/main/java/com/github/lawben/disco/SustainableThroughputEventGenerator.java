@@ -18,7 +18,7 @@ public class SustainableThroughputEventGenerator extends SustainableThroughputGe
         super(numEventsPerSecond, getEventGen(startTimestamp, streamId, numKeys));
     }
 
-    private static class EventGenerator {
+    public static class EventGenerator {
         final int streamId;
         final int numKeys;
         final long startTime;
