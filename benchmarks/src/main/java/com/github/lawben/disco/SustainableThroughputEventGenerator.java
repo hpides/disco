@@ -33,7 +33,7 @@ public class SustainableThroughputEventGenerator extends SustainableThroughputGe
         }
 
         public List<String> getNextWindow(long realTime) {
-            currentKey = currentKey + 1 % numKeys;
+            currentKey = (currentKey + 1) % numKeys;
             final long eventTimestamp = realTime - startTime;
             return List.of(new Event(realTime, eventTimestamp, streamId, currentKey).asString());
         }
