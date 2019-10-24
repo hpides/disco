@@ -19,7 +19,10 @@ ALL_HOSTS = [
     'cloud-15', 'cloud-17', 'cloud-18', 'cloud-19', 'cloud-20',
     'cloud-21', 'cloud-22', 'cloud-24', 'cloud-25', 'cloud-26',
     'cloud-27', 'cloud-28', 'cloud-29', 'cloud-31', 'cloud-32',
-    'cloud-33', 'cloud-34', 'cloud-35', 'cloud-36', 'cloud-37'
+    'cloud-33', 'cloud-34', 'cloud-35', 'cloud-36', 'cloud-37',
+    'cloud-12',  # TODO remove again
+    'cloud-14',  # TODO remove again
+    'cloud-16',  # TODO remove again
 ]
 
 
@@ -74,20 +77,20 @@ def upload_child_params(child_host, parent_host, child_id, num_streams, is_singl
                  ROOT_WINDOW_PORT, CHILD_PORT, child_id, num_streams)
     upload_benchmark_params(child_host, *node_args)
 
-
 # TODO
-# def upload_stream_params(stream_host, stream_id, parent_host, num_events, duration, is_fixed_events=False):
+# def upload_stream_params(stream_host: str, stream_id: int, parent_host: str, num_events: int, duration: int,
+#                          agg_fn: str, num_keys: int, is_fixed_events: bool = False):
 #     runner_class = "SustainableThroughputRunner" if not is_fixed_events else "InputStreamMain"
 #     parent_addr = f"{parent_host}:{CHILD_PORT}"
-#     node_args = (runner_class, stream_id, parent_addr, num_events, duration)
+#     node_args = (runner_class, stream_id, parent_addr, num_events, duration, agg_fn, f"stream{num_keys}")
 #     upload_benchmark_params(stream_host, *node_args)
 
 
 def upload_stream_params(stream_host: str, stream_id: int, parent_host: str, num_events: int, duration: int,
-                         agg_fn: str, num_keys: int, is_fixed_events: bool = False):
+                         agg_fn: str, is_fixed_events: bool = False):
     runner_class = "SustainableThroughputRunner" if not is_fixed_events else "InputStreamMain"
     parent_addr = f"{parent_host}:{CHILD_PORT}"
-    node_args = (runner_class, stream_id, parent_addr, num_events, duration, agg_fn, f"stream{num_keys}")
+    node_args = (runner_class, stream_id, parent_addr, num_events, duration, agg_fn, f"session")
     upload_benchmark_params(stream_host, *node_args)
 
 
@@ -118,10 +121,6 @@ def run(node_config: List[int], num_events: int, duration: int,
         windows: str, agg_functions: str, is_single_node: bool = False,
         is_fixed_events: bool = False, process_log_dir_pipe: Connection = None):
     assert_valid_node_config(node_config)
-
-    # TODO
-    num_keys = duration
-    duration = 120
 
     num_nodes = sum(node_config) + 1
     log_dir = get_log_dir(num_nodes, num_events, duration)
@@ -173,7 +172,7 @@ def run(node_config: List[int], num_events: int, duration: int,
     for stream_id, stream_host in enumerate(stream_hosts):
         parent_host = child_hosts[stream_id % num_children]
         upload_stream_params(stream_host, stream_id, parent_host, num_events, duration,
-                             agg_functions, num_keys, is_fixed_events)
+                             agg_functions, is_fixed_events)
         named_hosts.append((stream_host, f"stream-{stream_id}"))
 
     print("Starting `run.sh` on all nodes.\n")
