@@ -11,7 +11,7 @@ import java.util.function.Function;
  */
 public class SustainableThroughputSessionGenerator extends SustainableThroughputGenerator {
 
-    public static final int GAP_SIZE_MS = 1000;
+    public static final int GAP_SIZE_MS = 2000;
 
     public static Function<Long, List<String>> getEventGen(final long startTime, final int streamId) {
 //        if (streamId == 0) {
