@@ -39,7 +39,7 @@ public class MaxPartialAverage implements AlgebraicPartial<MaxPartialAverage, Lo
 
     @Override
     public MaxPartialAverage fromString(String s) {
-        if (s == null || s.equals("null")) {
+        if (s == null || s.contains("null")) {
             return new MaxPartialAverage(null, 0);
         }
         String[] parts = s.split(",");

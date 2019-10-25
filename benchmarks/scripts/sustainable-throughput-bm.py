@@ -33,7 +33,7 @@ def run_single_node_benchmark_matrix(windows: List[str], agg_fns: List[str], nod
 
 def run_all():
     basic_windows = ["TUMBLING,1000,1;SESSION,1000,2"]  # , "SLIDING,1000,500"]  # , "SESSION,100"]
-    basic_agg_fns = ["MAX", "M_AVG", "M_MEDIAN"]
+    basic_agg_fns = ["MAX"]  #, "M_AVG", "M_MEDIAN"]
     # basic_node_config = [[1, 1], [1, 2], [1, 4], [1, 8], [2, 2], [4, 4], [8, 8]]
     basic_node_config = [[2, 2], [2, 4, 4], [2, 4, 8, 8]]
 

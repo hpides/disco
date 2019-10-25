@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from multiprocessing.connection import Connection
 from threading import Thread
-from typing import List
+from typing import List, Tuple
 
 from lib.common import ssh_command, check_complete, SSH_BASE_DIR, \
     ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, CHILD_PORT, assert_valid_node_config, create_log_dir
@@ -20,11 +20,9 @@ ALL_HOSTS = [
     'cloud-21', 'cloud-22', 'cloud-24', 'cloud-25', 'cloud-26',
     'cloud-27', 'cloud-28', 'cloud-29', 'cloud-31', 'cloud-32',
     'cloud-33', 'cloud-34', 'cloud-35', 'cloud-36', 'cloud-37',
-    'cloud-12',  # TODO remove again
-    'cloud-14',  # TODO remove again
-    'cloud-16',  # TODO remove again
-]
+] * 2
 
+ALL_PORTS = list(range(4050, 4150))
 
 def get_hosts_for_run(node_config: List[int]) -> List[List[str]]:
     assert sum(node_config) <= len(ALL_HOSTS), \
@@ -50,11 +48,12 @@ def complete_check_fn(host):
     return not ("com.github.lawben" in complete_output)
 
 
-def upload_benchmark_params(host, *args):
+def upload_benchmark_params(host, *args, node_mode=""):
     string_args = [str(arg) for arg in args]
     args_str = " ".join(string_args)
     print(f"BENCHMARK_ARGS={args_str}")
-    ssh_command(host, f'echo "export BENCHMARK_ARGS=\\\"{args_str}\\\"" >> {SSH_BASE_DIR}/benchmark_env')
+    mode_str = f"_{node_mode}" if node_mode else ""
+    ssh_command(host, f'echo "export BENCHMARK_ARGS{mode_str}=\\\"{args_str}\\\"" >> {SSH_BASE_DIR}/benchmark_env')
 
 
 def upload_root_params(num_children, windows, agg_fns, is_single_node=False):
@@ -70,12 +69,20 @@ def upload_intermediate_params(host, node_id, num_children, parent_host, is_sing
                  ROOT_CONTROL_PORT, ROOT_WINDOW_PORT, num_children, node_id)
     upload_benchmark_params(host, *node_args)
 
+# TODO
+# def upload_child_params(child_host, parent_host, child_id, num_streams, is_single_node=False):
+#     runner_class = "DistributedChildMain" if not is_single_node else "SingleNodeChildMain"
+#     node_args = (runner_class, parent_host, ROOT_CONTROL_PORT,
+#                  ROOT_WINDOW_PORT, CHILD_PORT, child_id, num_streams)
+#     upload_benchmark_params(child_host, *node_args)
 
-def upload_child_params(child_host, parent_host, child_id, num_streams, is_single_node=False):
+
+def upload_child_params(child_host: str, parent_host: str, child_port: int, child_id: int, num_streams: int,
+                        is_single_node: bool = False):
     runner_class = "DistributedChildMain" if not is_single_node else "SingleNodeChildMain"
     node_args = (runner_class, parent_host, ROOT_CONTROL_PORT,
-                 ROOT_WINDOW_PORT, CHILD_PORT, child_id, num_streams)
-    upload_benchmark_params(child_host, *node_args)
+                 ROOT_WINDOW_PORT, child_port, child_id, num_streams)
+    upload_benchmark_params(child_host, *node_args, node_mode="CHILD")
 
 # TODO
 # def upload_stream_params(stream_host: str, stream_id: int, parent_host: str, num_events: int, duration: int,
@@ -86,29 +93,25 @@ def upload_child_params(child_host, parent_host, child_id, num_streams, is_singl
 #     upload_benchmark_params(stream_host, *node_args)
 
 
-def upload_stream_params(stream_host: str, stream_id: int, parent_host: str, num_events: int, duration: int,
+def upload_stream_params(stream_host: str, stream_id: int, parent_port: int, num_events: int, duration: int,
                          agg_fn: str, is_fixed_events: bool = False):
     runner_class = "SustainableThroughputRunner" if not is_fixed_events else "InputStreamMain"
-    parent_addr = f"{parent_host}:{CHILD_PORT}"
+    parent_addr = f"localhost:{parent_port}"
     node_args = (runner_class, stream_id, parent_addr, num_events, duration, agg_fn, f"session")
-    upload_benchmark_params(stream_host, *node_args)
+    upload_benchmark_params(stream_host, *node_args, node_mode="STREAM")
 
 
-def run_host(host, name, log_dir, timeout=None):
-    ssh_command(host, f"{SSH_BASE_DIR}/run.sh &> {SSH_BASE_DIR}/logs",
+def run_host(host, name, log_dir, timeout=None, node_mode=""):
+    mode_str = f"_{node_mode}" if node_mode else ""
+    log_file = f"logs{mode_str}"
+    ssh_command(host, f"{SSH_BASE_DIR}/run.sh {mode_str} &> {SSH_BASE_DIR}/{log_file}",
                 timeout=timeout, verbose=True)
 
     out_file_path = os.path.join(log_dir, f"{name}.log")
-    util_file_path = os.path.join(log_dir, f"util_{name}.log")
-    output = ssh_command(host, f"cat {SSH_BASE_DIR}/logs")
+    output = ssh_command(host, f"cat {SSH_BASE_DIR}/{log_file}")
     with open(out_file_path, "w") as out_file:
         print(output)
         out_file.write(output)
-
-    util_output = ssh_command(host, f"cat {SSH_BASE_DIR}/cpu-util.log")
-    with open(util_file_path, "w") as out_file:
-        print(util_output)
-        out_file.write(util_output)
 
 
 def run_single_level(num_children: int, num_streams: int, num_events: int, duration: int,
@@ -136,6 +139,8 @@ def run(node_config: List[int], num_events: int, duration: int,
     flat_hosts = [host for level in all_hosts for host in level]
     print(f"All hosts ({len(flat_hosts)}): {' '.join(flat_hosts)}")
 
+    port_iter = iter(ALL_PORTS)
+
     print("Uploading benchmark arguments on all nodes...")
     # Upload for root node
     named_hosts = [(ROOT_HOST, "root")]
@@ -161,27 +166,46 @@ def run(node_config: List[int], num_events: int, duration: int,
     num_children = len(child_hosts)
     num_streams = len(stream_hosts)
 
-    # Upload for child nodes
+    # # Upload for child nodes
+    # num_streams_per_child = num_streams // num_children
+    # for child_id, child_host in enumerate(child_hosts):
+    #     parent_host = parent_nodes[child_id % num_parents]
+    #     upload_child_params(child_host, parent_host, child_id, num_streams_per_child, is_single_node)
+    #     named_hosts.append((child_host, f"child-{child_id}"))
+
+    # Upload for child and stream nodes
     num_streams_per_child = num_streams // num_children
     for child_id, child_host in enumerate(child_hosts):
         parent_host = parent_nodes[child_id % num_parents]
-        upload_child_params(child_host, parent_host, child_id, num_streams_per_child, is_single_node)
+        child_port = next(port_iter)
+        upload_child_params(child_host, parent_host, child_port, child_id, num_streams_per_child, is_single_node)
         named_hosts.append((child_host, f"child-{child_id}"))
 
-    # Upload for stream nodes
-    for stream_id, stream_host in enumerate(stream_hosts):
-        parent_host = child_hosts[stream_id % num_children]
-        upload_stream_params(stream_host, stream_id, parent_host, num_events, duration,
+        upload_stream_params(child_host, child_id, child_port, num_events, duration,
                              agg_functions, is_fixed_events)
-        named_hosts.append((stream_host, f"stream-{stream_id}"))
+        named_hosts.append((child_host, f"stream-{child_id}"))
+
+    # TODO
+    # # Upload for stream nodes
+    # for stream_id, stream_host in enumerate(stream_hosts):
+    #     parent_host = child_hosts[stream_id % num_children]
+    #     upload_stream_params(stream_host, stream_id, parent_host, num_events, duration,
+    #                          agg_functions, is_fixed_events)
+    #     named_hosts.append((stream_host, f"stream-{stream_id}"))
 
     print("Starting `run.sh` on all nodes.\n")
     max_run_duration = duration + 30
     threads = []
 
     for host, name in named_hosts:
+        mode = ""
+        if name.startswith("child"):
+            mode = "_CHILD"
+        if name.startswith("stream"):
+            mode = "_STREAM"
+
         thread = Thread(target=run_host,
-                        args=(host, name, log_dir, max_run_duration),
+                        args=(host, name, log_dir, max_run_duration, mode),
                         name=f"thread-{name}")
         thread.start()
         threads.append(thread)
