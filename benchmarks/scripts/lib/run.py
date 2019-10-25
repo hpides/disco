@@ -51,8 +51,8 @@ def complete_check_fn(host):
 def upload_benchmark_params(host, *args, node_mode=""):
     string_args = [str(arg) for arg in args]
     args_str = " ".join(string_args)
-    print(f"BENCHMARK_ARGS={args_str}")
     mode_str = f"_{node_mode}" if node_mode else ""
+    print(f"BENCHMARK_ARGS{mode_str}={args_str}")
     ssh_command(host, f'echo "export BENCHMARK_ARGS{mode_str}=\\\"{args_str}\\\"" >> {SSH_BASE_DIR}/benchmark_env')
 
 
@@ -200,9 +200,9 @@ def run(node_config: List[int], num_events: int, duration: int,
     for host, name in named_hosts:
         mode = ""
         if name.startswith("child"):
-            mode = "_CHILD"
+            mode = "CHILD"
         if name.startswith("stream"):
-            mode = "_STREAM"
+            mode = "STREAM"
 
         thread = Thread(target=run_host,
                         args=(host, name, log_dir, max_run_duration, mode),
